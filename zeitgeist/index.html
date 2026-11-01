@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Romance de Cavalaria: Zeitgeist (protótipo)</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div id="app">
+  <header>
+    <a class="back" href="../">&larr; Jogos</a>
+    <h1>Romance de Cavalaria: Zeitgeist <small>protótipo</small></h1>
+    <button type="button" id="btn-menu">Menu</button>
+  </header>
+
+  <p id="loading" role="status">Carregando…</p>
+  <noscript><p>Ative o JavaScript para jogar.</p></noscript>
+
+  <main id="game" hidden>
+    <div id="stage">
+      <canvas id="view" role="img" aria-label="Visão em primeira pessoa da masmorra"></canvas>
+      <div id="fx"></div>
+      <div id="target" hidden><span id="t-name"></span><div class="bar"><i id="t-hp"></i></div></div>
+      <canvas id="mini" width="100" height="60" aria-hidden="true"></canvas>
+      <div id="dialog" role="dialog" aria-modal="true" aria-labelledby="d-name" hidden>
+        <strong id="d-name"></strong>
+        <p id="d-text"></p>
+        <button type="button" id="d-next">Continuar</button>
+      </div>
+    </div>
+
+    <section id="hud" aria-label="Status do herói">
+      <div class="line"><span>Nível <b id="lv"></b></span><span>XP <b id="xp-t"></b></span><span id="inv"></span></div>
+      <div class="bar hp"><i id="hp-bar"></i><span id="hp-t"></span></div>
+      <div class="bar xp"><i id="xp-bar"></i></div>
+      <div class="buttons">
+        <button type="button" id="st-of" aria-pressed="true">Ofensiva</button>
+        <button type="button" id="st-de" aria-pressed="false">Defensiva</button>
+        <button type="button" id="btn-pot">Poção</button>
+        <button type="button" id="btn-act">Agir</button>
+      </div>
+    </section>
+
+    <div id="touch" aria-label="Controles na tela">
+      <button type="button" data-vk="sl">&#8592; Lado</button>
+      <button type="button" data-vk="fwd">Frente</button>
+      <button type="button" data-vk="sr">Lado &#8594;</button>
+      <button type="button" data-vk="left">Girar &#8592;</button>
+      <button type="button" data-vk="back">Trás</button>
+      <button type="button" data-vk="right">Girar &#8594;</button>
+    </div>
+
+    <section id="side">
+      <h2>Missões</h2>
+      <ul id="quests"></ul>
+      <h2>Diário</h2>
+      <ul id="log" aria-live="polite"></ul>
+    </section>
+
+    <section id="menu" hidden aria-label="Menu">
+      <h2>Menu</h2>
+      <p><b>Controles:</b> W/S ou ↑/↓ andar · A/D passo lateral · ←/→ girar · E ou Espaço agir (falar, coletar) · 1 e 2 postura · 3 poção · Esc menu.</p>
+      <p>O combate é automático: chegue perto de um inimigo e a luta acontece sozinha. Você escolhe a postura e usa poções.</p>
+      <p>Seu progresso é salvo neste navegador. Use o código abaixo para levar o save a outro aparelho.</p>
+      <div class="row">
+        <button type="button" id="m-save">Salvar agora</button>
+        <button type="button" id="m-export">Gerar código do save</button>
+      </div>
+      <label for="io">Código do save</label>
+      <textarea id="io" rows="3" spellcheck="false"></textarea>
+      <div class="row">
+        <button type="button" id="m-import">Importar código</button>
+        <button type="button" id="m-reset" class="danger">Recomeçar do zero</button>
+        <button type="button" id="m-close">Voltar ao jogo</button>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/engine.js?v=1"></script>
+<script src="js/game.js?v=1"></script>
+<script src="js/main.js?v=1"></script>
+</body>
+</html>
