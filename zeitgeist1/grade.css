@@ -1,0 +1,6 @@
+/* Zeitgeist 1: primeira pessoa em grade */
+#mini { position: absolute; right: 6px; bottom: 6px; width: 26%; max-width: 170px; height: auto; image-rendering: pixelated; opacity: .9; border: 1px solid #000; background: #000; cursor: pointer; }
+#pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+#pad button { min-height: 44px; background: #2a2f3a; border-color: #3a4150; }
+#pad button:hover { background: #343a47; }
+#pad .act { grid-column: 1 / span 3; background: #2f6f4e; border-color: #3f8f66; }
