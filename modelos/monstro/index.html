@@ -96,13 +96,21 @@ let girar = !q.has('shot');
 document.getElementById('girar').onclick = () => (girar = !girar);
 vista(q.get('vista') || 'tresq');
 
-new GLTFLoader().load('monstro.glb', (g) => {
+new GLTFLoader().load(q.get('glb') || 'monstro.glb', (g) => {
   g.scene.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
     const m = o.material;
-    m.vertexColors = true;
-    if (o.name === 'Pele') { m.clearcoat = 0; }
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    if (m.map) return;                      // modelo com textura: mantém o material original
+    if (!o.geometry.attributes.color) {     // só a forma: material de argila
+      o.material = new THREE.MeshStandardMaterial({ color: 0xb59a8c, roughness: 0.6 });
+      return;
+    }
+    if (!['Pele', 'Dentes', 'Garras', 'Olhos'].includes(o.name)) { // modelo externo com cor por vértice
+      o.material = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.5, metalness: 0, clearcoat: 0.15, clearcoatRoughness: 0.4 });
+      return;
+    }
     o.material = new THREE.MeshPhysicalMaterial({
       vertexColors: true, roughness: m.roughness, metalness: 0,
       clearcoat: o.name === 'Olhos' ? 1 : o.name === 'Pele' ? 0.25 : 0.5,
@@ -110,6 +118,12 @@ new GLTFLoader().load('monstro.glb', (g) => {
       sheen: o.name === 'Pele' ? 0.4 : 0, sheenColor: new THREE.Color(0xd08070), sheenRoughness: 0.6,
     });
   });
+  // normaliza: 2,5 m de altura, pés no chão, centralizado
+  const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3());
+  const k = 2.5 / size.y;
+  g.scene.scale.multiplyScalar(k);
+  const c = box.getCenter(new THREE.Vector3());
+  g.scene.position.set(-c.x * k, -box.min.y * k, -c.z * k);
   scene.add(g.scene);
   document.getElementById('msg').remove();
   if (q.has('shot')) { renderer.setAnimationLoop(null); controls.update(); renderer.render(scene, camera); }
