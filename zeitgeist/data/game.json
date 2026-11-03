@@ -29,20 +29,60 @@
     "walkSpeed": 4.2,
     "turnSpeed": 2.4,
     "xpPerLevel": 40,
-    "startItems": { "pocao": 2, "moeda": 5 }
+    "startItems": {
+      "pocao": 2,
+      "moeda": 5
+    }
   },
   "stances": {
-    "ofensiva": { "name": "Ofensiva", "dmg": 1.3, "taken": 1.2 },
-    "defensiva": { "name": "Defensiva", "dmg": 0.75, "taken": 0.6 }
+    "ofensiva": {
+      "name": "Ofensiva",
+      "dmg": 1.3,
+      "taken": 1.2
+    },
+    "defensiva": {
+      "name": "Defensiva",
+      "dmg": 0.75,
+      "taken": 0.6
+    }
   },
   "items": {
-    "madeira": { "name": "Madeira", "price": 2 },
-    "pedra":   { "name": "Pedra", "price": 2 },
-    "ferro":   { "name": "Minério de ferro", "price": 6 },
-    "carne":   { "name": "Carne de coelho", "price": 3 },
-    "pele":    { "name": "Pele de coelho", "price": 4 },
-    "pocao":   { "name": "Poção", "price": 10, "noBag": true },
-    "moeda":   { "name": "Moedas", "noBag": true }
+    "madeira": {
+      "name": "Madeira",
+      "price": 2,
+      "plural": "madeiras"
+    },
+    "pedra": {
+      "name": "Pedra",
+      "price": 2,
+      "plural": "pedras"
+    },
+    "ferro": {
+      "name": "Minério de ferro",
+      "price": 6,
+      "plural": "minérios de ferro"
+    },
+    "carne": {
+      "name": "Carne de coelho",
+      "price": 3,
+      "plural": "carnes de coelho"
+    },
+    "pele": {
+      "name": "Pele de coelho",
+      "price": 4,
+      "plural": "peles de coelho"
+    },
+    "pocao": {
+      "name": "Poção",
+      "price": 10,
+      "noBag": true,
+      "plural": "poções"
+    },
+    "moeda": {
+      "name": "Moedas",
+      "noBag": true,
+      "plural": "moedas"
+    }
   },
   "monsters": {
     "coelho": {
@@ -59,8 +99,16 @@
       "leash": 11,
       "wanderRadius": 4,
       "drops": [
-        { "item": "carne", "n": 1, "chance": 0.8 },
-        { "item": "pele", "n": 1, "chance": 0.5 }
+        {
+          "item": "carne",
+          "n": 1,
+          "chance": 0.8
+        },
+        {
+          "item": "pele",
+          "n": 1,
+          "chance": 0.5
+        }
       ]
     }
   },
@@ -69,47 +117,262 @@
       "name": "Árvore",
       "gatherSec": 4,
       "respawn": 200,
-      "drops": [ { "item": "madeira", "n": 1, "chance": 1 }, { "item": "madeira", "n": 1, "chance": 0.5 } ]
+      "drops": [
+        {
+          "item": "madeira",
+          "n": 1,
+          "chance": 1
+        },
+        {
+          "item": "madeira",
+          "n": 1,
+          "chance": 0.5
+        }
+      ]
     },
     "veio": {
       "name": "Veio de pedra",
       "gatherSec": 6,
       "respawn": 260,
-      "drops": [ { "item": "pedra", "n": 1, "chance": 1 }, { "item": "ferro", "n": 1, "chance": 0.25 } ]
+      "drops": [
+        {
+          "item": "pedra",
+          "n": 1,
+          "chance": 1
+        },
+        {
+          "item": "ferro",
+          "n": 1,
+          "chance": 0.25
+        }
+      ]
     }
   },
   "npcs": {
     "padre": {
       "name": "Padre",
-      "idle": "[texto provisório] Que a paz esteja contigo.",
-      "services": [ { "type": "heal" }, { "type": "buy", "item": "pocao" } ]
+      "idle": "Que a paz esteja contigo.",
+      "services": [
+        {
+          "type": "heal"
+        },
+        {
+          "type": "buy",
+          "item": "pocao"
+        }
+      ]
     },
     "ferreiro": {
       "name": "Ferreiro",
-      "idle": "[texto provisório] Madeira e pedra sempre têm uso aqui.",
-      "services": [ { "type": "sell", "items": ["madeira", "pedra", "ferro"] }, { "type": "upgrade" } ]
+      "idle": "Madeira e pedra sempre têm uso aqui.",
+      "services": [
+        {
+          "type": "sell",
+          "items": [
+            "madeira",
+            "pedra",
+            "ferro"
+          ]
+        },
+        {
+          "type": "upgrade"
+        }
+      ]
     },
     "taberneiro": {
       "name": "Taberneiro",
-      "idle": "[texto provisório] Carne e pele, eu compro.",
-      "services": [ { "type": "sell", "items": ["carne", "pele"] } ]
+      "idle": "Carne e pele, eu compro.",
+      "services": [
+        {
+          "type": "sell",
+          "items": [
+            "carne",
+            "pele"
+          ]
+        }
+      ]
+    },
+    "anselmo": {
+      "name": "Escudeiro Anselmo",
+      "dialogue": "anselmo_tempo",
+      "after": "Tome cuidado com o tempo, Sr. {nome}.",
+      "services": []
     }
   },
   "weapon": [
-    { "name": "Espada simples", "atk": 0 },
-    { "name": "Espada afiada", "atk": 2, "cost": { "moeda": 20, "ferro": 2 } },
-    { "name": "Espada temperada", "atk": 4, "cost": { "moeda": 45, "ferro": 4 } }
+    {
+      "name": "Espada simples",
+      "atk": 0
+    },
+    {
+      "name": "Espada afiada",
+      "atk": 2,
+      "cost": {
+        "moeda": 20,
+        "ferro": 2
+      }
+    },
+    {
+      "name": "Espada temperada",
+      "atk": 4,
+      "cost": {
+        "moeda": 45,
+        "ferro": 4
+      }
+    }
   ],
   "macro": {
     "_nota": "Modelos de regra. O jogador liga, desliga e reordena; a primeira regra verdadeira manda.",
     "rules": {
-      "pocao":  { "label": "Beber poção se a vida ficar abaixo de {v}%", "cond": "hp_below_has_potion", "act": "drink", "val": 40 },
-      "recuar": { "label": "Voltar à praça para descansar se a vida ficar abaixo de {v}%", "cond": "hp_below", "act": "retreat_rest", "val": 30 },
-      "bolsa":  { "label": "Voltar à praça e parar quando a bolsa encher", "cond": "bag_full", "act": "retreat_stop" },
-      "atacar": { "label": "Caçar coelhos dentro da área", "cond": "mob_in_area", "act": "attack" },
-      "madeira":{ "label": "Cortar árvores dentro da área", "cond": "node_in_area", "kind": "arvore", "act": "gather" },
-      "pedra":  { "label": "Minerar veios dentro da área", "cond": "node_in_area", "kind": "veio", "act": "gather" }
+      "pocao": {
+        "label": "Beber poção se a vida ficar abaixo de {v}%",
+        "cond": "hp_below_has_potion",
+        "act": "drink",
+        "val": 40
+      },
+      "recuar": {
+        "label": "Voltar à praça para descansar se a vida ficar abaixo de {v}%",
+        "cond": "hp_below",
+        "act": "retreat_rest",
+        "val": 30
+      },
+      "bolsa": {
+        "label": "Voltar à praça e parar quando a bolsa encher",
+        "cond": "bag_full",
+        "act": "retreat_stop"
+      },
+      "atacar": {
+        "label": "Caçar coelhos dentro da área",
+        "cond": "mob_in_area",
+        "act": "attack"
+      },
+      "madeira": {
+        "label": "Cortar árvores dentro da área",
+        "cond": "node_in_area",
+        "kind": "arvore",
+        "act": "gather"
+      },
+      "pedra": {
+        "label": "Minerar veios dentro da área",
+        "cond": "node_in_area",
+        "kind": "veio",
+        "act": "gather"
+      }
     },
-    "defaultOrder": ["pocao", "recuar", "bolsa", "atacar", "madeira", "pedra"]
+    "defaultOrder": [
+      "pocao",
+      "recuar",
+      "bolsa",
+      "atacar",
+      "madeira",
+      "pedra"
+    ]
+  },
+  "_textos": "Falas de missão marcadas com _provisorio foram escritas a partir das premissas e devem ser substituídas.",
+  "dialogues": {
+    "anselmo_tempo": {
+      "start": "n1",
+      "flag": "anselmo_tempo",
+      "nodes": {
+        "n1": {
+          "text": "Olá, senhor {nome}. Como está?",
+          "options": [
+            {
+              "text": "Estou bem",
+              "next": "n2"
+            },
+            {
+              "text": "Nada mal",
+              "next": "n2"
+            },
+            {
+              "text": "Vou indo",
+              "next": "n2"
+            }
+          ]
+        },
+        "n2": {
+          "text": "Bom saber. Parece que o tempo está para virar. Seria melhor levar algo para se cobrir.",
+          "options": [
+            {
+              "text": "Vou me cuidar",
+              "end": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "quests": {
+    "ferraduras": {
+      "title": "Ferro para ferraduras",
+      "kind": "Secundária",
+      "giver": "ferreiro",
+      "requires": null,
+      "_provisorio": true,
+      "objectives": [
+        {
+          "type": "collect",
+          "item": "ferro",
+          "n": 3
+        }
+      ],
+      "offer": "Preciso fazer ferraduras e meu ferro acabou. Pode me trazer 3 minérios de ferro? Os veios ficam do lado de fora da cerca.",
+      "active": "Ainda preciso dos 3 minérios de ferro para as ferraduras.",
+      "done": "Ferro bom. Dá para umas boas ferraduras. Isto é pelo trabalho.",
+      "reward": {
+        "xp": 30,
+        "items": {
+          "moeda": 25
+        }
+      }
+    },
+    "ensopado": {
+      "title": "Ensopado dos trabalhadores",
+      "kind": "Secundária",
+      "giver": "taberneiro",
+      "requires": null,
+      "_provisorio": true,
+      "objectives": [
+        {
+          "type": "collect",
+          "item": "carne",
+          "n": 4
+        }
+      ],
+      "offer": "Tenho que preparar a refeição dos trabalhadores da vila, mas estou sem ingredientes para o ensopado. Me traz 4 carnes de coelho?",
+      "active": "Sem as 4 carnes de coelho não sai ensopado.",
+      "done": "Agora sim, o ensopado sai a tempo. Fique com isto.",
+      "reward": {
+        "xp": 25,
+        "items": {
+          "moeda": 15,
+          "pocao": 1
+        }
+      }
+    },
+    "confessionario": {
+      "title": "O confessionário",
+      "kind": "Secundária",
+      "giver": "padre",
+      "requires": null,
+      "_provisorio": true,
+      "objectives": [
+        {
+          "type": "collect",
+          "item": "madeira",
+          "n": 5
+        }
+      ],
+      "offer": "O confessionário está quebrado e preciso consertá-lo. Pode me trazer 5 madeiras?",
+      "active": "Ainda preciso das 5 madeiras para o confessionário.",
+      "done": "Obrigado. Com isto o confessionário fica de pé de novo.",
+      "reward": {
+        "xp": 25,
+        "items": {
+          "pocao": 2
+        }
+      }
+    }
   }
 }

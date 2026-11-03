@@ -97,3 +97,19 @@ body.touch #macro-line { top: auto; bottom: 236px; max-width: 92%; font-size: 13
 #rules li.off label { opacity: .5; }
 #rules button { padding: 2px 8px; }
 #rep-list { padding-left: 20px; line-height: 1.6; }
+
+/* missões e conversa */
+#quests { list-style: none; margin: 6px 0 0; padding: 6px 0 0; border-top: 1px solid #3a2c1c; font-size: 12px; }
+#quests:empty { display: none; }
+#quests li { color: var(--ink); line-height: 1.35; }
+#quests li small { color: var(--dim); }
+#quests li.ready small { color: var(--gold); }
+#marks { inset: 0; pointer-events: none; overflow: hidden; }
+#marks span { position: absolute; transform: translate(-50%, -100%); font: bold 26px Georgia, serif; color: var(--gold); text-shadow: 0 0 3px #000, 0 2px 2px #000; }
+#marks span.q { color: #f1e7d0; }
+#npc-opts button { text-align: left; }
+#npc-opts button.opt::before { content: '› '; color: var(--gold); }
+#npc-text { font-size: 16px; }
+#new-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+#new-form label { color: var(--dim); font-size: 14px; }
+#new-name { font: inherit; font-size: 18px; color: var(--ink); background: #2a1d14; border: 1px solid var(--edge); border-radius: 4px; padding: 8px 10px; user-select: text; -webkit-user-select: text; }

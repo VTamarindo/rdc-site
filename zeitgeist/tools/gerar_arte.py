@@ -359,7 +359,7 @@ if __name__ == '__main__':
              ('palha', tex(t_palha)), ('tabuas', tex(t_tabuas)), ('enxaimel', tex(t_enxaimel)), ('janela', tex(t_janela)),
              ('grama', tex(t_grama)), ('terra', tex(t_terra)), ('pavimento', tex(t_pavimento)), ('placa', tex(t_placa))]
     sprites = [('coelho', coelho().im), ('padre', padre().im), ('ferreiro', ferreiro().im), ('taberneiro', taberneiro().im),
-               ('arvore', arvore().im), ('toco', toco().im), ('veio', old_sprite('minerio')), ('veio_vazio', veio_vazio().im)]
+               ('arvore', arvore().im), ('toco', toco().im), ('veio', old_sprite('minerio')), ('veio_vazio', veio_vazio().im), ('anselmo', old_sprite('anselmo'))]
 
     def sheet(items):
         im = Image.new('RGBA', (S * len(items), S), (0, 0, 0, 0))
@@ -367,6 +367,6 @@ if __name__ == '__main__':
         return im
     sheet(walls).save(os.path.join(out, 'walls.png')); sheet(sprites).save(os.path.join(out, 'sprites.png'))
     json.dump({'size': S, 'walls': [n for n, _ in walls], 'sprites': [n for n, _ in sprites],
-               '_nota': 'Arte provisória gerada por tools/gerar_arte.py. Pedra, tijolo, porta e veio vêm do zeitgeist1.'},
+               '_nota': 'Arte provisória gerada por tools/gerar_arte.py. Pedra, tijolo, porta, veio e anselmo vêm do zeitgeist1.'},
               open(os.path.join(out, 'atlas.json'), 'w'), ensure_ascii=False)
     print('ok', len(walls), len(sprites))

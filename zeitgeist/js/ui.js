@@ -21,7 +21,7 @@
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
     world = new ZG.World(G, V); sim = new ZG.Sim(world);
     var saved = load();
-    if (saved) { st = saved.state; lastReal = saved.lastReal || Date.now(); }
+    if (saved) { st = ZG.migrate(saved.state); lastReal = saved.lastReal || Date.now(); }
     else { st = ZG.newState(world, (Date.now() % 2147483647) | 0); lastReal = Date.now(); }
 
     view = new ZG.View($('view'), world, art);
@@ -30,10 +30,11 @@
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
+    ZG.debug = { state: function () { return st; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
     renderLog();
 
     if (saved) { beginAway(lastReal); endAway(Date.now()); }
-    else { show('w-menu'); }
+    if (!st.player.name) { showNew(); }
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { beginAway(Date.now()); save(); }
@@ -124,7 +125,7 @@
     } else { p.yaw = view.yaw; }
     var autoMoving = auto && prev && (Math.abs(p.x - prev.player.x) + Math.abs(p.z - prev.player.z) > 0.001);
     view.render(st, prev, Math.min(1, acc / DT), fdt, { interp: auto, moving: moving || autoMoving });
-    hud();
+    hud(); marks();
     if (npcOpen && !sim.nearNpc(st, npcOpen)) { hide(); }
   }
   function angDiff(a, b) { var d = a - b; while (d > Math.PI) { d -= Math.PI * 2; } while (d < -Math.PI) { d += Math.PI * 2; } return d; }
@@ -159,6 +160,7 @@
         floatScreen(0.5, 0.44, '+' + e.n + ' ' + G.items[e.item].name, 'gain');
       } else if (e.type === 'alert') { toast(e.text, 4); if (document.hidden) { document.title = '(!) ' + baseTitle; } }
       else if (e.type === 'level') { toast('Nível ' + st.player.lv + '!'); }
+      else if (e.type === 'quest') { toast('Missão concluída: ' + G.quests[e.id].title + '.', 3); }
     });
     if (newLog) { renderLog(); }
   }
@@ -207,6 +209,7 @@
     line.textContent = on ? 'Macro: ' + macroText(p) : (p.macro.stop || (p.macro.area ? 'Macro parada · G retoma' : 'Abra o mapa (M) e clique onde o personagem deve trabalhar'));
     $('b-macro').setAttribute('aria-pressed', on ? 'true' : 'false');
     $('b-macro').textContent = on ? 'Pausar macro' : 'Macro';
+    renderQuests();
     drawMap($('mini'), 150, false);
     if (openWin === 'w-map') { drawMap($('bigmap'), 560, true); }
   }
@@ -268,8 +271,12 @@
   }
 
   // ---------- janelas ----------
-  function show(id) { hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {}; }
+  function show(id) {
+    if (openWin === 'w-new' && !st.player.name && id !== 'w-new') { return; }
+    hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {};
+  }
   function hide() {
+    if (openWin === 'w-new' && !st.player.name) { return; } // sem nome não se joga
     if (openWin) { $(openWin).hidden = true; }
     openWin = null; npcOpen = null;
   }
@@ -293,11 +300,98 @@
     });
   }
 
+  // ---------- criação do personagem ----------
+  function showNew() {
+    show('w-new'); $('new-name').value = ''; $('new-err').hidden = true;
+    setTimeout(function () { try { $('new-name').focus(); } catch (e) { /* nada */ } }, 50);
+  }
+  function qty(n, k) { var it = G.items[k]; return n + ' ' + (n === 1 ? it.name : (it.plural || it.name)).toLowerCase(); }
+  function fill(t) { return String(t).replace(/\{nome\}/g, st.player.name); }
+
+  // ---------- conversa: árvore de diálogo, missões e serviços ----------
   function openNpc(id) {
-    var def = G.npcs[id];
     show('w-npc'); npcOpen = id;
-    $('npc-name').textContent = def.name; $('npc-text').textContent = def.idle; $('npc-res').textContent = '';
+    $('npc-name').textContent = G.npcs[id].name; $('npc-res').textContent = '';
+    talk(id);
+  }
+  function setTalk(text, opts, prog) {
+    $('npc-text').textContent = fill(text);
+    var pr = $('npc-prog'); pr.hidden = !prog; pr.textContent = prog || '';
+    var box = $('npc-opts'); box.innerHTML = '';
+    (opts || []).forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = o.cls || 'opt'; b.textContent = fill(o.text);
+      b.onclick = o.fn; box.appendChild(b);
+    });
+  }
+  function talk(id, said) {
+    var def = G.npcs[id], dlg = def.dialogue && G.dialogues[def.dialogue];
+    if (dlg && !st.flags[dlg.flag]) { $('npc-acts').innerHTML = ''; dialogueNode(id, dlg, dlg.start); return; }
+    var q = sim.npcQuest(st, id);
+    if (said) { setTalk(said); }
+    else if (q && q.state === 'available') {
+      var Q = G.quests[q.id];
+      setTalk(Q.offer, [
+        { text: 'Aceitar: ' + Q.title, fn: function () { sim.acceptQuest(st, q.id); handleEvents(); save(); talk(id, Q.active); } },
+        { text: 'Agora não', fn: function () { talk(id, def.idle || ''); } }
+      ]);
+    } else if (q && q.state === 'ready') {
+      var R = G.quests[q.id];
+      setTalk(R.active, [{ text: 'Entregar ' + objText(q.id, true), cls: 'main', fn: function () {
+        sim.turnInQuest(st, q.id); handleEvents(); save(); talk(id, R.done + rewardText(R));
+      } }], progText(q.id));
+    } else if (q && q.state === 'active') {
+      setTalk(G.quests[q.id].active, [], progText(q.id));
+    } else { setTalk(def.after || def.idle || ''); }
     renderNpcActs(id);
+  }
+  function dialogueNode(id, dlg, nodeId) {
+    var node = dlg.nodes[nodeId];
+    setTalk(node.text, node.options.map(function (o) {
+      return { text: o.text, fn: function () {
+        if (o.next) { dialogueNode(id, dlg, o.next); return; }
+        if (o.end) { st.flags[dlg.flag] = true; save(); hide(); }
+      } };
+    }));
+  }
+  function objText(qid, plain) {
+    return G.quests[qid].objectives.map(function (o) {
+      var name = o.type === 'collect' ? G.items[o.item].name.toLowerCase() : G.monsters[o.target].name.toLowerCase();
+      if (plain) { return o.type === 'collect' ? qty(o.n, o.item) : o.n + ' ' + name; }
+      return name + ' ' + sim.objProgress(st, qid, o) + '/' + o.n;
+    }).join(', ');
+  }
+  function progText(qid) { return 'Missão: ' + G.quests[qid].title + ' · ' + objText(qid); }
+  function rewardText(Q) {
+    var r = Q.reward || {}, parts = [];
+    for (var k in (r.items || {})) { parts.push(qty(r.items[k], k)); }
+    if (r.xp) { parts.push(r.xp + ' de experiência'); }
+    return parts.length ? ' (Recebeu ' + parts.join(', ') + '.)' : '';
+  }
+  function renderQuests() {
+    var html = [];
+    Object.keys(st.quests).forEach(function (id) {
+      var s = sim.questState(st, id); if (s !== 'active' && s !== 'ready') { return; }
+      var Q = G.quests[id];
+      html.push('<li class="' + s + '">' + esc(Q.title) + '<br><small>' +
+        (s === 'ready' ? 'entregar a ' + esc(G.npcs[Q.giver].name) : esc(objText(id))) + '</small></li>');
+    });
+    $('quests').innerHTML = html.join('');
+  }
+  // ! = tem algo a dizer ou missão a oferecer · ? = missão pronta para entregar
+  var markEls = {};
+  function marks() {
+    world.npcs.forEach(function (n) {
+      var el = markEls[n.id];
+      if (!el) { el = markEls[n.id] = document.createElement('span'); $('marks').appendChild(el); }
+      var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
+      if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
+      else if (q && q.state === 'available') { sym = '!'; }
+      else if (q && q.state === 'ready') { sym = '?'; }
+      var pos = sym && calc.dist(st.player.x, st.player.z, n.x, n.z) < 40 ? view.project(n.x, 2.25, n.z) : null;
+      if (!pos || pos.x < 0 || pos.x > 1 || pos.y < 0 || pos.y > 1) { el.hidden = true; return; }
+      el.hidden = false; el.textContent = sym; el.className = sym === '?' ? 'q' : '';
+      el.style.left = (pos.x * 100) + '%'; el.style.top = (pos.y * 100) + '%';
+    });
   }
   function renderNpcActs(id) {
     var def = G.npcs[id], box = $('npc-acts'), p = st.player; box.innerHTML = '';
@@ -306,15 +400,15 @@
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
       if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + G.items[s.item].price + ' moedas)'; }
       if (s.type === 'sell') {
-        var tot = 0; s.items.forEach(function (k) { tot += (p.inv[k] || 0) * G.items[k].price; });
+        var tot = 0; s.items.forEach(function (k) { var n = p.inv[k] || 0; tot += (n - Math.min(n, sim.reserved(st, k))) * G.items[k].price; });
         b.textContent = 'Vender ' + s.items.map(function (k) { return G.items[k].name.toLowerCase(); }).join(', ') + ' (' + tot + ' moedas)';
       }
       if (s.type === 'upgrade') {
         var nx = G.weapon[p.weapon + 1];
-        b.textContent = nx ? 'Melhorar para ' + nx.name + ' (' + Object.keys(nx.cost).map(function (k) { return nx.cost[k] + ' ' + G.items[k].name.toLowerCase(); }).join(' + ') + ')' : 'Espada já está no máximo';
+        b.textContent = nx ? 'Melhorar para ' + nx.name + ' (' + Object.keys(nx.cost).map(function (k) { return qty(nx.cost[k], k); }).join(' + ') + ')' : 'Espada já está no máximo';
         b.disabled = !nx;
       }
-      b.onclick = function () { $('npc-res').textContent = sim.service(st, id, s); renderNpcActs(id); };
+      b.onclick = function () { $('npc-res').textContent = sim.service(st, id, s); renderNpcActs(id); if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); } };
       box.appendChild(b);
     });
   }
@@ -387,7 +481,7 @@
   function debug(c) {
     if (c === 'reset') {
       try { localStorage.removeItem(G.settings.saveKey); } catch (e) { /* nada */ }
-      st = ZG.newState(world, (Date.now() % 2147483647) | 0); view.yaw = st.player.yaw; renderLog(); hide(); toast('Recomeçado.'); return;
+      st = ZG.newState(world, (Date.now() % 2147483647) | 0); view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
     }
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
@@ -439,6 +533,12 @@
     cv.addEventListener('pointerleave', function () { $('hover').hidden = true; });
     cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
+    $('new-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var n = $('new-name').value.replace(/\s+/g, ' ').trim();
+      if (n.length < 2 || n.length > 20) { $('new-err').hidden = false; return; }
+      st.player.name = n; save(); hide(); toast('Bem-vindo à vila, ' + n + '.', 3);
+    });
     $('mini').addEventListener('click', function () { cmd('map'); });
     var big = $('bigmap');
     big.addEventListener('pointermove', function (e) { mapHover = mapPoint(e); });

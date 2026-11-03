@@ -164,7 +164,7 @@
     var st = {
       v: 1, seed: seed | 0, t: 0,
       player: {
-        x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0,
+        name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
         potCd: 0, atkCd: 0, combatT: 99, action: null,
         mode: 'manual',
@@ -173,6 +173,7 @@
       rules: G.macro.defaultOrder.map(function (id) { return { id: id, on: true, val: G.macro.rules[id].val }; }),
       nodes: {}, mobs: [],
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
+      quests: {}, qkills: {}, flags: {},
       log: []
     };
     world.nodes.forEach(function (n) { st.nodes[n.id] = { alive: true, left: 0 }; });
@@ -289,6 +290,7 @@
     if (m.hp <= 0) {
       m.alive = false; m.fight = false; m.left = def.respawn;
       st.stats.kills++;
+      for (var q in st.quests) { if (st.quests[q] === 'active') { st.qkills[q] = st.qkills[q] || {}; st.qkills[q][m.kind] = (st.qkills[q][m.kind] || 0) + 1; } }
       this.log(st, def.name + ' abatido.');
       this.emit(st, { type: 'kill', id: m.id });
       this.gainXp(st, def.xp);
@@ -566,8 +568,14 @@
     }
     if (s.type === 'sell') {
       var total = 0;
-      s.items.forEach(function (k) { var n = p.inv[k] || 0; if (n) { total += n * G.items[k].price; p.inv[k] = 0; } });
-      if (!total) { return 'Nada para vender aqui.'; }
+      var self = this, kept = 0;
+      s.items.forEach(function (k) {
+        var keep = Math.min(p.inv[k] || 0, self.reserved(st, k)), n = (p.inv[k] || 0) - keep;
+        kept += keep;
+        if (n > 0) { total += n * G.items[k].price; p.inv[k] = keep; }
+      });
+      if (!total) { return kept ? 'Nada para vender: o que você tem está guardado para missões.' : 'Nada para vender aqui.'; }
+      if (kept) { p.inv.moeda = (p.inv.moeda || 0) + total; return 'Vendeu por ' + total + ' moedas (guardou o que as missões pedem).'; }
       p.inv.moeda = (p.inv.moeda || 0) + total; return 'Vendeu tudo por ' + total + ' moedas.';
     }
     if (s.type === 'upgrade') {
@@ -578,6 +586,68 @@
       p.weapon++; return 'Agora você tem: ' + next.name + '.';
     }
     return '';
+  };
+
+  // ---------- missões (dados em game.json → quests) ----------
+  // estado salvo: st.quests[id] = 'active' | 'done'; o resto é calculado
+  Sim.prototype.questState = function (st, id) {
+    var q = this.w.game.quests[id], s = st.quests[id];
+    if (s === 'done') { return 'done'; }
+    if (s === 'active') { return this.questReady(st, id) ? 'ready' : 'active'; }
+    if (q.requires && st.quests[q.requires] !== 'done') { return 'locked'; }
+    return 'available';
+  };
+  Sim.prototype.objProgress = function (st, id, o) {
+    if (o.type === 'collect') { return Math.min(o.n, st.player.inv[o.item] || 0); }
+    if (o.type === 'kill') { return Math.min(o.n, (st.qkills[id] && st.qkills[id][o.target]) || 0); }
+    return 0;
+  };
+  Sim.prototype.questReady = function (st, id) {
+    var self = this;
+    return this.w.game.quests[id].objectives.every(function (o) { return self.objProgress(st, id, o) >= o.n; });
+  };
+  Sim.prototype.acceptQuest = function (st, id) {
+    if (this.questState(st, id) !== 'available') { return false; }
+    st.quests[id] = 'active'; st.qkills[id] = {};
+    this.log(st, 'Nova missão: ' + this.w.game.quests[id].title + '.');
+    return true;
+  };
+  Sim.prototype.turnInQuest = function (st, id) {
+    var G = this.w.game, q = G.quests[id], p = st.player;
+    if (this.questState(st, id) !== 'ready') { return false; }
+    q.objectives.forEach(function (o) { if (o.type === 'collect') { p.inv[o.item] -= o.n; } });
+    st.quests[id] = 'done'; delete st.qkills[id];
+    var r = q.reward || {};
+    for (var k in (r.items || {})) { p.inv[k] = (p.inv[k] || 0) + r.items[k]; }
+    if (r.xp) { this.gainXp(st, r.xp); }
+    this.log(st, 'Missão concluída: ' + q.title + '.');
+    this.emit(st, { type: 'quest', id: id });
+    return true;
+  };
+  // quanto de um item as missões ativas ainda pedem (não se vende)
+  Sim.prototype.reserved = function (st, item) {
+    var G = this.w.game, n = 0;
+    for (var id in st.quests) {
+      if (st.quests[id] !== 'active') { continue; }
+      G.quests[id].objectives.forEach(function (o) { if (o.type === 'collect' && o.item === item) { n += o.n; } });
+    }
+    return n;
+  };
+  // a missão que este NPC tem para oferecer ou receber agora (uma por vez)
+  Sim.prototype.npcQuest = function (st, npc) {
+    var Q = this.w.game.quests, pick = null, self = this;
+    Object.keys(Q).forEach(function (id) {
+      if (Q[id].giver !== npc || pick) { return; }
+      var s = self.questState(st, id);
+      if (s === 'available' || s === 'active' || s === 'ready') { pick = { id: id, state: s }; }
+    });
+    return pick;
+  };
+  // saves antigos ganham os campos novos
+  ZG.migrate = function (st) {
+    st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
+    if (typeof st.player.name !== 'string') { st.player.name = ''; }
+    return st;
   };
 
   ZG.World = World;

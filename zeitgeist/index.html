@@ -20,6 +20,7 @@
       <div class="bar xp"><i id="xp-bar"></i></div>
       <div class="row small"><span id="pots"></span><span id="coins"></span><span id="bag"></span></div>
       <ul id="inv" class="small"></ul>
+      <ul id="quests" aria-label="Missões"></ul>
     </section>
 
     <canvas id="mini" width="150" height="150" title="Abrir o mapa (M)" aria-label="Mapa: clique para abrir"></canvas>
@@ -33,6 +34,7 @@
     <div id="toast" hidden></div>
     <div id="hurt"></div>
     <div id="fx"></div>
+    <div id="marks"></div>
 
     <nav id="bar" aria-label="Ações">
       <button type="button" data-cmd="map" title="M">Mapa</button>
@@ -73,8 +75,20 @@
   <section id="w-npc" class="win small" hidden aria-label="Conversa">
     <header><h2 id="npc-name"></h2><button type="button" class="x" data-close>Fechar</button></header>
     <p id="npc-text"></p>
+    <p id="npc-prog" class="hint" hidden></p>
+    <div id="npc-opts" class="col"></div>
     <div id="npc-acts" class="col"></div>
     <p id="npc-res" class="hint"></p>
+  </section>
+
+  <section id="w-new" class="win small" hidden aria-label="Novo personagem">
+    <header><h2>Zeitgeist</h2></header>
+    <form id="new-form">
+      <label for="new-name">Nome do personagem</label>
+      <input id="new-name" type="text" maxlength="20" autocomplete="off" spellcheck="false" required>
+      <p id="new-err" class="hint" hidden>Escolha um nome de 2 a 20 letras.</p>
+      <button type="submit" class="main">Começar</button>
+    </form>
   </section>
 
   <section id="w-report" class="win small" hidden aria-label="Enquanto você estava fora">
