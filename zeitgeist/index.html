@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Zeitgeist · protótipo da vila</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/zeitgeist.css?v=3">
+</head>
+<body>
+<div id="app">
+  <canvas id="view" aria-label="Visão em primeira pessoa da vila"></canvas>
+
+  <p id="loading" role="status">Carregando…</p>
+
+  <div id="hud" hidden>
+    <section id="status" aria-label="Status">
+      <div class="row"><b id="lv">Nível 1</b><span id="stance"></span></div>
+      <div class="bar hp"><i id="hp-bar"></i><span id="hp-t"></span></div>
+      <div class="bar xp"><i id="xp-bar"></i></div>
+      <div class="row small"><span id="pots"></span><span id="coins"></span><span id="bag"></span></div>
+      <ul id="inv" class="small"></ul>
+    </section>
+
+    <canvas id="mini" width="150" height="150" title="Abrir o mapa (M)" aria-label="Mapa: clique para abrir"></canvas>
+
+    <ul id="log" aria-live="polite"></ul>
+
+    <div id="cross"></div>
+    <div id="prog" hidden><i></i></div>
+    <div id="hover" hidden></div>
+    <div id="macro-line" aria-live="polite"></div>
+    <div id="toast" hidden></div>
+    <div id="hurt"></div>
+    <div id="fx"></div>
+
+    <nav id="bar" aria-label="Ações">
+      <button type="button" data-cmd="map" title="M">Mapa</button>
+      <button type="button" data-cmd="macro" id="b-macro" title="G">Macro</button>
+      <button type="button" data-cmd="rules" title="R">Regras</button>
+      <button type="button" data-cmd="stance" title="T">Postura</button>
+      <button type="button" data-cmd="potion" title="F">Poção</button>
+      <button type="button" data-cmd="menu" title="Esc">Menu</button>
+    </nav>
+
+    <div id="pad" hidden>
+      <div class="dpad">
+        <button type="button" data-k="fwd" class="up" aria-label="Frente">▲</button>
+        <button type="button" data-k="left" class="lf" aria-label="Girar à esquerda">◀</button>
+        <button type="button" data-k="right" class="rt" aria-label="Girar à direita">▶</button>
+        <button type="button" data-k="back" class="dn" aria-label="Trás">▼</button>
+      </div>
+      <div class="ab">
+        <button type="button" data-k="act" class="a">Interagir</button>
+        <button type="button" data-k="pot" class="b">Poção</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- janelas -->
+  <section id="w-map" class="win" hidden aria-label="Mapa">
+    <header><h2>Mapa</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <p class="hint">Clique num ponto para marcar a área. O personagem vai até lá e age sozinho, seguindo as regras.</p>
+    <canvas id="bigmap" width="560" height="560"></canvas>
+  </section>
+
+  <section id="w-rules" class="win" hidden aria-label="Regras da macro">
+    <header><h2>Regras da macro</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <p class="hint">De cima para baixo: a primeira regra ligada que for verdadeira decide o que o personagem faz. Se nenhuma for, ele espera no centro da área.</p>
+    <ol id="rules"></ol>
+  </section>
+
+  <section id="w-npc" class="win small" hidden aria-label="Conversa">
+    <header><h2 id="npc-name"></h2><button type="button" class="x" data-close>Fechar</button></header>
+    <p id="npc-text"></p>
+    <div id="npc-acts" class="col"></div>
+    <p id="npc-res" class="hint"></p>
+  </section>
+
+  <section id="w-report" class="win small" hidden aria-label="Enquanto você estava fora">
+    <header><h2>Enquanto você estava fora</h2></header>
+    <p id="rep-time"></p>
+    <ul id="rep-list"></ul>
+    <p id="rep-status" class="hint"></p>
+    <button type="button" data-close class="main">Continuar</button>
+  </section>
+
+  <section id="w-menu" class="win" hidden aria-label="Menu">
+    <header><h2>Zeitgeist · protótipo da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <div class="cols">
+      <div>
+        <h3>Como jogar</h3>
+        <p><b>Andar:</b> W e S, frente e trás · A e D, para o lado · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
+        <p><b>Interagir:</b> clique numa pessoa, árvore, veio ou coelho, ou aperte E para o que estiver à sua frente. O combate é automático quando o alvo está ao alcance.</p>
+        <p><b>Macro:</b> abra o mapa (M) e clique onde o personagem deve trabalhar. Ele vai sozinho e você pode assistir. Andar com o teclado pausa a macro; G retoma.</p>
+        <p><b>Fora da aba:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
+        <p class="small">R regras · T postura · F poção · M mapa · Esc fecha janelas</p>
+      </div>
+      <div>
+        <h3>Testes</h3>
+        <div class="col">
+          <button type="button" data-dbg="away30">Simular 30 min fora</button>
+          <button type="button" data-dbg="away240">Simular 4 h fora</button>
+          <button type="button" data-dbg="away600">Simular 10 h fora (teto de 4 h)</button>
+          <button type="button" data-dbg="hurt">Perder 15 de vida</button>
+          <button type="button" data-dbg="coins">Ganhar 50 moedas</button>
+          <button type="button" data-dbg="reset" class="danger">Recomeçar do zero</button>
+        </div>
+        <p class="hint">Progresso salvo neste navegador.</p>
+        <p id="back-site" hidden><a href="../" style="color:var(--gold)">&larr; Voltar aos jogos</a></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="js/sim.js?v=3"></script>
+<script src="js/view.js?v=3"></script>
+<script src="js/ui.js?v=3"></script>
+</body>
+</html>
