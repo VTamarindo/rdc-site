@@ -392,9 +392,10 @@
   };
 
   // carrega art/atlas.json + walls.png + sprites.png e corta em quadros de 64x64
-  ZG.loadArt = function (base) {
+  ZG.loadArt = function (base, ver) {
+    var q = ver ? '?v=' + ver : '';
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
-    return fetch(base + 'atlas.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
+    return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png?v=3'), img(base + 'sprites.png?v=3')]).then(function (ims) {
         var S = atlas.size, art = { walls: {}, sprites: {}, alpha: {} };
         function cut(im, names, into, keepAlpha) {

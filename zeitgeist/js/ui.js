@@ -1,19 +1,22 @@
 /* Zeitgeist · interface, entrada, laço de tempo e save (protótipo da vila) */
 (function (ZG) {
   'use strict';
+  // ao publicar uma versão nova, troque VERSION aqui e o ?v= no index.html (evita cache velho)
+  var VERSION = '20261104-1';
   var $ = function (id) { return document.getElementById(id); };
   var calc = ZG.calc;
   var G, V, world, sim, st, view;
   var DT, CAP, THRESH;
   var lastReal = Date.now(), acc = 0, prev = null, away = null;
   var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null;
+  var newVersion = false;
   var openWin = null, npcOpen = null, toastT = 0, baseTitle = document.title;
   var dpr = Math.min(2, window.devicePixelRatio || 1);
   var isTouch = ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
 
   // ---------- carregar ----------
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
-  Promise.all([getJSON('data/game.json'), getJSON('data/vila.json'), ZG.loadArt('art/')]).then(function (d) { start(d[0], d[1], d[2]); })
+  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), ZG.loadArt('art/', VERSION)]).then(function (d) { start(d[0], d[1], d[2]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
   function start(game, vila, art) {
@@ -26,15 +29,15 @@
 
     view = new ZG.View($('view'), world, art);
     view.yaw = st.player.yaw;
-    $('loading').hidden = true; $('hud').hidden = false;
+    $('loading').hidden = true; $('hud').hidden = false; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
-    ZG.debug = { state: function () { return st; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
+    ZG.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
     renderLog();
 
     if (saved) { beginAway(lastReal); endAway(Date.now()); }
-    if (!st.player.name) { showNew(); }
+    if (!st.player.name) { showNew(); if (newVersion) { $('new-err').hidden = false; $('new-err').textContent = 'Versão nova do protótipo (' + VERSION + '): o jogo recomeçou do zero.'; } }
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { beginAway(Date.now()); save(); }
@@ -47,10 +50,16 @@
 
   // ---------- save ----------
   function save() {
-    try { localStorage.setItem(G.settings.saveKey, JSON.stringify({ v: 1, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
+    try { localStorage.setItem(G.settings.saveKey, JSON.stringify({ v: 1, ver: VERSION, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
   }
   function load() {
-    try { var s = JSON.parse(localStorage.getItem(G.settings.saveKey)); return s && s.v === 1 && s.state ? s : null; } catch (e) { return null; }
+    try {
+      var s = JSON.parse(localStorage.getItem(G.settings.saveKey));
+      if (!(s && s.v === 1 && s.state)) { return null; }
+      // protótipo: versão nova publicada = jogo recomeça do zero (sem precisar limpar o cache)
+      if (G.settings.resetSaveOnNewVersion && s.ver !== VERSION) { localStorage.removeItem(G.settings.saveKey); newVersion = true; return null; }
+      return s;
+    } catch (e) { return null; }
   }
 
   // ---------- tempo fora ----------
@@ -273,8 +282,13 @@
   // ---------- janelas ----------
   function show(id) {
     if (openWin === 'w-new' && !st.player.name && id !== 'w-new') { return; }
-    hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {};
+    hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {}; guardClicks();
   }
+  // o toque que abre uma janela gera, logo depois, um clique fantasma no mesmo ponto;
+  // por meio segundo a janela ignora cliques, para ele não escolher uma opção sozinho
+  var guardUntil = 0, lastPointer = 'mouse';
+  window.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; }, true);
+  function guardClicks() { if (lastPointer === 'touch') { guardUntil = performance.now() + 500; } }
   function hide() {
     if (openWin === 'w-new' && !st.player.name) { return; } // sem nome não se joga
     if (openWin) { $(openWin).hidden = true; }
@@ -315,6 +329,7 @@
     talk(id);
   }
   function setTalk(text, opts, prog) {
+    guardClicks();
     $('npc-text').textContent = fill(text);
     var pr = $('npc-prog'); pr.hidden = !prog; pr.textContent = prog || '';
     var box = $('npc-opts'); box.innerHTML = '';
@@ -533,10 +548,13 @@
     cv.addEventListener('pointerleave', function () { $('hover').hidden = true; });
     cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
+    Array.prototype.forEach.call(document.querySelectorAll('.win'), function (w) {
+      w.addEventListener('click', function (e) { if (performance.now() < guardUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
+    });
     $('new-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var n = $('new-name').value.replace(/\s+/g, ' ').trim();
-      if (n.length < 2 || n.length > 20) { $('new-err').hidden = false; return; }
+      if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
       st.player.name = n; save(); hide(); toast('Bem-vindo à vila, ' + n + '.', 3);
     });
     $('mini').addEventListener('click', function () { cmd('map'); });

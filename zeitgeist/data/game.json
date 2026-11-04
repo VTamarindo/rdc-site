@@ -9,7 +9,8 @@
     "macroRadius": 9,
     "interactRange": 4.5,
     "saveKey": "zg-vila-proto-v1",
-    "pixelScale": 0.5
+    "pixelScale": 0.5,
+    "resetSaveOnNewVersion": true
   },
   "player": {
     "hpBase": 30,
@@ -195,7 +196,7 @@
     "anselmo": {
       "name": "Escudeiro Anselmo",
       "dialogue": "anselmo_tempo",
-      "after": "Tome cuidado com o tempo, Sr. {nome}.",
+      "after": "Tome cuidado com o tempo, Sr {nome}",
       "services": []
     }
   },
@@ -278,15 +279,15 @@
           "text": "Olá, senhor {nome}. Como está?",
           "options": [
             {
-              "text": "Estou bem",
+              "text": "estou bem",
               "next": "n2"
             },
             {
-              "text": "Nada mal",
+              "text": "nada mal",
               "next": "n2"
             },
             {
-              "text": "Vou indo",
+              "text": "vou indo",
               "next": "n2"
             }
           ]
