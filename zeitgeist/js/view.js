@@ -98,6 +98,7 @@
     g.tri([x, 0, -z], [-x, 0, -z], [0, h, -z]);
     g.quad([x, 0, z], [x, 0, -z], [0, h, -z], [0, h, z]);
     g.quad([-x, 0, -z], [-x, 0, z], [0, h, z], [0, h, -z]);
+    g.quad([-x, 0, -z], [x, 0, -z], [x, 0, z], [-x, 0, z]); // face de baixo: o beiral não some visto de baixo
     return g.done(map);
   }
   function roofSlopeUV(geo, d) { // nas águas do telhado, as fileiras de telha correm ao longo da cumeeira

@@ -2,7 +2,7 @@
 (function (ZG) {
   'use strict';
   // ao publicar uma versão nova, troque VERSION aqui e o ?v= no index.html (evita cache velho)
-  var VERSION = '20261105-2';
+  var VERSION = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   var calc = ZG.calc;
   var G, V, world, sim, st, view;
