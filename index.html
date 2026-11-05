@@ -21,7 +21,7 @@
         <h2>Zeitgeist <small>protótipo da vila</small></h2>
         <span class="tag">No ar &middot; no navegador &middot; protótipo</span>
         <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
-        <a class="btn" id="zeitgeist-btn" href="https://zeitgeist.romancedecavalaria.com.br/">Jogar</a>
+        <a class="btn" id="zeitgeist-btn" href="zeitgeist/">Jogar</a>
       </div>
     </article>
     <article class="card">
@@ -40,7 +40,7 @@
 <script>
 (function () {
   var z = window.SITE && window.SITE.zeitgeistUrl;
-  if (typeof z === 'string' && /^https:\/\//i.test(z)) { document.getElementById('zeitgeist-btn').href = z; }
+  if (typeof z === 'string' && z) { document.getElementById('zeitgeist-btn').href = z; }
 })();
 (function () {
   var url = window.SITE && window.SITE.echadUrl;
