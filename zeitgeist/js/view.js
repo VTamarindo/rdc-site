@@ -122,6 +122,14 @@
     return { data: new Float32Array(d), count: 6, min: [-x, 0, -0.05], max: [x, h, 0.05], w: w, h: h };
   }
 
+  // quadro de tela com o pivô (px, py) em fração do quadro, medido a partir do canto inferior esquerdo; v=0 no topo
+  function screenGeo(px, py) {
+    var x0 = -px, x1 = 1 - px, y0 = -py, y1 = 1 - py;
+    var d = [x0, y0, 0, 0, 0, 1, 0, 1, x1, y0, 0, 0, 0, 1, 1, 1, x1, y1, 0, 0, 0, 1, 1, 0,
+      x0, y0, 0, 0, 0, 1, 0, 1, x1, y1, 0, 0, 0, 1, 1, 0, x0, y1, 0, 0, 0, 1, 0, 0];
+    return { data: new Float32Array(d), count: 6 };
+  }
+
   // ---------- cena ----------
   function Node(geo, color, opt) {
     opt = opt || {};
@@ -190,6 +198,18 @@
     })(root, null);
     if (late.length) { gl.enable(gl.BLEND); gl.depthMask(false); late.forEach(function (n) { self.mesh(n); }); gl.depthMask(true); gl.disable(gl.BLEND); }
   };
+  // sobreposição em espaço de tela (espada em primeira pessoa): sem profundidade, sem neblina, recorte por alfa
+  var ID4 = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  Renderer.prototype.overlay = function (nodes) {
+    var gl = this.gl, u = this.u, self = this;
+    gl.disable(gl.DEPTH_TEST); gl.uniformMatrix4fv(u.VP, false, ID4); gl.uniform2fv(u.fog, [1e6, 2e6]);
+    nodes.forEach(function (n) {
+      if (n.alpha < 1) { gl.enable(gl.BLEND); }
+      self.mesh(n);
+      if (n.alpha < 1) { gl.disable(gl.BLEND); }
+    });
+    gl.enable(gl.DEPTH_TEST);
+  };
   Renderer.prototype.mesh = function (n) {
     var gl = this.gl, u = this.u;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer(n.geo));
@@ -214,8 +234,10 @@
   function cyl(rt, rb, h, seg, tex, map, off, color) {
     return new Node(cached('c' + [rt, rb, h, seg, off, map], function () { return cylGeo(rt, rb, h, seg, off, map); }), color === undefined ? 0xffffff : color, { tex: tex });
   }
-  function sprite(name, size) {
-    return new Node(cached('s' + size, function () { return spriteGeo(size, size); }), 0xf2f2f2, { tex: 's:' + name, sprite: true, unlit: true });
+  // figura (billboard): h = altura do quadro em metros; a largura sai da proporção do quadro do sprite
+  function sGeo(dim, h) {
+    var w = h * dim.w / dim.h;
+    return cached('s' + w.toFixed(3) + 'x' + h.toFixed(3), function () { return spriteGeo(w, h); });
   }
 
   function house(b, wall, wallTile, roof) {
@@ -254,8 +276,9 @@
     return g;
   }
 
-  // tamanho em metros de cada figura (o quadro de 64x64 inteiro)
-  var SIZE = { padre: 1.95, ferreiro: 2.0, taberneiro: 1.95, coelho: 0.85, arvore: 5.2, veio: 1.7 };
+  // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
+  // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
 
   function View(canvas, world, art) {
     this.w = world; this.r = new Renderer(canvas); this.art = art;
@@ -267,8 +290,21 @@
     this.buildStatic(); this.buildDynamic();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
     this.areaRing.visible = false;
-    this.yaw = Math.PI; this.pitch = -0.05; this.bob = 0; this.shake = 0; this.fov = 70 * Math.PI / 180; this.aspect = 1;
+    this.yaw = Math.PI; this.pitch = -0.05; this.swing = -1; this.bob = 0; this.shake = 0; this.fov = 70 * Math.PI / 180; this.aspect = 1;
   }
+
+  View.prototype.sprite = function (name, h) {
+    var o = new Node(sGeo(this.dim(name), h), 0xf2f2f2, { tex: 's:' + name, sprite: true, unlit: true });
+    o.userData.img = name; o.userData.k = h / (SIZE[name] || h);
+    return o;
+  };
+  View.prototype.dim = function (name) { return this.art.dims[name] || { w: 1, h: 1 }; };
+  // troca a imagem da figura (ex.: árvore -> toco) e ajusta o quadro ao tamanho/proporção da nova imagem
+  View.prototype.setImg = function (o, img) {
+    if (o.userData.img === img) { return; }
+    o.tex = 's:' + img; o.userData.img = img;
+    o.geo = sGeo(this.dim(img), (SIZE[img] || 1.9) * (o.userData.k || 1));
+  };
 
   View.prototype.buildStatic = function () {
     var w = this.w, V = w.vila, R = this.root, self = this;
@@ -294,20 +330,20 @@
       o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; R.add(o);
     });
     w.npcs.forEach(function (n) {
-      var p = sprite(n.id, SIZE[n.id] || 1.95).at(n.x, 0, n.z);
-      p.userData.ref = { type: 'npc', id: n.id }; p.userData.img = n.id; R.add(p); self.pick.push(p);
+      var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
+      p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p);
     });
   };
   View.prototype.buildDynamic = function () {
     var self = this, w = this.w;
     w.nodes.forEach(function (n) {
       var tree = n.kind === 'arvore', jit = ((n.x * 7 + n.z * 3) % 5 + 5) % 5 * 0.07;
-      var o = sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
-      o.userData.ref = { type: 'node', id: n.id }; o.userData.img = tree ? 'arvore' : 'veio'; o.userData.kind = n.kind;
+      var o = self.sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
+      o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind;
       self.root.add(o); self.pick.push(o); self.objs[n.id] = o;
     });
     w.spawns.forEach(function (s, i) {
-      var o = sprite('coelho', SIZE.coelho); o.userData.ref = { type: 'mob', id: 'coelho' + i }; o.userData.img = 'coelho';
+      var o = self.sprite('coelho', SIZE.coelho); o.userData.ref = { type: 'mob', id: 'coelho' + i };
       self.root.add(o); self.pick.push(o); self.objs['coelho' + i] = o;
     });
   };
@@ -316,14 +352,70 @@
     this.r.setSize(Math.max(1, Math.round(wpx * scale)), Math.max(1, Math.round(hpx * scale)));
     this.aspect = wpx / hpx;
   };
-  View.prototype.hit = function (id) { this.flash[id] = 0.18; };
+  View.prototype.hit = function (id) {
+    this.flash[id] = 0.18;
+    if (!(this.swing >= 0) || this.swing > SWING.T * 0.6) { this.swing = 0; } // golpe de espada (não reinicia no meio do corte)
+  };
+
+  // ---------- espada em primeira pessoa ----------
+  // pose = deslocamento da mão (em unidades do tamanho da espada) e rotação (radianos, anti-horário) ao longo do golpe
+  var SWING = { T: 0.36, keys: [ // t (s), dx, dy, rot
+    [0.00, 0.00, 0.00, 0.00], [0.08, 0.06, 0.22, -0.50], [0.14, -0.24, 0.14, 0.40], [0.20, -0.56, -0.02, 1.00],
+    [0.27, -0.50, -0.06, 0.90], [0.36, 0.00, 0.00, 0.00]] };
+  function ease(t) { return t * t * (3 - 2 * t); }
+  function swingPose(t) {
+    var k = SWING.keys;
+    if (!(t >= 0) || t >= SWING.T) { return [0, 0, 0]; }
+    for (var i = 1; i < k.length; i++) {
+      if (t <= k[i][0]) {
+        var a = k[i - 1], b = k[i], e = ease((t - a[0]) / (b[0] - a[0]));
+        return [a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e, a[3] + (b[3] - a[3]) * e];
+      }
+    }
+    return [0, 0, 0];
+  }
+  var BLADE = ['espada', 'espada_afiada', 'espada_temperada'];
+  View.prototype.swordNodes = function (st, dt, moving) {
+    if (!this.art.dims.espada) { return []; }
+    if (!this.sword) {
+      var d = this.art.dims.espada;
+      // pivô na mão (no quadro 160x160 o punho fechado fica em ~ (120, 124) a partir do topo)
+      this.swordGeo = screenGeo(120 / d.w, 1 - 124 / d.h);
+      this.sword = [0, 1, 2].map(function (i) { return new Node(null, 0xffffff, { unlit: true, alpha: i ? 0.38 - i * 0.12 : 1 }); });
+      this.trail = new Node(screenGeo(0.5, 0.5), 0xffffff, { unlit: true, tex: 's:espada_rastro' });
+    }
+    if (this.swing >= 0) { this.swing += dt; if (this.swing >= SWING.T) { this.swing = -1; } }
+    var asp = this.aspect, U = Math.min(1, asp * 0.95);          // unidade em altura de tela (estreita em telas em pé)
+    var size = 1.25 * U;                                          // altura do quadro da espada em unidades de NDC (tela = 2)
+    // posição da mão em repouso (NDC): canto inferior direito; em pé, um pouco mais acima/à esquerda (botão Interagir)
+    var hx = 1 - 0.22 * size / asp - (asp < 1 ? 0.12 : 0), hy = -1 + 0.23 * size + (asp < 1 ? 0.3 : 0);
+    var bx = 0, by = 0;
+    if (moving && !(this.swing >= 0)) { bx = Math.cos(this.bob * 0.5) * 0.012 * size; by = -Math.abs(Math.sin(this.bob)) * 0.02 * size; }
+    var w = (st && st.player && st.player.weapon) || 0, tex = 's:' + BLADE[Math.max(0, Math.min(2, w))];
+    var out = [], self = this, t = this.swing;
+    function place(n, pose) {
+      var c = Math.cos(pose[2]), s = Math.sin(pose[2]), sx = size / asp, sy = size;
+      var cx = hx + bx + pose[0] * size / asp, cy = hy + by + pose[1] * size;
+      n.world = [c * sx, s * sy, 0, 0, -s * sx, c * sy, 0, 0, 0, 0, 1, 0, cx, cy, 0, 1];
+      n.geo = self.swordGeo; n.tex = tex; out.push(n);
+    }
+    var cutting = t >= 0.12 && t <= 0.27;
+    if (cutting) {                                                // rastro do corte e borrão da lâmina
+      var tr = this.trail, ts = size * 1.15, ta = this.art.dims.espada_rastro, tw = ts * ta.w / ta.h;
+      tr.world = [tw / asp, 0, 0, 0, 0, ts, 0, 0, 0, 0, 1, 0, hx - 0.62 * size / asp, hy + 0.30 * size, 0, 1];
+      out.push(tr);
+      place(this.sword[2], swingPose(t - 0.05)); place(this.sword[1], swingPose(t - 0.025));
+    }
+    place(this.sword[0], swingPose(t));
+    return out;
+  };
 
   View.prototype.render = function (st, prev, alpha, dt, opts) {
     var self = this, w = this.w, p = st.player;
     w.nodes.forEach(function (n) {
       var o = self.objs[n.id], alive = st.nodes[n.id].alive;
       var img = n.kind === 'arvore' ? (alive ? 'arvore' : 'toco') : (alive ? 'veio' : 'veio_vazio');
-      o.tex = 's:' + img; o.userData.img = img;
+      self.setImg(o, img);
     });
     var t = performance.now();
     st.mobs.forEach(function (mb) {
@@ -351,6 +443,7 @@
     var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
     this.r.draw(this.root, this.cam, this.env);
+    this.r.overlay(this.swordNodes(st, dt, opts.moving));
   };
 
   // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga)
@@ -375,12 +468,14 @@
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
     var lu = (hx - o.pos[0]) * co - (hz - o.pos[2]) * s, lv = hy - o.pos[1];
-    var g = o.geo, px = Math.floor((lu / g.w + 0.5) * 64), py = Math.floor((1 - lv / g.h) * 64);
-    if (px < -3 || px > 66 || py < -3 || py > 66) { return null; }
-    var a = this.art.alpha[o.userData.img]; if (!a) { return t; }
-    for (var oy = -3; oy <= 3; oy += 3) { for (var ox = -3; ox <= 3; ox += 3) {
+    var g = o.geo, a = this.art.alpha[o.userData.img];
+    if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
+    var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
+    var tol = Math.max(2, Math.round(H / g.h * 0.08)); // folga de ~8 cm em volta dos pixels desenhados
+    if (px < -tol || px >= W + tol || py < -tol || py >= H + tol) { return null; }
+    for (var oy = -tol; oy <= tol; oy += tol) { for (var ox = -tol; ox <= tol; ox += tol) {
       var x = px + ox, y = py + oy;
-      if (x >= 0 && y >= 0 && x < 64 && y < 64 && a[y * 64 + x]) { return t; }
+      if (x >= 0 && y >= 0 && x < W && y < H && a.data[y * W + x]) { return t; }
     } }
     return null;
   };
@@ -391,25 +486,24 @@
     return { x: (cx / cw + 1) / 2, y: (1 - cy / cw) / 2 };
   };
 
-  // carrega art/atlas.json + walls.png + sprites.png e corta em quadros de 64x64
+  // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
+  // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   ZG.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '';
+    var q = ver ? '?v=' + ver : '', iq = '?a=4' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
-      return Promise.all([img(base + 'walls.png?v=3'), img(base + 'sprites.png?v=3')]).then(function (ims) {
-        var S = atlas.size, art = { walls: {}, sprites: {}, alpha: {} };
-        function cut(im, names, into, keepAlpha) {
-          names.forEach(function (n, i) {
-            var c = document.createElement('canvas'); c.width = c.height = S;
-            var cx = c.getContext('2d'); cx.drawImage(im, i * S, 0, S, S, 0, 0, S, S); into[n] = c;
-            if (keepAlpha) {
-              var d = cx.getImageData(0, 0, S, S).data, a = new Uint8Array(S * S);
-              for (var k = 0; k < S * S; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
-              art.alpha[n] = a;
-            }
-          });
+      return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {
+        var S = atlas.size, art = { walls: {}, sprites: {}, alpha: {}, dims: {} };
+        function cut(im, x, y, w, h) {
+          var c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(im, x, y, w, h, 0, 0, w, h); return c;
         }
-        cut(ims[0], atlas.walls, art.walls, false); cut(ims[1], atlas.sprites, art.sprites, true);
+        atlas.walls.forEach(function (n, i) { art.walls[n] = cut(ims[0], i * S, 0, S, S); });
+        atlas.sprites.forEach(function (sp) {
+          var c = cut(ims[1], sp.x, sp.y, sp.w, sp.h), d = c.getContext('2d').getImageData(0, 0, sp.w, sp.h).data, a = new Uint8Array(sp.w * sp.h);
+          for (var k = 0; k < a.length; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
+          art.sprites[sp.name] = c; art.dims[sp.name] = { w: sp.w, h: sp.h }; art.alpha[sp.name] = { w: sp.w, h: sp.h, data: a };
+        });
         return art;
       });
     });
