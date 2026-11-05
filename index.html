@@ -19,16 +19,16 @@
       <img class="thumb" src="prev-zeitgeist.png" alt="Zeitgeist em primeira pessoa: a praça da vila com a igreja e o padre à porta" width="320" height="200">
       <div class="body">
         <h2>Zeitgeist <small>protótipo da vila</small></h2>
-        <span class="tag">Grátis &middot; no navegador &middot; protótipo</span>
+        <span class="tag">No ar &middot; no navegador &middot; protótipo</span>
         <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
-        <a class="btn" href="zeitgeist/">Jogar</a>
+        <a class="btn" id="zeitgeist-btn" href="zeitgeist/">Jogar</a>
       </div>
     </article>
     <article class="card">
       <div class="thumb ph" aria-hidden="true">&#9876;</div>
       <div class="body">
         <h2>Echad</h2>
-        <span class="tag">Pago &middot; <span id="echad-status">Em breve</span></span>
+        <span class="tag"><span id="echad-status">Em desenvolvimento</span></span>
         <p>Um RPG em 3D, maior e mais complexo. Em desenvolvimento.</p>
         <button type="button" class="btn" id="echad-btn" disabled>Em breve</button>
       </div>
@@ -39,13 +39,17 @@
 <script src="config.js"></script>
 <script>
 (function () {
+  var z = window.SITE && window.SITE.zeitgeistUrl;
+  if (typeof z === 'string' && z) { document.getElementById('zeitgeist-btn').href = z; }
+})();
+(function () {
   var url = window.SITE && window.SITE.echadUrl;
   if (typeof url === 'string' && /^https:\/\//i.test(url)) {
     var b = document.getElementById('echad-btn');
     var a = document.createElement('a');
     a.className = 'btn'; a.href = url; a.rel = 'noopener'; a.textContent = 'Ver no itch.io';
     b.parentNode.replaceChild(a, b);
-    var s = document.getElementById('echad-status'); if (s) s.textContent = 'Disponível';
+    var s = document.getElementById('echad-status'); if (s) s.textContent = 'No ar';
   }
 })();
 </script>
