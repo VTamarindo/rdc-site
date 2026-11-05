@@ -166,7 +166,7 @@
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
-        potCd: 0, atkCd: 0, combatT: 99, action: null,
+        potCd: 0, atkCd: 0, combatT: 99, action: null, goto: null,
         mode: 'manual',
         macro: { area: null, on: false, phase: 'idle', stop: '', path: null, goal: null, repath: 0 }
       },
@@ -246,7 +246,7 @@
   Sim.prototype.faint = function (st) {
     var w = this.w, p = st.player, pl = w.plaza;
     p.x = pl.x; p.z = pl.z + 1; p.hp = Math.round(maxHp(w, p) * w.game.player.faintHpFrac);
-    p.action = null; st.stats.faints++;
+    p.action = null; p.goto = null; st.stats.faints++;
     st.mobs.forEach(function (m) { m.fight = false; });
     this.stopMacro(st, 'Você desmaiou e foi levado à praça.');
     this.log(st, 'Você desmaiou e acordou na praça.');
@@ -256,7 +256,7 @@
   Sim.prototype.stopMacro = function (st, reason) {
     var m = st.player.macro;
     if (st.player.mode === 'macro') { st.player.mode = 'manual'; }
-    m.on = false; m.phase = 'idle'; m.stop = reason || ''; m.path = null; m.goal = null;
+    m.on = false; m.phase = 'idle'; m.stop = reason || ''; m.path = null; m.goal = null; st.player.goto = null;
     if (reason) { this.emit(st, { type: 'alert', text: reason }); }
   };
   Sim.prototype.startMacro = function (st, area) {
@@ -266,7 +266,7 @@
       m.area = { x: c.x, z: c.z, r: this.w.game.settings.macroRadius };
     }
     if (!m.area) { return false; }
-    p.mode = 'macro'; m.on = true; m.phase = 'run'; m.stop = ''; m.path = null; m.goal = null; p.action = null;
+    p.mode = 'macro'; m.on = true; m.phase = 'run'; m.stop = ''; m.path = null; m.goal = null; p.action = null; p.goto = null;
     return true;
   };
   // o jogador assumiu o controle: a macro fica pausada (área guardada)
@@ -310,6 +310,7 @@
   // movimento manual (chamado a cada quadro pela interface; colisão deslizante)
   Sim.prototype.walk = function (st, dx, dz) {
     var w = this.w, p = st.player, r = 0.3;
+    if (p.goto) { p.goto = null; p.macro.path = null; p.macro.goal = null; }
     var nx = p.x + dx, nz = p.z + dz, moved = false;
     if (w.free(nx, p.z, r) && !this.hitsNode(nx, p.z)) { p.x = nx; moved = true; }
     if (w.free(p.x, nz, r) && !this.hitsNode(p.x, nz)) { p.z = nz; moved = true; }
@@ -343,6 +344,16 @@
     return dist(p.x, p.z, tx, tz) <= near;
   };
   Sim.prototype.face = function (st, x, z) { var p = st.player; p.yaw = Math.atan2(x - p.x, z - p.z); };
+
+  // clique no mapa sem macro: o personagem vai até o ponto pelo caminho calculado
+  Sim.prototype.goTo = function (st, x, z) {
+    var p = st.player, c = this.w.nearestFree(x, z);
+    if (!c) { return false; }
+    this.takeControl(st);
+    p.macro.stop = ''; p.action = null;
+    p.goto = { x: c.x, z: c.z }; p.macro.path = null; p.macro.goal = null;
+    return true;
+  };
 
   // ---------- regras da macro ----------
   Sim.prototype.inArea = function (st, x, z) {
@@ -454,6 +465,11 @@
   // ação manual (clique): coletar ou atacar o que está ao alcance
   Sim.prototype.manualTick = function (st, dt) {
     var w = this.w, G = w.game, p = st.player, a = p.action;
+    if (p.goto) {
+      if (this.moveTo(st, p.goto.x, p.goto.z, 0.4, dt, 'goto')) { p.goto = null; }
+      else if (!p.macro.path) { p.goto = null; this.log(st, 'Não há caminho até lá.'); }
+      return;
+    }
     if (!a) { return; }
     if (a.type === 'gather') {
       var n = w.nodeById[a.id];
@@ -566,6 +582,7 @@
       if ((p.inv.moeda || 0) < price) { return 'Moedas insuficientes.'; }
       p.inv.moeda -= price; p.inv[s.item] = (p.inv[s.item] || 0) + 1; return 'Comprou ' + G.items[s.item].name.toLowerCase() + '.';
     }
+    if (s.type === 'sell' && arg && arg.item) { return this.sellItem(st, s, arg.item, arg.n); }
     if (s.type === 'sell') {
       var total = 0;
       var self = this, kept = 0;
@@ -586,6 +603,24 @@
       p.weapon++; return 'Agora você tem: ' + next.name + '.';
     }
     return '';
+  };
+  // quanto deste item dá para vender (o que as missões ativas pedem fica guardado)
+  Sim.prototype.sellable = function (st, item) {
+    var n = st.player.inv[item] || 0;
+    return Math.max(0, n - Math.min(n, this.reserved(st, item)));
+  };
+  // vende exatamente n unidades de um item que este serviço compra
+  Sim.prototype.sellItem = function (st, s, item, n) {
+    var G = this.w.game, p = st.player, def = G.items[item];
+    if (!def || s.items.indexOf(item) < 0) { return 'Isso não se vende aqui.'; }
+    n = Math.floor(+n || 0);
+    if (n < 1) { return 'Escolha quantas unidades vender.'; }
+    var can = this.sellable(st, item);
+    if (!can) { return (p.inv[item] || 0) > 0 ? 'Não dá para vender: o que você tem de ' + def.name.toLowerCase() + ' está guardado para uma missão.' : 'Você não tem ' + (def.plural || def.name).toLowerCase() + '.'; }
+    if (n > can) { n = can; }
+    var total = n * def.price;
+    p.inv[item] -= n; p.inv.moeda = (p.inv.moeda || 0) + total;
+    return 'Vendeu ' + n + ' ' + (n === 1 ? def.name : (def.plural || def.name)).toLowerCase() + ' por ' + total + ' moeda' + (total === 1 ? '' : 's') + '.';
   };
 
   // ---------- missões (dados em game.json → quests) ----------
@@ -647,6 +682,7 @@
   ZG.migrate = function (st) {
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
+    if (st.player.goto === undefined) { st.player.goto = null; }
     return st;
   };
 

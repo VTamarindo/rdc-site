@@ -2,7 +2,7 @@
 (function (ZG) {
   'use strict';
   // ao publicar uma versão nova, troque VERSION aqui e o ?v= no index.html (evita cache velho)
-  var VERSION = '20261104-1';
+  var VERSION = '20261105-2';
   var $ = function (id) { return document.getElementById(id); };
   var calc = ZG.calc;
   var G, V, world, sim, st, view;
@@ -123,7 +123,7 @@
     handleEvents();
 
     // câmera
-    var p = st.player, auto = p.mode === 'macro' && p.macro.on;
+    var p = st.player, auto = (p.mode === 'macro' && p.macro.on) || !!p.goto;
     if (auto) {
       lookHold -= fdt;
       if (lookHold <= 0) {
@@ -145,7 +145,7 @@
     var s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
     var turn = (keys.ArrowLeft || pad.left ? 1 : 0) - (keys.ArrowRight || pad.right ? 1 : 0);
     if (!f && !s && !turn) { return false; }
-    if (sim.takeControl(st)) { toast('Macro pausada: você assumiu o controle (G retoma).'); }
+    if (sim.takeControl(st)) { toast('Macro pausada: você assumiu o controle.'); }
     view.yaw += turn * G.player.turnSpeed * dt;
     if (!f && !s) { return false; }
     var y = view.yaw, fx = Math.sin(y), fz = Math.cos(y), rx = -Math.cos(y), rz = Math.sin(y);
@@ -204,23 +204,21 @@
     else { pr.hidden = true; }
 
     var now = performance.now(); if (now - hudT < 150) { return; } hudT = now;
+    $('pname').textContent = p.name || '';
     $('lv').textContent = 'Nível ' + p.lv;
-    $('stance').textContent = G.stances[p.stance].name + ' · ' + G.weapon[p.weapon].name;
     $('pots').textContent = 'Poções ' + (p.inv.pocao || 0);
     $('coins').textContent = 'Moedas ' + (p.inv.moeda || 0);
     $('bag').textContent = 'Bolsa ' + calc.bagCount(world, p) + '/' + G.settings.bagCapacity;
-    var inv = [];
-    for (var k in p.inv) { if (p.inv[k] > 0 && !G.items[k].noBag) { inv.push('<li>' + esc(G.items[k].name) + ' ' + p.inv[k] + '</li>'); } }
-    $('inv').innerHTML = inv.join('');
+    if (openWin === 'w-inv') { renderInv(); }
+    if (openWin === 'w-bag') { renderBag(); }
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     line.classList.toggle('on', on);
-    line.textContent = on ? 'Macro: ' + macroText(p) : (p.macro.stop || (p.macro.area ? 'Macro parada · G retoma' : 'Abra o mapa (M) e clique onde o personagem deve trabalhar'));
-    $('b-macro').setAttribute('aria-pressed', on ? 'true' : 'false');
-    $('b-macro').textContent = on ? 'Pausar macro' : 'Macro';
+    line.textContent = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || (isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho'));
+    line.classList.toggle('on', on || !!p.goto);
     renderQuests();
     drawMap($('mini'), 150, false);
-    if (openWin === 'w-map') { drawMap($('bigmap'), 560, true); }
+    if (openWin === 'w-map') { drawMap($('bigmap'), 560, true); mapUi(); }
   }
   function macroText(p) {
     var a = p.action, ph = p.macro.phase;
@@ -235,44 +233,178 @@
   }
 
   // ---------- mapa ----------
-  var mapHover = null;
+  var mapHover = null, mapArmed = false, mapMenu = false;
+  function macroOn() { return st.player.mode === 'macro' && st.player.macro.on; }
+  // estado dos controles da janela do mapa (botão Macro embaixo e o menu que ele abre)
+  function mapUi() {
+    var a = st.player.macro.area, on = macroOn(), mb = $('map-macro');
+    $('map-hint').textContent = mapArmed
+      ? 'Macro armada: clique onde o personagem deve trabalhar sozinho (o círculo dourado mostra a área).'
+      : on ? 'A macro está trabalhando na área marcada. Um clique no mapa pausa e leva o personagem até o ponto.'
+      : 'Clique num ponto para o personagem andar até lá.';
+    mb.setAttribute('aria-pressed', mapArmed ? 'true' : 'false');
+    mb.setAttribute('aria-expanded', mapMenu ? 'true' : 'false');
+    mb.textContent = mapArmed ? 'Macro armada · cancelar' : (on ? 'Macro (trabalhando) ' : 'Macro ') + (mapMenu ? '▾' : '▴');
+    $('map-menu').hidden = !mapMenu;
+    $('mm-prev').hidden = !a;
+    $('mm-pause').hidden = !on;
+    $('bigmap').classList.toggle('armed', mapArmed);
+  }
+  function openMap(menu) { mapArmed = false; mapMenu = !!menu; mapHover = null; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
+  function pauseMacro() {
+    if (!macroOn()) { return false; }
+    sim.takeControl(st); st.player.macro.stop = 'Macro pausada · Macro (G) para retomar';
+    return true;
+  }
+
+  // papel envelhecido: textura gerada uma vez por tamanho (manchas, fibras e bordas queimadas)
+  var parchCache = {};
+  function parchment(S) {
+    if (parchCache[S]) { return parchCache[S]; }
+    var cv = document.createElement('canvas'); cv.width = cv.height = S;
+    var c = cv.getContext('2d'), seed = 7;
+    function r() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    c.fillStyle = '#e9d6a6'; c.fillRect(0, 0, S, S);
+    var i, n = Math.round(S * S / 900);
+    for (i = 0; i < n; i++) { // manchas grandes e suaves
+      var x = r() * S, y = r() * S, rad = S * (0.04 + r() * 0.12), g = c.createRadialGradient(x, y, 0, x, y, rad);
+      var tone = r() < 0.5 ? '150,105,45' : '255,245,215';
+      g.addColorStop(0, 'rgba(' + tone + ',' + (0.05 + r() * 0.07) + ')'); g.addColorStop(1, 'rgba(' + tone + ',0)');
+      c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    }
+    for (i = 0; i < S * S / 60; i++) { // grão do papel
+      c.fillStyle = r() < 0.5 ? 'rgba(110,70,25,' + (r() * 0.09) + ')' : 'rgba(255,250,230,' + (r() * 0.12) + ')';
+      c.fillRect(r() * S, r() * S, 1, 1);
+    }
+    var v = c.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.74); // bordas queimadas
+    v.addColorStop(0, 'rgba(120,70,20,0)'); v.addColorStop(0.75, 'rgba(120,70,20,.28)'); v.addColorStop(1, 'rgba(70,35,10,.75)');
+    c.fillStyle = v; c.fillRect(0, 0, S, S);
+    parchCache[S] = cv; return cv;
+  }
+  var INK = '#3b2414', INK2 = 'rgba(59,36,20,.55)', WAX = '#8e1c14', GOLD = '#a8730f';
+  function compass(c, x, y, R) {
+    c.save(); c.translate(x, y);
+    c.strokeStyle = INK; c.lineWidth = 1;
+    c.beginPath(); c.arc(0, 0, R * 0.62, 0, 7); c.stroke();
+    c.beginPath(); c.arc(0, 0, R * 0.56, 0, 7); c.stroke();
+    for (var i = 0; i < 8; i++) {
+      var long = i % 2 === 0, L = long ? R : R * 0.55, w = long ? R * 0.17 : R * 0.12;
+      c.save(); c.rotate(i * Math.PI / 4);
+      c.beginPath(); c.moveTo(0, -L); c.lineTo(w, 0); c.lineTo(0, 0); c.closePath(); c.fillStyle = i === 0 ? WAX : INK; c.fill();
+      c.beginPath(); c.moveTo(0, -L); c.lineTo(-w, 0); c.lineTo(0, 0); c.closePath(); c.fillStyle = '#f1e2bb'; c.fill(); c.stroke();
+      c.restore();
+    }
+    c.fillStyle = INK; c.font = 'bold ' + Math.round(R * 0.42) + 'px "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
+    c.textAlign = 'center'; c.textBaseline = 'bottom'; c.fillText('N', 0, -R - 1);
+    c.restore();
+  }
+  function label(c, t, x, y, size, italic) {
+    c.font = (italic ? 'italic ' : '') + size + 'px "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(240,226,190,.9)'; c.lineWidth = 3; c.strokeText(t, x, y);
+    c.fillStyle = INK; c.fillText(t, x, y);
+  }
   function drawMap(cv, S, big) {
     var c = cv.getContext('2d'), B = world.B, k = S / (B * 2);
+    var u = big ? Math.max(1, Math.min(1.4, S / (cv.clientWidth || S))) : 1; // mapa encolhido (celular): letras maiores
     function X(x) { return (x + B) * k; }
     function Z(z) { return (z + B) * k; }
-    c.fillStyle = '#4c6a32'; c.fillRect(0, 0, S, S);
-    var F = V.fence.half;
-    c.fillStyle = '#5a7639'; c.fillRect(X(-F), Z(-F), F * 2 * k, F * 2 * k);
-    c.strokeStyle = '#3b2a18'; c.lineWidth = Math.max(1, k * 0.4); c.strokeRect(X(-F + 0.5), Z(-F + 0.5), (F * 2 - 1) * k, (F * 2 - 1) * k);
-    c.fillStyle = '#5a7639'; c.fillRect(X(V.fence.gate.from), Z(F - 1), (V.fence.gate.to - V.fence.gate.from) * k, k);
-    c.fillStyle = '#7d6a4b'; c.fillRect(X(V.road.x - V.road.w / 2), Z(V.road.z0), V.road.w * k, (V.road.z1 - V.road.z0) * k);
-    c.fillStyle = '#9a958b'; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k, 0, 7); c.fill();
-    c.fillStyle = '#8a5a3a';
-    world.buildings.forEach(function (b) { c.fillRect(X(b.x0), Z(b.z0), (b.x1 - b.x0) * k, (b.z1 - b.z0) * k); });
-    if (big) {
-      c.fillStyle = '#f1e7d0'; c.font = '13px Georgia'; c.textAlign = 'center';
-      V.buildings.forEach(function (b) { c.fillText({ igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar' }[b.type], X(b.x), Z(b.z) + 4); });
-    }
-    world.nodes.forEach(function (n) {
-      var alive = st.nodes[n.id].alive;
-      c.fillStyle = n.kind === 'arvore' ? (alive ? '#2f5a22' : '#6b5a3a') : (alive ? '#bdb8ae' : '#6a6762');
-      c.beginPath(); c.arc(X(n.x), Z(n.z), Math.max(1.6, k * (n.kind === 'arvore' ? 0.9 : 0.6)), 0, 7); c.fill();
-    });
-    c.fillStyle = '#e9d9b8';
-    st.mobs.forEach(function (m) { if (m.alive) { c.fillRect(X(m.x) - 1.5, Z(m.z) - 1.5, 3, 3); } });
-    c.fillStyle = '#6fa8dc';
-    world.npcs.forEach(function (n) { c.beginPath(); c.arc(X(n.x), Z(n.z), Math.max(1.8, k * 0.5), 0, 7); c.fill(); });
-    var a = st.player.macro.area;
-    if (a) { c.strokeStyle = '#e8c45a'; c.lineWidth = big ? 2 : 1; c.beginPath(); c.arc(X(a.x), Z(a.z), a.r * k, 0, 7); c.stroke(); }
-    if (big && mapHover) { c.strokeStyle = 'rgba(255,255,255,.6)'; c.setLineDash([4, 4]); c.beginPath(); c.arc(X(mapHover.x), Z(mapHover.z), G.settings.macroRadius * k, 0, 7); c.stroke(); c.setLineDash([]); }
-    // jogador: seta
-    var p = st.player, px = X(p.x), pz = Z(p.z), y = view ? view.yaw : p.yaw, r = big ? 9 : 6;
-    c.fillStyle = '#ffffff'; c.strokeStyle = '#000'; c.lineWidth = 1;
+    c.setLineDash([]); c.lineCap = 'butt'; c.lineJoin = 'miter';
+    c.drawImage(parchment(S), 0, 0);
+    var F = V.fence.half, gt0 = V.fence.gate.from, gt1 = V.fence.gate.to, f = F - 0.5;
+    // dentro da cerca, um leve tom de terra cultivada
+    c.fillStyle = 'rgba(160,120,60,.10)'; c.fillRect(X(-f), Z(-f), f * 2 * k, f * 2 * k);
+    // estrada: duas linhas de tinta
+    var rx0 = X(V.road.x - V.road.w / 2), rx1 = X(V.road.x + V.road.w / 2), rz0 = Z(V.road.z0), rz1 = Z(V.road.z1);
+    c.fillStyle = 'rgba(196,160,98,.45)'; c.fillRect(rx0, rz0, rx1 - rx0, rz1 - rz0);
+    c.strokeStyle = INK2; c.lineWidth = big ? 1.2 : 0.8;
+    c.beginPath(); c.moveTo(rx0, rz0); c.lineTo(rx0, rz1); c.moveTo(rx1, rz0); c.lineTo(rx1, rz1); c.stroke();
+    // praça
+    c.fillStyle = 'rgba(196,160,98,.5)'; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k, 0, 7); c.fill();
+    c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.stroke();
+    if (big) { c.strokeStyle = INK2; c.lineWidth = 0.8; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k - 4, 0, 7); c.stroke(); }
+    // cerca: linha dupla com postes, aberta no portão
+    c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 1;
     c.beginPath();
-    c.moveTo(px + Math.sin(y) * r, pz + Math.cos(y) * r);
-    c.lineTo(px + Math.sin(y + 2.5) * r * 0.7, pz + Math.cos(y + 2.5) * r * 0.7);
-    c.lineTo(px + Math.sin(y - 2.5) * r * 0.7, pz + Math.cos(y - 2.5) * r * 0.7);
-    c.closePath(); c.fill(); c.stroke();
+    c.moveTo(X(gt0), Z(f)); c.lineTo(X(-f), Z(f)); c.lineTo(X(-f), Z(-f)); c.lineTo(X(f), Z(-f)); c.lineTo(X(f), Z(f)); c.lineTo(X(gt1), Z(f));
+    c.stroke();
+    if (big) {
+      c.fillStyle = INK;
+      for (var t = -f; t <= f + 0.01; t += 2.5) {
+        [[t, -f], [-f, t], [f, t]].concat(t < gt0 || t > gt1 ? [[t, f]] : []).forEach(function (q) { c.fillRect(X(q[0]) - 1.5, Z(q[1]) - 1.5, 3, 3); });
+      }
+    }
+    // casas: tinta sépia com hachura
+    world.buildings.forEach(function (b) {
+      var x = X(b.x0), z = Z(b.z0), w = (b.x1 - b.x0) * k, h = (b.z1 - b.z0) * k;
+      c.fillStyle = 'rgba(122,72,34,.55)'; c.fillRect(x, z, w, h);
+      if (big) {
+        c.save(); c.beginPath(); c.rect(x, z, w, h); c.clip();
+        c.strokeStyle = 'rgba(59,36,20,.35)'; c.lineWidth = 1;
+        for (var d = -h; d < w; d += 6) { c.beginPath(); c.moveTo(x + d, z + h); c.lineTo(x + d + h, z); c.stroke(); }
+        c.restore();
+      }
+      c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 0.9; c.strokeRect(x, z, w, h);
+    });
+    // árvores e veios
+    world.nodes.forEach(function (n) {
+      var alive = st.nodes[n.id].alive, x = X(n.x), z = Z(n.z);
+      if (n.kind === 'arvore') {
+        var r = Math.max(1.8, k * 0.95);
+        if (!alive) { c.fillStyle = 'rgba(59,36,20,.4)'; c.fillRect(x - 1.5, z - 1, 3, 2); return; }
+        if (big) { c.strokeStyle = INK; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, z); c.lineTo(x, z + r * 1.1); c.stroke(); }
+        c.fillStyle = 'rgba(88,104,44,.75)'; c.beginPath(); c.arc(x, z - (big ? r * 0.25 : 0), r, 0, 7); c.fill();
+        c.strokeStyle = INK; c.lineWidth = big ? 1.1 : 0.7; c.stroke();
+      } else {
+        var s2 = Math.max(2.2, k * 0.75);
+        c.beginPath(); c.moveTo(x - s2, z + s2 * 0.6); c.lineTo(x - s2 * 0.2, z - s2); c.lineTo(x + s2 * 0.3, z - s2 * 0.3); c.lineTo(x + s2, z + s2 * 0.6); c.closePath();
+        c.fillStyle = alive ? 'rgba(120,112,98,.75)' : 'rgba(120,112,98,.25)'; c.fill();
+        c.strokeStyle = alive ? INK : INK2; c.lineWidth = big ? 1.1 : 0.7; c.stroke();
+      }
+    });
+    // coelhos
+    c.fillStyle = '#6b4424';
+    st.mobs.forEach(function (m) { if (m.alive) { c.beginPath(); c.arc(X(m.x), Z(m.z), big ? 2.4 : 1.4, 0, 7); c.fill(); } });
+    // gente: tinta azul
+    world.npcs.forEach(function (n) {
+      c.fillStyle = '#2c4a7a'; c.strokeStyle = '#f1e2bb'; c.lineWidth = 1;
+      c.beginPath(); c.arc(X(n.x), Z(n.z), Math.max(2, k * 0.5), 0, 7); c.fill(); c.stroke();
+    });
+    if (big) {
+      V.buildings.forEach(function (b) { label(c, { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar' }[b.type], X(b.x), Z(b.z), Math.round(14 * u), false); });
+      label(c, 'Praça', X(V.plaza.x), Z(V.plaza.z), Math.round(12 * u), true);
+      label(c, 'Portão', X(V.road.x) + 22 + 8 * u, Z(F) + 8 * u, Math.round(11 * u), true);
+      compass(c, S - 36, S - 40, 22);
+      // moldura de linha dupla
+      c.strokeStyle = INK; c.lineWidth = 1.2; c.strokeRect(5.5, 5.5, S - 11, S - 11);
+      c.lineWidth = 0.7; c.strokeRect(9.5, 9.5, S - 19, S - 19);
+    }
+    // área da macro
+    var a = st.player.macro.area;
+    if (a) {
+      c.fillStyle = 'rgba(200,150,40,.12)'; c.beginPath(); c.arc(X(a.x), Z(a.z), a.r * k, 0, 7); c.fill();
+      c.strokeStyle = macroOn() ? GOLD : 'rgba(168,115,15,.6)'; c.lineWidth = big ? 2.2 : 1.2; c.stroke();
+    }
+    if (big && mapArmed) {
+      var hv = mapHover || { x: st.player.x, z: st.player.z };
+      c.fillStyle = 'rgba(214,160,40,.18)'; c.beginPath(); c.arc(X(hv.x), Z(hv.z), G.settings.macroRadius * k, 0, 7); c.fill();
+      c.strokeStyle = '#b07a10'; c.lineWidth = 2.6; c.setLineDash([7, 5]); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = INK; c.lineWidth = 1; c.beginPath(); c.moveTo(X(hv.x) - 5, Z(hv.z)); c.lineTo(X(hv.x) + 5, Z(hv.z)); c.moveTo(X(hv.x), Z(hv.z) - 5); c.lineTo(X(hv.x), Z(hv.z) + 5); c.stroke();
+    }
+    if (big && mapHover && !mapArmed) { c.strokeStyle = WAX; c.lineWidth = 1.5; c.beginPath(); c.arc(X(mapHover.x), Z(mapHover.z), 6, 0, 7); c.stroke(); }
+    // destino: um X de lacre
+    var gt = st.player.goto;
+    if (gt) { var gx = X(gt.x), gz = Z(gt.z), q = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - q, gz - q); c.lineTo(gx + q, gz + q); c.moveTo(gx + q, gz - q); c.lineTo(gx - q, gz + q); c.stroke(); c.lineCap = 'butt'; }
+    // jogador: seta vermelho-lacre
+    var p = st.player, px = X(p.x), pz = Z(p.z), y = view ? view.yaw : p.yaw, r2 = big ? 10 * u : 6.5;
+    c.fillStyle = WAX; c.strokeStyle = '#f6ead0'; c.lineWidth = big ? 1.6 : 1.1; c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(px + Math.sin(y) * r2, pz + Math.cos(y) * r2);
+    c.lineTo(px + Math.sin(y + 2.5) * r2 * 0.75, pz + Math.cos(y + 2.5) * r2 * 0.75);
+    c.lineTo(px + Math.sin(y + Math.PI) * r2 * 0.3, pz + Math.cos(y + Math.PI) * r2 * 0.3);
+    c.lineTo(px + Math.sin(y - 2.5) * r2 * 0.75, pz + Math.cos(y - 2.5) * r2 * 0.75);
+    c.closePath(); c.stroke(); c.fill();
+    c.strokeStyle = INK; c.lineWidth = 0.8; c.stroke();
   }
   function mapPoint(e) {
     var cv = $('bigmap'), r = cv.getBoundingClientRect(), B = world.B;
@@ -312,6 +444,54 @@
       li.querySelector('[data-dn]').onclick = function () { st.rules.splice(i + 1, 0, st.rules.splice(i, 1)[0]); renderRules(); };
       ol.appendChild(li);
     });
+  }
+
+  // ---------- inventário e bolsa ----------
+  function mult(v) { return '×' + String(v).replace('.', ','); }
+  function renderInv() {
+    var p = st.player, mh = calc.maxHp(world, p), w = G.weapon[p.weapon], S = G.stances[p.stance];
+    $('iv-hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
+    $('iv-hp').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh;
+    $('iv-wpn').textContent = w.name;
+    $('iv-atk').textContent = 'Ataque ' + calc.atk(world, p) + (w.atk ? ' (+' + w.atk + ' da arma)' : ' (a arma não soma ataque)');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) {
+      var id = b.dataset.stance, on = id === p.stance;
+      if (!b.textContent) { b.textContent = G.stances[id].name; }
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    $('iv-stance').textContent = 'Dano causado ' + mult(S.dmg) + ' · dano recebido ' + mult(S.taken);
+    var n = p.inv.pocao || 0;
+    $('iv-pots').textContent = n + ' ' + (n === 1 ? 'poção' : 'poções');
+    $('iv-drink').disabled = !n;
+  }
+  function renderBag() {
+    var p = st.player, cap = G.settings.bagCapacity, used = calc.bagCount(world, p), html = [];
+    for (var k in p.inv) {
+      if (!(p.inv[k] > 0) || !G.items[k] || G.items[k].noBag) { continue; }
+      var res = Math.min(p.inv[k], sim.reserved(st, k));
+      html.push('<li><span>' + esc(G.items[k].name) + (res ? ' <small>(' + res + ' para missão)</small>' : '') + '</span><b>' + p.inv[k] + '</b></li>');
+    }
+    var h = html.join('');
+    if ($('bg-list').innerHTML !== h) { $('bg-list').innerHTML = h; }
+    $('bg-empty').hidden = !!html.length;
+    $('bg-cap').textContent = 'Ocupado: ' + used + ' de ' + cap;
+    $('bg-coins').textContent = 'Moedas: ' + (p.inv.moeda || 0);
+    $('bg-bar').style.width = Math.min(100, used / cap * 100) + '%';
+    $('bg-bar').parentNode.classList.toggle('full', used >= cap);
+  }
+  function drinkPotion() {
+    var p = st.player, msg;
+    if (sim.drink(st)) { msg = 'Bebeu uma poção (+' + G.player.potionHeal + ' de vida).'; }
+    else if (!(p.inv.pocao > 0)) { msg = 'Sem poções. O Padre vende.'; }
+    else if (p.hp >= calc.maxHp(world, p)) { msg = 'A vida já está cheia.'; }
+    else { msg = 'Agora não: espere um instante.'; }
+    handleEvents();
+    if (openWin === 'w-inv') { $('iv-res').textContent = msg; renderInv(); } else { toast(msg); }
+  }
+  function setStance(id) {
+    var p = st.player; p.stance = id || (p.stance === 'ofensiva' ? 'defensiva' : 'ofensiva');
+    if (openWin === 'w-inv') { renderInv(); $('iv-res').textContent = ''; }
+    else { toast('Postura ' + G.stances[p.stance].name.toLowerCase() + '.'); }
   }
 
   // ---------- criação do personagem ----------
@@ -411,21 +591,49 @@
   function renderNpcActs(id) {
     var def = G.npcs[id], box = $('npc-acts'), p = st.player; box.innerHTML = '';
     def.services.forEach(function (s) {
+      if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
       var b = document.createElement('button'); b.type = 'button';
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
       if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + G.items[s.item].price + ' moedas)'; }
-      if (s.type === 'sell') {
-        var tot = 0; s.items.forEach(function (k) { var n = p.inv[k] || 0; tot += (n - Math.min(n, sim.reserved(st, k))) * G.items[k].price; });
-        b.textContent = 'Vender ' + s.items.map(function (k) { return G.items[k].name.toLowerCase(); }).join(', ') + ' (' + tot + ' moedas)';
-      }
       if (s.type === 'upgrade') {
         var nx = G.weapon[p.weapon + 1];
         b.textContent = nx ? 'Melhorar para ' + nx.name + ' (' + Object.keys(nx.cost).map(function (k) { return qty(nx.cost[k], k); }).join(' + ') + ')' : 'Espada já está no máximo';
         b.disabled = !nx;
       }
-      b.onclick = function () { $('npc-res').textContent = sim.service(st, id, s); renderNpcActs(id); if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); } };
+      b.onclick = function () { npcDone(id, sim.service(st, id, s)); };
       box.appendChild(b);
     });
+  }
+  function npcDone(id, msg) {
+    $('npc-res').textContent = msg; renderNpcActs(id); save();
+    if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); }
+  }
+  // uma linha por item que o NPC compra: nome, disponível, preço, quantidade e Vender
+  var sellQty = {};
+  function sellBox(id, s) {
+    var p = st.player, wrap = document.createElement('div');
+    wrap.className = 'sell';
+    wrap.innerHTML = '<h3>Vender</h3><div class="sell-head"><span>Item</span><span>Tem</span><span>Preço</span><span>Quantos</span><span></span></div>';
+    s.items.forEach(function (k) {
+      var it = G.items[k], have = p.inv[k] || 0, can = sim.sellable(st, k), key = id + ':' + k;
+      var n = Math.max(1, Math.min(can || 1, sellQty[key] || 1));
+      var row = document.createElement('div'); row.className = 'sell-row' + (can ? '' : ' off');
+      row.innerHTML = '<span class="nm">' + esc(it.name) + (have > can ? '<small>' + (can ? (have - can) + ' fica' + (have - can === 1 ? '' : 'm') + ' para a missão' : 'reservado para a missão') + '</small>' : '') + '</span>' +
+        '<span class="av">' + can + '</span><span class="pr">' + it.price + ' <small>cada</small></span>' +
+        '<span class="qt"><button type="button" data-d="-1" aria-label="Menos">−</button><output aria-live="polite">' + (can ? n : 0) + '</output><button type="button" data-d="1" aria-label="Mais">+</button></span>' +
+        '<button type="button" class="go">Vender</button>';
+      var out = row.querySelector('output'), minus = row.querySelector('[data-d="-1"]'), plus = row.querySelector('[data-d="1"]'), go = row.querySelector('.go');
+      function sync() {
+        out.textContent = can ? n : 0; minus.disabled = !can || n <= 1; plus.disabled = !can || n >= can; go.disabled = !can;
+        go.textContent = can ? 'Vender por ' + n * it.price : 'Vender';
+        go.setAttribute('aria-label', 'Vender ' + (can ? qty(n, k) : it.name.toLowerCase()));
+      }
+      minus.onclick = function () { n = Math.max(1, n - 1); sellQty[key] = n; sync(); };
+      plus.onclick = function () { n = Math.min(can, n + 1); sellQty[key] = n; sync(); };
+      go.onclick = function () { var msg = sim.service(st, id, s, { item: k, n: n }); delete sellQty[key]; npcDone(id, msg); };
+      sync(); wrap.appendChild(row);
+    });
+    return wrap;
   }
 
   // ---------- interação ----------
@@ -449,13 +657,13 @@
     if (ref.type === 'node') {
       if (!st.nodes[ref.id].alive) { toast(refName(ref)); return; }
       if (d > G.player.reach + 0.6) { toast('Chegue mais perto para coletar.'); return; }
-      if (sim.takeControl(st)) { toast('Macro pausada (G retoma).'); }
-      p.action = { type: 'gather', id: ref.id, prog: 0 };
+      if (sim.takeControl(st)) { toast('Macro pausada.'); }
+      p.goto = null; p.action = { type: 'gather', id: ref.id, prog: 0 };
       return;
     }
     if (ref.type === 'mob') {
-      if (sim.takeControl(st)) { toast('Macro pausada (G retoma).'); }
-      p.action = { type: 'attack', id: ref.id };
+      if (sim.takeControl(st)) { toast('Macro pausada.'); }
+      p.goto = null; p.action = { type: 'attack', id: ref.id };
       if (d > G.player.reach) { toast('Alvo marcado: aproxime-se para atacar.'); }
     }
   }
@@ -481,15 +689,17 @@
 
   function cmd(c) {
     var p = st.player;
-    if (c === 'map') { toggle('w-map'); }
+    if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(false); } }
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
-    else if (c === 'stance') { p.stance = p.stance === 'ofensiva' ? 'defensiva' : 'ofensiva'; toast('Postura ' + G.stances[p.stance].name.toLowerCase() + '.'); }
-    else if (c === 'potion') { if (!sim.drink(st)) { toast(p.inv.pocao > 0 ? 'Agora não.' : 'Sem poções.'); } handleEvents(); }
+    else if (c === 'inv') { toggle('w-inv', function () { $('iv-res').textContent = ''; }); if (openWin === 'w-inv') { renderInv(); } }
+    else if (c === 'bag') { toggle('w-bag'); if (openWin === 'w-bag') { renderBag(); } }
+    else if (c === 'stance') { setStance(); }
+    else if (c === 'potion') { drinkPotion(); }
     else if (c === 'macro') {
-      if (p.mode === 'macro' && p.macro.on) { sim.takeControl(st); p.macro.stop = 'Macro pausada · G retoma'; }
-      else if (p.macro.area) { sim.startMacro(st); toast('Macro retomada.'); }
-      else { toast('Primeiro marque uma área no mapa.'); show('w-map'); }
+      if (pauseMacro()) { toast('Macro pausada.'); if (openWin === 'w-map') { mapMenu = false; mapUi(); } }
+      else if (openWin === 'w-map') { mapArmed = false; mapMenu = !mapMenu; mapUi(); }
+      else { openMap(true); }
     }
   }
 
@@ -511,7 +721,7 @@
       if (e.target.tagName === 'INPUT') { return; }
       if (e.code === 'Escape') { if (openWin) { hide(); } else { cmd('menu'); } e.preventDefault(); return; }
       if (openWin === 'w-report' && (e.code === 'Enter' || e.code === 'Space')) { hide(); e.preventDefault(); return; }
-      var map = { KeyM: 'map', KeyR: 'rules', KeyT: 'stance', KeyF: 'potion', KeyG: 'macro' };
+      var map = { KeyM: 'map', KeyR: 'rules', KeyT: 'stance', KeyF: 'potion', KeyG: 'macro', KeyI: 'inv', KeyB: 'bag' };
       if (map[e.code] && !e.repeat) { cmd(map[e.code]); e.preventDefault(); return; }
       if (openWin && openWin !== 'w-report') { return; }
       if (e.code === 'KeyE' && !e.repeat) { interactFront(); e.preventDefault(); return; }
@@ -562,10 +772,19 @@
     big.addEventListener('pointermove', function (e) { mapHover = mapPoint(e); });
     big.addEventListener('pointerleave', function () { mapHover = null; });
     big.addEventListener('click', function (e) {
-      var pt = mapPoint(e);
-      sim.startMacro(st, pt); mapHover = null; hide();
-      toast('Área marcada. O personagem vai trabalhar lá.');
+      var pt = mapPoint(e), wasMacro = macroOn();
+      if (mapMenu) { mapMenu = false; mapUi(); return; } // clique fora do menu só fecha o menu
+      mapHover = null;
+      if (mapArmed) { sim.startMacro(st, pt); mapArmed = false; hide(); toast('Área marcada. O personagem vai trabalhar lá.'); return; }
+      if (sim.goTo(st, pt.x, pt.z)) { hide(); toast(wasMacro ? 'Macro pausada. Indo até o ponto marcado.' : 'Indo até o ponto marcado.'); }
     });
+    $('map-macro').addEventListener('click', function () { if (mapArmed) { mapArmed = false; } else { mapMenu = !mapMenu; } mapUi(); });
+    $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = true; mapUi(); });
+    $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } });
+    $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
+    $('mm-pause').addEventListener('click', function () { mapMenu = false; pauseMacro(); mapUi(); toast('Macro pausada.'); });
+    $('iv-drink').addEventListener('click', function () { drinkPotion(); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) { b.addEventListener('click', function () { setStance(b.dataset.stance); }); });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-cmd]'), function (b) { b.addEventListener('click', function () { cmd(b.dataset.cmd); b.blur(); }); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', hide); });
@@ -578,7 +797,6 @@
         e.preventDefault(); b.classList.add('down');
         if (openWin === 'w-report') { hide(); }
         if (k === 'act') { interactFront(); return; }
-        if (k === 'pot') { cmd('potion'); return; }
         pad[k] = true; b.setPointerCapture(e.pointerId);
       });
       var up = function () { pad[k] = false; b.classList.remove('down'); };

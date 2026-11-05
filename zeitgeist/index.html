@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Zeitgeist · protótipo da vila</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/zeitgeist.css?v=20261104-1">
+<link rel="stylesheet" href="css/zeitgeist.css?v=20261105-2">
 </head>
 <body>
 <div id="app">
@@ -15,11 +15,10 @@
 
   <div id="hud" hidden>
     <section id="status" aria-label="Status">
-      <div class="row"><b id="lv">Nível 1</b><span id="stance"></span></div>
+      <div class="row"><b id="pname"></b><span id="lv">Nível 1</span></div>
       <div class="bar hp"><i id="hp-bar"></i><span id="hp-t"></span></div>
       <div class="bar xp"><i id="xp-bar"></i></div>
       <div class="row small"><span id="pots"></span><span id="coins"></span><span id="bag"></span></div>
-      <ul id="inv" class="small"></ul>
       <ul id="quests" aria-label="Missões"></ul>
     </section>
 
@@ -37,12 +36,38 @@
     <div id="marks"></div>
 
     <nav id="bar" aria-label="Ações">
-      <button type="button" data-cmd="map" title="M">Mapa</button>
-      <button type="button" data-cmd="macro" id="b-macro" title="G">Macro</button>
-      <button type="button" data-cmd="rules" title="R">Regras</button>
-      <button type="button" data-cmd="stance" title="T">Postura</button>
-      <button type="button" data-cmd="potion" title="F">Poção</button>
-      <button type="button" data-cmd="menu" title="Esc">Menu</button>
+      <button type="button" class="icon" data-cmd="inv" aria-label="Inventário" title="Inventário (I)">
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M9 7 H39 V21 C39 31.5 32 38.5 24 43 C16 38.5 9 31.5 9 21 Z" fill="#7d1e16" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M12.5 10.5 H35.5 V21 C35.5 29.5 30 35.5 24 39 C18 35.5 12.5 29.5 12.5 21 Z" fill="none" stroke="#d9b45a" stroke-width="1.3"/>
+          <path d="M24 10.5 V39 M12.5 20 H35.5" stroke="#d9b45a" stroke-width="1.3"/>
+          <g transform="rotate(-42 24 24)">
+            <path d="M22.4 2.5 L24 0.5 L25.6 2.5 V31 H22.4 Z" fill="#e7e2d4" stroke="#2b1709" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M24 3.5 V30" stroke="#9c958a" stroke-width="0.8"/>
+            <rect x="15.5" y="30.5" width="17" height="3.4" rx="1.4" fill="#c99a3b" stroke="#2b1709" stroke-width="1.3"/>
+            <rect x="22.3" y="34" width="3.4" height="8.5" fill="#5a341a" stroke="#2b1709" stroke-width="1.2"/>
+            <circle cx="24" cy="44.6" r="2.6" fill="#c99a3b" stroke="#2b1709" stroke-width="1.3"/>
+          </g>
+        </svg>
+      </button>
+      <button type="button" class="icon" data-cmd="bag" aria-label="Bolsa" title="Bolsa (B)">
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M16.5 17 C9 23 7.5 34 12 39.5 C15.5 43.5 32.5 43.5 36 39.5 C40.5 34 39 23 31.5 17 Z" fill="#8a5428" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M14 24 C11.5 30 12.5 36 15.5 38.5 C19.5 41 28.5 41 32.5 38.5" fill="none" stroke="#c78d4e" stroke-width="1.2" stroke-dasharray="2 2"/>
+          <path d="M16.5 17 L13 9 C16 7.5 18 10 20 8.5 C22 7 26 7 28 8.5 C30 10 32 7.5 35 9 L31.5 17 Z" fill="#a8693a" stroke="#2b1709" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M19 9.5 L20 16.5 M24 8 V16.5 M29 9.5 L28 16.5" stroke="#5a341a" stroke-width="1"/>
+          <path d="M14.5 17.5 C20 19.5 28 19.5 33.5 17.5" fill="none" stroke="#e1c27a" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M24 19 C22 23 19.5 25 18 28.5 M24 19 C26 23 28.5 25 30 28" fill="none" stroke="#e1c27a" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="24" cy="19" r="2.1" fill="#e1c27a" stroke="#2b1709" stroke-width="1"/>
+        </svg>
+      </button>
+      <button type="button" class="icon" data-cmd="menu" aria-label="Menu" title="Menu (Esc)">
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <rect x="10" y="12" width="28" height="4.4" rx="2.2" fill="#3b2414"/>
+          <rect x="10" y="21.8" width="28" height="4.4" rx="2.2" fill="#3b2414"/>
+          <rect x="10" y="31.6" width="28" height="4.4" rx="2.2" fill="#3b2414"/>
+        </svg>
+      </button>
     </nav>
 
     <div id="pad" hidden>
@@ -54,16 +79,52 @@
       </div>
       <div class="ab">
         <button type="button" data-k="act" class="a">Interagir</button>
-        <button type="button" data-k="pot" class="b">Poção</button>
       </div>
     </div>
   </div>
 
   <!-- janelas -->
   <section id="w-map" class="win" hidden aria-label="Mapa">
-    <header><h2>Mapa</h2><button type="button" class="x" data-close>Fechar</button></header>
-    <p class="hint">Clique num ponto para marcar a área. O personagem vai até lá e age sozinho, seguindo as regras.</p>
-    <canvas id="bigmap" width="560" height="560"></canvas>
+    <header><h2>Mapa da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <div class="mapbox">
+      <canvas id="bigmap" width="560" height="560"></canvas>
+      <div id="map-menu" class="popmenu" role="menu" aria-label="Macro" hidden>
+        <button type="button" role="menuitem" id="mm-pick">Escolher área</button>
+        <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
+        <button type="button" role="menuitem" id="mm-rules">Regras</button>
+        <button type="button" role="menuitem" id="mm-pause">Pausar macro</button>
+      </div>
+    </div>
+    <div class="maprow">
+      <button type="button" id="map-macro" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Macro (G)">Macro ▴</button>
+      <p id="map-hint" class="hint" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section id="w-inv" class="win small" hidden aria-label="Inventário">
+    <header><h2>Inventário</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <dl class="sheet">
+      <dt>Vida</dt><dd><div class="bar hp"><i id="iv-hp-bar"></i><span id="iv-hp"></span></div></dd>
+      <dt>Arma</dt><dd><b id="iv-wpn"></b><br><span class="hint" id="iv-atk"></span></dd>
+      <dt>Postura <span class="key">T</span></dt>
+      <dd>
+        <div class="seg" role="group" aria-label="Postura">
+          <button type="button" data-stance="ofensiva" aria-pressed="false"></button>
+          <button type="button" data-stance="defensiva" aria-pressed="false"></button>
+        </div>
+        <span class="hint" id="iv-stance"></span>
+      </dd>
+      <dt>Poções <span class="key">F</span></dt>
+      <dd><span id="iv-pots"></span> <button type="button" id="iv-drink">Beber poção</button><br><span class="hint" id="iv-res"></span></dd>
+    </dl>
+  </section>
+
+  <section id="w-bag" class="win small" hidden aria-label="Bolsa">
+    <header><h2>Bolsa</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <p class="row"><span id="bg-cap"></span><span id="bg-coins"></span></p>
+    <div class="bar cap"><i id="bg-bar"></i></div>
+    <ul id="bg-list" class="ledger"></ul>
+    <p id="bg-empty" class="hint" hidden>A bolsa está vazia. Corte árvores, minere veios e cace coelhos para enchê-la.</p>
   </section>
 
   <section id="w-rules" class="win" hidden aria-label="Regras da macro">
@@ -106,9 +167,11 @@
         <h3>Como jogar</h3>
         <p><b>Andar:</b> W e S, frente e trás · A e D, para o lado · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
         <p><b>Interagir:</b> clique numa pessoa, árvore, veio ou coelho, ou aperte E para o que estiver à sua frente. O combate é automático quando o alvo está ao alcance.</p>
-        <p><b>Macro:</b> abra o mapa (M) e clique onde o personagem deve trabalhar. Ele vai sozinho e você pode assistir. Andar com o teclado pausa a macro; G retoma.</p>
+        <p><b>Mapa:</b> toque no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe.</p>
+        <p><b>Macro:</b> no mapa, abra Macro (G) e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. As regras ficam no mesmo menu.</p>
+        <p><b>Inventário e bolsa:</b> a espada e o escudo mostram arma, postura e poções; a bolsa mostra o que você coletou.</p>
         <p><b>Fora da aba:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
-        <p class="small">R regras · T postura · F poção · M mapa · Esc fecha janelas</p>
+        <p class="small">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas</p>
       </div>
       <div>
         <h3>Testes</h3>
@@ -121,14 +184,14 @@
           <button type="button" data-dbg="reset" class="danger">Recomeçar do zero</button>
         </div>
         <p class="hint">Progresso salvo neste navegador. Versão <span id="ver"></span>.</p>
-        <p id="back-site" hidden><a href="https://romancedecavalaria.com.br/" style="color:var(--gold)">&larr; Voltar aos jogos</a></p>
+        <p id="back-site" hidden><a href="https://romancedecavalaria.com.br/" style="color:var(--wax)">&larr; Voltar aos jogos</a></p>
       </div>
     </div>
   </section>
 </div>
 
-<script src="js/sim.js?v=20261104-1"></script>
-<script src="js/view.js?v=20261104-1"></script>
-<script src="js/ui.js?v=20261104-1"></script>
+<script src="js/sim.js?v=20261105-2"></script>
+<script src="js/view.js?v=20261105-2"></script>
+<script src="js/ui.js?v=20261105-2"></script>
 </body>
 </html>
