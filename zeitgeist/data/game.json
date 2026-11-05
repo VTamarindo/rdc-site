@@ -43,7 +43,7 @@
     },
     "defensiva": {
       "name": "Defensiva",
-      "dmg": 0.75,
+      "dmg": 0.85,
       "taken": 0.6
     }
   },

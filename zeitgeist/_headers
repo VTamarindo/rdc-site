@@ -1,0 +1,3 @@
+# Cloudflare Pages: sempre confere se há versão nova das páginas e dados
+/*
+  Cache-Control: no-cache
