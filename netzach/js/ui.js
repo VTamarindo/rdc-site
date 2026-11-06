@@ -982,6 +982,16 @@
     if (min) { hide(); var now = clockNow(); beginAway(now - min * 60000); endAway(now); }
   }
 
+  // modo desenvolvedor: cliques seguidos no nome do jogo, no título do menu, mostram os testes até recarregar a página
+  var DEV_CLICKS = 5, DEV_GAP_MS = 700, devClicks = 0, devLast = 0;
+  function devTap(e) {
+    if (!$('dev-opts').hidden) { return; }
+    if (e.target !== $('dev-tap')) { devClicks = 0; return; } // clique em outro ponto do menu quebra a sequência
+    var now = performance.now();
+    devClicks = now - devLast <= DEV_GAP_MS ? devClicks + 1 : 1; devLast = now;
+    if (devClicks >= DEV_CLICKS) { $('dev-opts').hidden = false; toast('Modo desenvolvedor ativado.', 3); }
+  }
+
   // ---------- entrada ----------
   function bindInput() {
     var cv = $('view');
@@ -1068,6 +1078,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-cmd]'), function (b) { b.addEventListener('click', function () { cmd(b.dataset.cmd); b.blur(); }); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', hide); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-dbg]'), function (b) { b.addEventListener('click', function () { debug(b.dataset.dbg); }); });
+    $('w-menu').addEventListener('click', devTap);
 
     // botões de toque: segurar = andar/girar
     Array.prototype.forEach.call(document.querySelectorAll('#pad [data-k]'), function (b) {

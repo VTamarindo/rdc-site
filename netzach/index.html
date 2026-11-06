@@ -169,30 +169,43 @@
   </section>
 
   <section id="w-menu" class="win" hidden aria-label="Menu">
-    <header><h2>Netzach · protótipo da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <header><h2><span id="dev-tap">Netzach</span> · protótipo da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
     <div class="cols">
       <div>
         <h3>Como jogar</h3>
-        <p><b>Andar:</b> W e S, frente e trás · A e D, para o lado · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
-        <p><b>Interagir:</b> clique numa pessoa, árvore, veio ou coelho, ou aperte E para o que estiver à sua frente. O combate é automático quando o alvo está ao alcance.</p>
-        <p><b>Mapa:</b> toque no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
-        <p><b>Macro:</b> aperte G, ou abra Macro no mapa e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar. As regras ficam no mesmo menu.</p>
+        <div class="only-pc">
+          <p><b>Andar:</b> W e S, frente e trás · A e D, para os lados · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
+          <p><b>Interagir:</b> clique numa pessoa, árvore, veio, coelho, no quadro de avisos ou no baú, ou aperte E para o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
+          <p><b>Mapa:</b> clique no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A barra de zoom aproxima e afasta o mapa grande, e arrastar com o mouse move o mapa. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
+          <p><b>Macro:</b> aperte G: o mapa abre pronto, e o próximo clique marca a área onde ele trabalha sozinho. Com a macro trabalhando, G pausa, assim como andar com o teclado ou clicar numa árvore, veio ou coelho. No botão Macro do mapa ficam Escolher área, Usar a área anterior e Regras. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
+          <p><b>Regras:</b> aperte R. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
+          <p><b>Inventário e bolsa:</b> I mostra arma, postura e poções; T troca a postura e F bebe uma poção. B mostra o que você coletou. Os botões ficam na parte de baixo da tela.</p>
+        </div>
+        <div class="only-touch">
+          <p><b>Andar:</b> o padrão é o analógico virtual: empurre para andar para frente, para trás e para os lados. Arraste na tela para olhar. Se preferir botões em cruz, troque no menu, em Controles.</p>
+          <p><b>Interagir:</b> toque numa pessoa, árvore, veio, coelho, no quadro de avisos ou no baú, ou use o botão Interagir para o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
+          <p><b>Mapa:</b> toque no mapa pequeno, no canto, para abrir o mapa grande. Use a barra de zoom para aproximar e afastar, e arraste com o dedo para mover o mapa. Toque num ponto: o personagem anda até lá sozinho. Andar por conta própria interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o toque no mapa faz.</p>
+          <p><b>Macro:</b> no mapa grande, toque em Macro e depois em Escolher área: o próximo toque marca onde ele trabalha sozinho. Usar a área anterior retoma o último lugar, e Pausar macro para o trabalho, assim como andar por conta própria ou tocar numa árvore, veio ou coelho. Com a macro como padrão, o toque no mapa já marca a área, e um toque com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
+          <p><b>Regras:</b> ficam no botão Macro do mapa. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
+          <p><b>Inventário e bolsa:</b> os botões ficam na parte de baixo da tela. A espada e o escudo mostram arma, postura e poções: lá você troca a postura e bebe uma poção. A bolsa mostra o que você coletou.</p>
+        </div>
         <p><b>Missões diárias:</b> aceite no quadro de avisos e coloque o material no baú ao lado. Dá para entregar aos poucos: a recompensa do quadro sai ao completar a missão, e à meia-noite a missão incompleta paga só o que foi entregue. Reiniciam todo dia às 00:01.</p>
-        <p><b>Inventário e bolsa:</b> a espada e o escudo mostram arma, postura e poções; a bolsa mostra o que você coletou.</p>
-        <p><b>Fora da aba:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
-        <p class="small">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas</p>
+        <p><b>Tempo fora:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
+        <p class="small only-pc">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
       </div>
-      <div>
+      <div class="menu-side">
         <h3>Tela</h3>
         <div class="col"><button type="button" id="btn-full" data-cmd="fullscreen">Tela cheia</button></div>
-        <h3>Testes</h3>
-        <div class="col">
-          <button type="button" data-dbg="away30">Simular 30 min fora</button>
-          <button type="button" data-dbg="away240">Simular 4 h fora</button>
-          <button type="button" data-dbg="away600">Simular 10 h fora (teto de 4 h)</button>
-          <button type="button" data-dbg="hurt">Perder 15 de vida</button>
-          <button type="button" data-dbg="coins">Ganhar 50 moedas</button>
-          <button type="button" data-dbg="reset" class="danger">Recomeçar do zero</button>
+        <div id="dev-opts" hidden>
+          <h3>Testes</h3>
+          <div class="col">
+            <button type="button" data-dbg="away30">Simular 30 min fora</button>
+            <button type="button" data-dbg="away240">Simular 4 h fora</button>
+            <button type="button" data-dbg="away600">Simular 10 h fora (teto de 4 h)</button>
+            <button type="button" data-dbg="hurt">Perder 15 de vida</button>
+            <button type="button" data-dbg="coins">Ganhar 50 moedas</button>
+            <button type="button" data-dbg="reset" class="danger">Recomeçar do zero</button>
+          </div>
         </div>
         <p class="hint">Progresso salvo neste navegador. Versão <span id="ver"></span>.</p>
         <p id="back-site" hidden><a href="https://romancedecavalaria.com.br/" style="color:var(--wax)">&larr; Voltar aos jogos</a></p>
