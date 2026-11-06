@@ -12,6 +12,8 @@
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
+  // '2026-11-6' -> 20261106: as datas das diárias só andam para a frente
+  function dayNum(k) { var a = String(k).split('-'); return a[0] * 10000 + a[1] * 100 + +a[2]; }
   function dist(ax, az, bx, bz) { var dx = bx - ax, dz = bz - az; return Math.sqrt(dx * dx + dz * dz); }
 
   // ---------- mundo estático (montado a partir de vila.json) ----------
@@ -620,16 +622,36 @@
     return Math.max(0, n - Math.min(n, this.reserved(st, item)));
   };
   // ---------- missões diárias (dados em game.json → daily) ----------
-  // estado salvo: st.daily = { day, q: { id: { state: 'active' | 'done', got } } }; sem entrada = disponível
+  // estado salvo: st.daily = { day, closed, q: { id: { state: 'active' | 'done', got } } }; sem entrada = disponível
+  // closed: da meia-noite até o reinício as missões ficam encerradas, para ninguém entregar sem receber
   // day vem de fora: a simulação não olha o relógio, senão o recálculo do tempo fora mudaria de resultado
   Sim.prototype.dailyCheck = function (st, day) {
-    if (st.daily.day === day) { return false; }
     var first = !st.daily.day;
+    if (!first && dayNum(day) <= dayNum(st.daily.day)) { return false; }
     st.daily = { day: day, q: {} };
     if (!first) { this.log(st, 'As missões diárias foram renovadas.'); }
     return true;
   };
-  Sim.prototype.dailyState = function (st, id) { var q = st.daily.q[id]; return q ? q.state : 'available'; };
+  // meia-noite: paga o que foi entregue nas missões incompletas e encerra o dia. date = data de hoje no relógio de quem joga
+  Sim.prototype.dailySettle = function (st, date) {
+    if (!st.daily.day || st.daily.closed || dayNum(date) <= dayNum(st.daily.day)) { return false; }
+    var self = this, Q = this.w.game.daily.quests, p = st.player;
+    this.dailyActive(st).forEach(function (id) {
+      var got = self.dailyGot(st, id); if (!got) { return; }
+      var r = self.dailyReward(id, got);
+      p.inv.moeda = (p.inv.moeda || 0) + r.moedas; p.rep += r.rp;
+      self.gainXp(st, r.xp);
+      var text = Q[id].title + ': o dia acabou e ' + got + ' de ' + Q[id].n + ' renderam +' + r.moedas + ' moedas, +' + r.xp + ' XP e +' + r.rp + ' rp.';
+      self.log(st, text); self.emit(st, { type: 'alert', text: text });
+    });
+    st.daily.closed = true;
+    return true;
+  };
+  Sim.prototype.dailyState = function (st, id) {
+    var q = st.daily.q[id];
+    if (st.daily.closed && !(q && q.state === 'done')) { return 'closed'; }
+    return q ? q.state : 'available';
+  };
   Sim.prototype.dailyAccept = function (st, id) {
     if (this.dailyState(st, id) !== 'available') { return false; }
     st.daily.q[id] = { state: 'active', got: 0 };
@@ -641,10 +663,10 @@
     return Object.keys(this.w.game.daily.quests).filter(function (id) { return self.dailyState(st, id) === 'active'; });
   };
   Sim.prototype.dailyGot = function (st, id) { var q = st.daily.q[id]; return (q && q.got) || 0; };
-  // recompensa inteira da missão: é o que o quadro mostra e o que a última entrega paga
-  Sim.prototype.dailyReward = function (id) {
-    var D = this.w.game.daily, Q = D.quests[id], W = D.reward;
-    return { moedas: Math.round(Q.n * W.ouroPorPeca[Q.item]), xp: Math.round(Q.n * W.xpPorPeca), rp: Math.round(Q.n * W.rpPorPeca) };
+  // recompensa de n peças da missão, arredondada; sem n, a da missão inteira, que é a que o quadro mostra
+  Sim.prototype.dailyReward = function (id, n) {
+    var D = this.w.game.daily, Q = D.quests[id], W = D.reward; n = n || Q.n;
+    return { moedas: Math.round(n * W.ouroPorPeca[Q.item]), xp: Math.round(n * W.xpPorPeca), rp: Math.round(n * W.rpPorPeca) };
   };
   // o que o baú aceita agora: só o material das missões diárias em andamento
   Sim.prototype.dailyItems = function (st) {

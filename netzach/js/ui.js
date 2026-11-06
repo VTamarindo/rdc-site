@@ -3,12 +3,23 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261106-8', SAVE_VER = '20261105-3';
+  var VERSION = '20261106-10', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
+  // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
+  // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
+  var clock = null, clockShift = 0;
+  function clockNow() { return (clock ? clock.base + performance.now() - clock.perf : Date.now()) + clockShift; }
+  function clockSync() {
+    var ask = fetch(location.pathname, { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+      var d = Date.parse(r.headers.get('Date'));
+      if (d) { clock = { base: d, perf: performance.now() }; }
+    }).catch(function () { /* sem site: segue com o relógio que já tem */ });
+    return Promise.race([ask, new Promise(function (ok) { setTimeout(ok, 2500); })]);
+  }
   var calc = NZ.calc;
   var G, V, world, sim, st, view;
   var DT, CAP, THRESH;
-  var lastReal = Date.now(), acc = 0, prev = null, away = null;
+  var lastReal = clockNow(), acc = 0, prev = null, away = null;
   var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null;
   var newVersion = false;
   var dailyNext = 0; // quando as missões diárias reiniciam (ms do relógio real)
@@ -19,7 +30,7 @@
 
   // ---------- carregar ----------
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
-  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION)]).then(function (d) { start(d[0], d[1], d[2]); })
+  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION), clockSync()]).then(function (d) { start(d[0], d[1], d[2]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
   function start(game, vila, art) {
@@ -27,8 +38,8 @@
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
     world = new NZ.World(G, V); sim = new NZ.Sim(world);
     var saved = load();
-    if (saved) { st = NZ.migrate(saved.state); lastReal = saved.lastReal || Date.now(); }
-    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); lastReal = Date.now(); }
+    if (saved) { st = NZ.migrate(saved.state); lastReal = saved.lastReal || clockNow(); }
+    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); lastReal = clockNow(); }
 
     view = new NZ.View($('view'), world, art);
     view.yaw = st.player.yaw;
@@ -36,19 +47,20 @@
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
+    setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
-    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
+    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; } }; // para testes
     renderLog();
 
-    if (saved) { beginAway(lastReal); endAway(Date.now()); }
+    if (saved) { beginAway(lastReal); endAway(clockNow()); }
     if (!st.player.name) { showNew(); if (newVersion) { $('new-err').hidden = false; $('new-err').textContent = 'Versão nova do protótipo (' + VERSION + '): o jogo recomeçou do zero.'; } }
 
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) { beginAway(Date.now()); save(); }
-      else { if (away) { endAway(Date.now()); } document.title = baseTitle; }
+      if (document.hidden) { beginAway(clockNow()); save(); }
+      else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); }
     });
     window.addEventListener('pagehide', save);
-    setInterval(function () { if (away) { catchUp(Date.now()); } save(); }, 5000);
+    setInterval(function () { if (away) { catchUp(clockNow()); } save(); }, 5000);
     requestAnimationFrame(frame);
   }
 
@@ -115,7 +127,7 @@
   function frame(t) {
     requestAnimationFrame(frame);
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
-    var now = Date.now(), gap = (now - lastReal) / 1000;
+    var now = clockNow(), gap = (now - lastReal) / 1000;
     if (away) { return; }
     if (gap > THRESH) { beginAway(lastReal); endAway(now); return; }
     lastReal = now;
@@ -583,19 +595,22 @@
   }
   // ---------- missões diárias: reinício, quadro de avisos e baú ----------
   function dailyOffset() { return (G.daily.resetHour * 60 + G.daily.resetMinute) * 60000; }
-  function dailyKey() { var d = new Date(Date.now() - dailyOffset()); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
-  function nextReset() {
-    var n = new Date(Date.now()); n.setHours(G.daily.resetHour, G.daily.resetMinute, 0, 0);
-    if (n.getTime() <= Date.now()) { n.setDate(n.getDate() + 1); }
+  function dayKey(off) { var d = new Date(clockNow() - off); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function nextAt(h, m) {
+    var n = new Date(clockNow()); n.setHours(h, m, 0, 0);
+    if (n.getTime() <= clockNow()) { n.setDate(n.getDate() + 1); }
     return n.getTime();
   }
+  function nextReset() { return nextAt(G.daily.resetHour, G.daily.resetMinute); }
+  // dois horários: à meia-noite paga as entregas incompletas; no reinício as missões renovam
   function dailyTick() {
-    if (Date.now() < dailyNext) { return; }
-    dailyNext = nextReset();
-    if (sim.dailyCheck(st, dailyKey())) { handleEvents(); save(); if (npcOpen && G.npcs[npcOpen].daily) { talk(npcOpen); } }
+    if (clockNow() < dailyNext && dailyNext - clockNow() <= 86400000) { return; } // mais de um dia à frente: o relógio voltou
+    dailyNext = Math.min(nextAt(0, 0), nextReset());
+    var paid = sim.dailySettle(st, dayKey(0)), fresh = sim.dailyCheck(st, dayKey(dailyOffset()));
+    if (paid || fresh) { handleEvents(); save(); if (npcOpen && G.npcs[npcOpen].daily) { talk(npcOpen); } }
   }
   function dailyLeftText() {
-    var m = Math.ceil((dailyNext - Date.now()) / 60000), h = Math.floor(m / 60);
+    var m = Math.ceil((nextReset() - clockNow()) / 60000), h = Math.floor(m / 60);
     return 'Novas missões em ' + (h ? h + ' h ' : '') + (m % 60) + ' min.';
   }
   function dailyBoard() { return world.props.filter(function (o) { return o.npc === 'quadro'; })[0]; }
@@ -611,14 +626,14 @@
       return;
     }
     setTalk(D.textos.quadro, ids.map(function (q) {
-      var s = state(q), tag = s === 'active' ? ' · ' + dailyProg(q) : s === 'done' ? ' · concluída' : '';
+      var s = state(q), tag = s === 'active' ? ' · ' + dailyProg(q) : s === 'done' ? ' · concluída' : s === 'closed' ? ' · encerrada' : '';
       return { text: D.quests[q].title + tag, fn: function () { dailyShow(id, q); } };
     }), dailyLeftText());
   }
   function dailyShow(id, q) {
     var Q = G.daily.quests[q], r = sim.dailyReward(q), s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
     setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); dailyTalk(id); } }, back] : [back],
-      s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' :
+      s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' : s === 'closed' ? 'Encerrada até o reinício.' :
       'Recompensa: ' + r.moedas + ' moedas, ' + r.xp + ' XP e ' + r.rp + ' rp.');
   }
   function talk(id, said) {
@@ -964,7 +979,7 @@
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
     var min = { away30: 30, away240: 240, away600: 600 }[c];
-    if (min) { hide(); var now = Date.now(); beginAway(now - min * 60000); endAway(now); }
+    if (min) { hide(); var now = clockNow(); beginAway(now - min * 60000); endAway(now); }
   }
 
   // ---------- entrada ----------

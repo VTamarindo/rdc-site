@@ -319,7 +319,7 @@
     }
   },
   "daily": {
-    "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O baú aceita entregas parciais; a recompensa só sai ao completar a missão.",
+    "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O baú aceita entregas parciais: a recompensa inteira sai ao completar, e à meia-noite a missão incompleta paga só o que foi entregue.",
     "resetHour": 0,
     "resetMinute": 1,
     "reward": {
