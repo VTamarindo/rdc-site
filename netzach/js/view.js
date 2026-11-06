@@ -279,7 +279,8 @@
 
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
+  // objetos do cenário: 100 px por metro, a densidade das pessoas (192 px / ~1,92 m)
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4, quadro_missoes: 2.16, bau_missoes: 1.04 };
 
   function View(canvas, world, art) {
     this.w = world; this.r = new Renderer(canvas); this.art = art;
@@ -334,6 +335,7 @@
       var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
       p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p);
     });
+    w.props.forEach(function (p) { R.add(self.sprite(p.id, SIZE[p.id]).at(p.x, 0, p.z)); });
   };
   View.prototype.buildDynamic = function () {
     var self = this, w = this.w;
@@ -490,7 +492,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=4' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=5' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

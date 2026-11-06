@@ -13,6 +13,8 @@
   {"name": "espada", "x": 1120, "y": 0, "w": 160, "h": 160},
   {"name": "espada_afiada", "x": 1280, "y": 0, "w": 160, "h": 160},
   {"name": "espada_temperada", "x": 1440, "y": 0, "w": 160, "h": 160},
-  {"name": "espada_rastro", "x": 1600, "y": 0, "w": 256, "h": 192}
+  {"name": "espada_rastro", "x": 1600, "y": 0, "w": 256, "h": 192},
+  {"name": "quadro_missoes", "x": 1856, "y": 0, "w": 180, "h": 216},
+  {"name": "bau_missoes", "x": 2036, "y": 0, "w": 116, "h": 104}
  ],
  "_nota": "Arte provisória gerada por tools/gerar_arte.py (pixel art procedural). Cada sprite tem o seu quadro (x, y, w, h) em sprites.png; o pé da figura fica na base do quadro. Figuras sem contorno (borda só na cor do material). Paredes: quadros de 64x64 em walls.png; pedra, tijolo e porta vêm do zeitgeist1."}
