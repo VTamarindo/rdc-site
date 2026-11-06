@@ -140,6 +140,15 @@ body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13
 .col { display: flex; flex-direction: column; gap: 6px; }
 .cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
 @media (max-width: 620px) { .cols { grid-template-columns: 1fr; } }
+/* menu: tutorial certo para a plataforma (body.touch = celular) e opções numa coluna estreita que fica à vista ao rolar o texto */
+.only-touch { display: none; }
+body.touch .only-touch { display: block; }
+body.touch .only-pc { display: none; }
+#w-menu { width: min(860px, 94vw); }
+#w-menu .cols { grid-template-columns: minmax(0, 1fr) 210px; }
+.menu-side { position: sticky; top: 0; align-self: start; }
+#dev-tap { display: inline-block; touch-action: manipulation; }
+@media (max-width: 620px) { #w-menu .cols { grid-template-columns: 1fr; } .menu-side { position: static; order: -1; } }
 
 /* mapa: botões embaixo, menu da macro por cima do mapa */
 #w-map { --mapw: min(100%, calc(92vh - 224px), 560px); }
