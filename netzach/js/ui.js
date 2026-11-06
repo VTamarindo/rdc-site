@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261107-5', SAVE_VER = '20261105-3';
+  var VERSION = '20261107-7', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -20,7 +20,7 @@
   var G, V, world, sim, st, view;
   var DT, CAP, THRESH;
   var lastReal = clockNow(), acc = 0, prev = null, away = null;
-  var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null;
+  var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null, ctrl = null;
   var newVersion = false;
   var dailyNext = 0; // quando as missões diárias reiniciam (ms do relógio real)
   var LINE_MS = 10000, lineTxt = null, lineEnd = 0, hintSeen = false;
@@ -29,6 +29,7 @@
   var isTouch = ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
 
   // ---------- carregar ----------
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function () { /* sem ele, o jogo só não abre sem internet */ }); }
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
   Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION), clockSync()]).then(function (d) { start(d[0], d[1], d[2]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
@@ -46,7 +47,7 @@
     $('loading').hidden = true; $('hud').hidden = false; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
-    bindInput(); resize(); window.addEventListener('resize', resize);
+    bindInput(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
     NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; } }; // para testes
@@ -132,6 +133,7 @@
     if (gap > THRESH) { beginAway(lastReal); endAway(now); return; }
     lastReal = now;
 
+    ctrl.tick(fdt);
     var moving = manualMove(fdt);
     acc += gap;
     var guard = 0;
@@ -157,9 +159,9 @@
 
   function manualMove(dt) {
     if (openWin && openWin !== 'w-report') { return false; }
-    // pad.sf e pad.ss: o analógico, de -1 a 1
-    var f = (keys.KeyW || keys.ArrowUp || pad.fwd ? 1 : 0) - (keys.KeyS || keys.ArrowDown || pad.back ? 1 : 0) + (pad.sf || 0);
-    var s = (keys.KeyD || pad.right ? 1 : 0) - (keys.KeyA || pad.left ? 1 : 0) + (pad.ss || 0);
+    // pad.sf e pad.ss: o analógico da tela; pad.gf e pad.gs: o do controle. Todos de -1 a 1
+    var f = (keys.KeyW || keys.ArrowUp || pad.fwd ? 1 : 0) - (keys.KeyS || keys.ArrowDown || pad.back ? 1 : 0) + (pad.sf || 0) + (pad.gf || 0);
+    var s = (keys.KeyD || pad.right ? 1 : 0) - (keys.KeyA || pad.left ? 1 : 0) + (pad.ss || 0) + (pad.gs || 0);
     var turn = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
     if (!f && !s && !turn) { return false; }
     if (sim.takeControl(st)) { toast('Macro pausada: você assumiu o controle.'); }
@@ -294,7 +296,8 @@
       : nav === 'macro' ? (on ? 'A macro está trabalhando e é o padrão. Um clique no mapa muda a área de trabalho para o ponto.' : 'Macro é o padrão: clique onde o personagem deve trabalhar sozinho.')
       : on ? 'A macro está trabalhando na área marcada. Um clique no mapa pausa e leva o personagem até o ponto.'
       : 'Clique num ponto para o personagem andar até lá.';
-    $('map-hint').textContent = isTouch ? mapText.replace(/clique/g, 'toque').replace(/Clique/g, 'Toque') : mapText; // no celular não existe clique
+    $('map-hint').textContent = ctrl && ctrl.active() ? mapText.replace(/Um clique/g, 'O botão A').replace(/clique/g, 'aperte A').replace(/Clique/g, 'Aperte A')
+      : isTouch ? mapText.replace(/clique/g, 'toque').replace(/Clique/g, 'Toque') : mapText; // no celular não existe clique
     mb.setAttribute('aria-pressed', mapArmed === 'macro' ? 'true' : 'false');
     mb.setAttribute('aria-expanded', mOpen ? 'true' : 'false');
     mb.textContent = mapArmed === 'macro' ? 'Macro armada · cancelar' : (on ? 'Macro (trabalhando) ' : 'Macro ') + (mOpen ? '▾' : '▴');
@@ -337,7 +340,7 @@
   function openMap() { mapArmed = false; mapMenu = false; mapHover = null; mapDrag = null; mapDragged = false; mapCx = mapCz = 0; mapZ = 1; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); mapZoomTo(0); }
   function pauseMacro() {
     if (!macroOn()) { return false; }
-    sim.takeControl(st); st.player.macro.stop = isTouch ? 'Macro pausada · marque a área no mapa' : 'Macro pausada · G para marcar a área';
+    sim.takeControl(st); st.player.macro.stop = isTouch ? 'Macro pausada · marque a área no mapa' : ctrl.active() ? 'Macro pausada · RB para marcar a área' : 'Macro pausada · G para marcar a área';
     return true;
   }
 
@@ -893,7 +896,7 @@
     P.all.onclick = function () { doSell(boardMax(s, k)); };
     $('w-npc').parentNode.appendChild(back);
     sellRefresh();
-    if (sellPop && !isTouch && !P.num.disabled) { P.num.focus(); } else if (sellPop) { P.pop.focus(); } // no toque, o teclado só abre se tocar no número
+    if (sellPop && !isTouch && !ctrl.active() && !P.num.disabled) { P.num.focus(); } else if (sellPop) { P.pop.focus(); } // no toque e no controle, o teclado só abre se pedir
   }
   function sellSet(n) {
     var P = sellPop;
@@ -1187,6 +1190,26 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-ctrl]'), function (b) {
       b.addEventListener('click', function () { ctrlSet(b.dataset.ctrl); try { localStorage.setItem(CTRL_KEY, ctrlMode); } catch (e) { /* sem armazenamento: vale até fechar */ } });
     });
+  }
+  // o que o controle pode fazer no jogo; a leitura dos botões fica em controle.js
+  function ctrlApi() {
+    return {
+      win: function () { return openWin; },
+      sell: function () { return sellPop ? sellPop.pop : null; },
+      closeSell: function () { closeSell(); },
+      mapBox: function () { return mapMenu === 'macro' ? $('map-menu') : mapMenu === 'caminhada' ? $('map-walk-menu') : null; },
+      mapBoxClose: function () { mapMenu = false; mapUi(); },
+      mapPan: function (fx, fz) { // fx e fz em frações da janela do mapa
+        if (!fx && !fz) { return; }
+        var q = world.B * 2 / mapZ; mapCx += fx * q; mapCz += fz * q; mapLimit();
+        drawMap($('bigmap'), 560, true);
+      },
+      mapZoom: function (n) { mapZoomTo(+$('map-zoom').value + n); },
+      hide: hide, cmd: cmd, interact: interactFront, quests: toggleQuests, toast: function (t) { toast(t, 3); },
+      move: function (f, s) { pad.gf = f; pad.gs = s; },
+      look: function (x, y) { view.yaw -= x; view.pitch = Math.max(-1.1, Math.min(0.9, view.pitch - y)); lookHold = 2.5; },
+      modo: function () { if (openWin === 'w-map') { mapUi(); } } // o texto do mapa muda entre clique e botão A
+    };
   }
   // analógico: o dedo fica preso a ele, então o arrasto de câmera (no #view) nunca recebe esse toque, e vice-versa
   function bindStick() {

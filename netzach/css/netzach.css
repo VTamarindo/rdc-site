@@ -229,6 +229,14 @@ body.touch .only-pc { display: none; }
 .ledger li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 2px; border-bottom: 1px dotted rgba(74, 44, 20, .55); font-size: 16px; }
 .ledger li small { color: var(--wax); font-size: 12px; }
 
+/* controle: foco visível nas janelas e cursor do mapa */
+.only-pad { display: none; }
+body.pad .only-pad { display: block; }
+body.pad .only-pc, body.pad .only-touch { display: none; }
+.pad-foco { outline: 3px solid #e8a820 !important; outline-offset: 2px; }
+#map-cur { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; z-index: 1; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px #7a1a12, inset 0 0 0 2px #7a1a12; }
+#map-cur::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #7a1a12; }
+
 /* missões e conversa */
 #q-toggle { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; margin: 6px 0 0; padding: 4px 0 0; background: none; border: 0; border-top: 1px dotted rgba(74, 44, 20, .6); border-radius: 0; box-shadow: none; color: var(--ink2); font: inherit; font-size: 12.5px; font-variant: small-caps; letter-spacing: .04em; text-align: left; cursor: pointer; }
 #q-toggle[hidden] { display: none; }

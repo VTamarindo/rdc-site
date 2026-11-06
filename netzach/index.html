@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Netzach · protótipo da vila</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/netzach.css?v=20261107-5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#14161c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Netzach">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="stylesheet" href="css/netzach.css?v=20261107-7">
 </head>
 <body>
 <div id="app">
@@ -90,6 +97,7 @@
     <header><h2>Mapa da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
     <div class="mapbox">
       <canvas id="bigmap" width="560" height="560"></canvas>
+      <div id="map-cur" hidden></div>
       <div id="map-menu" class="popmenu" role="menu" aria-label="Macro" hidden>
         <button type="button" role="menuitem" id="mm-pick">Escolher área</button>
         <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
@@ -189,6 +197,14 @@
           <p><b>Regras:</b> aperte R. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
           <p><b>Inventário e bolsa:</b> I mostra arma, postura e poções; T troca a postura e F bebe uma poção. B mostra o que você coletou. Os botões ficam na parte de baixo da tela.</p>
         </div>
+        <div class="only-pad">
+          <p><b>Andar e olhar:</b> analógico esquerdo anda, inclusive para os lados, e analógico direito olha.</p>
+          <p><b>Interagir:</b> A usa o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
+          <p><b>Janelas:</b> direcional ou analógico esquerdo mudam de botão, A confirma, B volta, e o analógico direito rola o texto. Nas barras, esquerda e direita mudam o valor.</p>
+          <p><b>Mapa:</b> View abre. O analógico esquerdo move o cursor, e A marca o ponto. LT e RT mudam o zoom, e o analógico direito move o mapa. O direcional leva aos botões Macro e Caminhada.</p>
+          <p><b>Macro:</b> RB abre o mapa pronto para marcar a área e, com a macro trabalhando, pausa. As Regras ficam no botão Macro do mapa.</p>
+          <p><b>Atalhos:</b> Menu abre este menu · X poção · Y bolsa · LB inventário · clique no analógico esquerdo recolhe as missões · clique no direito troca a postura.</p>
+        </div>
         <div class="only-touch">
           <p><b>Andar:</b> o padrão é o analógico virtual: empurre para andar para frente, para trás e para os lados. Arraste na tela para olhar. Se preferir botões em cruz, troque no menu, em Controles.</p>
           <p><b>Interagir:</b> toque numa pessoa, árvore, veio, coelho, no quadro de avisos ou no baú, ou use o botão Interagir para o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
@@ -229,9 +245,10 @@
   </section>
 </div>
 
-<script src="js/sim.js?v=20261107-5"></script>
-<script src="js/ceu.js?v=20261107-5"></script>
-<script src="js/view.js?v=20261107-5"></script>
-<script src="js/ui.js?v=20261107-5"></script>
+<script src="js/sim.js?v=20261107-7"></script>
+<script src="js/ceu.js?v=20261107-7"></script>
+<script src="js/view.js?v=20261107-7"></script>
+<script src="js/controle.js?v=20261107-7"></script>
+<script src="js/ui.js?v=20261107-7"></script>
 </body>
 </html>
