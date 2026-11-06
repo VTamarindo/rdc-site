@@ -149,7 +149,7 @@
       }
     } else { p.yaw = view.yaw; }
     var autoMoving = auto && prev && (Math.abs(p.x - prev.player.x) + Math.abs(p.z - prev.player.z) > 0.001);
-    view.render(st, prev, Math.min(1, acc / DT), fdt, { interp: auto, moving: moving || autoMoving });
+    view.render(st, prev, Math.min(1, acc / DT), fdt, { interp: auto, moving: moving || autoMoving, now: now });
     hud(); marks();
     if (npcOpen && !sim.nearNpc(st, npcOpen)) { hide(); }
   }
@@ -924,6 +924,7 @@
   // ---------- interação ----------
   function refName(ref) {
     if (ref.type === 'npc') { return G.npcs[ref.id].name; }
+    if (ref.type === 'amb') { return view.amb[ref.id].name; }
     if (ref.type === 'mob') { return G.monsters.coelho.name; }
     if (ref.type === 'prop') { return propById(ref.id).name; }
     var n = world.nodeById[ref.id], def = G.nodes[n.kind], ns = st.nodes[n.id];
@@ -931,6 +932,7 @@
   }
   function propById(id) { return world.props.filter(function (o) { return o.id === id; })[0]; }
   function refPos(ref) {
+    if (ref.type === 'amb') { var o = view.amb[ref.id].o; return { x: o.pos[0], z: o.pos[2] }; }
     if (ref.type === 'npc') { var r = null; world.npcs.forEach(function (n) { if (n.id === ref.id) { r = n; } }); return r; }
     if (ref.type === 'mob') { return sim.mobById(st, ref.id); }
     if (ref.type === 'prop') { return propById(ref.id); }
@@ -1078,7 +1080,7 @@
       if (!drag || drag.id !== e.pointerId) { return; }
       var click = drag.moved <= 6; drag = null;
       if (click) {
-        var h = pickEvent(e);
+        var h = pickEvent(e, true);
         if (h) { interact(h.ref); }
       }
     });
@@ -1203,9 +1205,9 @@
     $('stick').hidden = ctrlMode === 'botoes';
     Array.prototype.forEach.call(document.querySelectorAll('[data-ctrl]'), function (b) { b.setAttribute('aria-pressed', b.dataset.ctrl === ctrlMode ? 'true' : 'false'); });
   }
-  function pickEvent(e) {
+  function pickEvent(e, solid) {
     var r = $('view').getBoundingClientRect();
-    return view.pickAt((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height * 2 - 1));
+    return view.pickAt((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height * 2 - 1), solid);
   }
   function hoverAt(e) {
     var h = pickEvent(e), el = $('hover'), cv = $('view');

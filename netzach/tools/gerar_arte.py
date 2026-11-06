@@ -2,7 +2,7 @@
 
 - walls.png: texturas repetíveis de 64x64 (pedra, tijolo e porta vêm do zeitgeist1).
 - sprites.png: figuras (billboards) em pixel art, cada uma com o seu próprio quadro
-  (pessoas 96x192, coelho 96x64, árvore/toco 192x256, veio/veio vazio 128x128,
+  (pessoas 96x192, adolescentes 96x176, crianças 96x128, vaca 240x152, coelho 96x64, árvore/toco 192x256, veio/veio vazio 128x128,
   quadro de missões 180x216 e baú 116x104, os dois a 100 px por metro, como as pessoas),
   listadas em atlas.json como {"name","x","y","w","h"}.
 
@@ -560,6 +560,830 @@ def anselmo():
     for x in range(40, 56, 3): f.px(x, 12 + (x % 2), 'castanho', 0.1)
     rosto(f, sk, brow='castanho')
     f.px(CX - 1, 30, sk, 0.55)
+    return f
+
+
+# ---------------- moradores da vila (ambiente) ----------------
+MAT.update({
+    # moradores da vila
+    'pele_m': ramp('3a2318', '5a3826', '7a5036', '966a4a', 'ac8260', 'bf9876'),   # morena
+    'pele_e': ramp('20130e', '33201a', '4a2f24', '614032', '785240', '8e6650'),   # negra
+    'pele_c': ramp('5a3e34', '86604e', 'ad8268', 'c9a084', 'dcb89c', 'ecd0b4'),   # clara
+    'pele_v': ramp('4a3630', '6e5248', '907062', 'ad8c7c', 'c4a594', 'd6bba9'),   # idosa
+    'labio': ramp('5a2a26', '7c3c34', '9c5448', 'b46c5c'),
+    'ruivo': ramp('3a1408', '5c2210', '843418', 'a84a20', 'c4652c', 'd9823e'),
+    'loiro': ramp('4a3614', '705422', '967434', 'b8964a', 'd0b264', 'e2ca80'),
+    'preto': ramp('0e0c0e', '1a1719', '272226', '352e33', '453c42'),
+    'branco': ramp('5e5a56', '86817b', 'aaa59e', 'cbc6be', 'e2ded6'),              # cabelo alvo
+    'verde': ramp('141c12', '20301c', '304428', '445a36', '5a7046', '728658'),
+    'musgo_t': ramp('1c1e10', '2e3218', '444a24', '5c6230', '747a40', '8c9254'),
+    'marrom': ramp('1c120c', '2e1e14', '44301f', '5c432c', '75583a', '8c6e4c'),
+    'cinza_l': ramp('1e1e20', '323234', '48484a', '606060', '787876', '908e8a'),   # lã cinza
+    'azul': ramp('10182a', '1a2840', '293c5a', '3b5274', '506a8c', '6a84a2'),
+    'azul_c': ramp('1c2430', '2e3a4c', '45556a', '5e7088', '7a8ca2', '98a8ba'),    # azul acinzentado
+    'rosa': ramp('3a1416', '5e2024', '863238', 'a84a4c', 'c06a64', 'd08c82'),      # vermelho desbotado
+    'mostarda': ramp('2e220c', '4c3a12', '6e561c', '90742a', 'ae923c', 'c6ac52'),
+    'vinho': ramp('1e0a10', '320f1a', '4a1826', '642433', '7e3242', '964654'),
+    'roxo': ramp('1a1024', '2a1a3a', '3e2a52', '54396c', '6c4c86', '8462a0'),
+    'esmeralda': ramp('0c2018', '123428', '1c4a38', '28624c', '367c60', '4a9676'),
+    'palha': ramp('4a3a18', '6e5a28', '94803e', 'b49e56', 'ccb870', 'ded090'),
+    'malha': ramp('1c1e22', '34383e', '50565c', '70767c', '929899'),
+    'branco_p': ramp('8a8578', 'aca696', 'c8c2b2', 'ddd8ca', 'ece8dc'),            # pano branco
+    'arminho': ramp('3c3026', '5e4c3c', '82705c', 'a6947e', 'c8b8a2', 'e0d4c2'),   # pele da gola
+    'pao': ramp('4a2810', '74441a', '9e6628', 'c08a40', 'd8ac62'),
+    'vaca_b': ramp('6a5e50', '8e8270', 'b0a48e', 'ccc0a8', 'e0d6c0', 'ece4d2'),
+    'vaca_m': ramp('24150e', '38231a', '503426', '6a4834', '845e44', '9c7558'),
+    'focinho': ramp('5a3a36', '7e5650', 'a07870', 'bc968c', 'd0b0a4'),
+    'chifre': ramp('4e4430', '76684c', 'a09070', 'c4b698', 'dcd2ba'),
+    'casco': ramp('141010', '221c18', '34291f', '463a2e'),
+})
+DITHER.update({'verde': 0.5, 'musgo_t': 0.5, 'marrom': 0.5, 'cinza_l': 0.5, 'azul': 0.5, 'azul_c': 0.5, 'rosa': 0.5, 'mostarda': 0.5, 'vinho': 0.5,
+               'roxo': 0.5, 'esmeralda': 0.5, 'palha': 0.4, 'malha': 0.5, 'branco_p': 0.3, 'arminho': 0.6, 'preto': 0.3, 'ruivo': 0.3, 'loiro': 0.3,
+               'branco': 0.3, 'vaca_b': 0.45, 'vaca_m': 0.5})
+
+# quadros: adultos 96x192 como as figuras acima; adolescentes 96x176 e crianças 96x128, na mesma densidade.
+# Cabeça igual em pixels: a criança fica com ~5 cabeças de altura, o adolescente com ~6,5.
+TH, CH = 176, 128                     # altura do quadro de adolescente e de criança
+
+
+def pernas(f, y0, G, o=13, i=3, mat='calca', bota='bota', cano=None, sola=3):
+    """duas pernas de y0 até o chão; cano = linha onde começa a bota"""
+    cano = cano or G - 14
+    for sx in (-1, 1):
+        f.poly([(CX + sx * i, y0), (CX + sx * (o + 2), y0), (CX + sx * (o + 1), (y0 + cano) / 2), (CX + sx * o, cano + 4),
+                (CX + sx * (i + 1), cano + 4), (CX + sx * (i + 0.5), (y0 + cano) / 2)], mat, R=6, edge=0.12, tex=0.03)
+        f.poly([(CX + sx * (i + 0.5), cano), (CX + sx * o, cano), (CX + sx * (o + 0.5), G - 6), (CX + sx * (o + sola), G),
+                (CX + sx * (i - 1), G), (CX + sx * i, G - 7)], bota, R=4, edge=0.15, shadow=0.12)
+
+
+def tunica(f, mat, bracos, y0=36, ys=50, yw=82, yh=118, sh=23, wa=18, hem=21, R=7, vgrad=0.1):
+    """tronco e mangas numa peça só, como nas figuras acima. Retorna a máscara do tronco."""
+    torso = f.m_poly([(CX - 9, y0), (CX + 9, y0), (CX + sh - 3, y0 + 3), (CX + sh, ys), (CX + wa, yw), (CX + hem, yh),
+                      (CX - hem, yh), (CX - wa, yw), (CX - sh, ys), (CX - sh + 3, y0 + 3)])
+    m = torso
+    for b in bracos: m = m | b
+    f.shape(m, mat, R=R, tex=0.03, vgrad=vgrad)
+    return torso
+
+
+def axila(f, a, ys=50, amt=0.16):
+    for sx in (-1, 1): f.crease([(CX + sx * a, ys), (CX + sx * (a + 1), ys + 12), (CX + sx * (a + 1.5), ys + 24)], amt)
+
+
+def faixa(f, y, x0, x1, mat='cinto', h=3.5, sombra=0.1):
+    m = f.m_poly([(x0, y), (x1, y), (x1, y + h), (x0, y + h)])
+    f.soft(m, sombra); f.shape(m, mat, R=1.5)
+    return m
+
+
+def saia(f, mat, y0, G, w0, w1, vincos=6, a=0.24):
+    """saia longa até o chão, abrindo para baixo, com vincos em leque"""
+    f.poly([(CX - w0, y0), (CX + w0, y0), (CX + w0 + (w1 - w0) * 0.45, (y0 + G) / 2), (CX + w1, G - 4), (CX + w1 * 0.5, G - 2), (CX, G - 3), (CX - w1 * 0.5, G - 2),
+            (CX - w1, G - 4), (CX - w0 - (w1 - w0) * 0.45, (y0 + G) / 2)], mat, R=14, vgrad=0.12, tex=0.03)
+    for k in range(vincos):
+        t = (k + 0.5) / vincos * 2 - 1
+        x0, x1 = CX + t * w0 * 0.8, CX + t * w1 * 0.86
+        f.fold([(x0, y0 + 14 + (k % 2) * 8), ((x0 + x1) / 2, (y0 + G) / 2 + 6), (x1, G - 5)], a + (0.05 if t > 0 else 0), 0.09)
+
+
+def pes(f, G, xs=(39, 57), mat='bota'):
+    for x in xs: f.ell(x, G - 2, 6, 3, mat, R=2, bias=0.1)
+
+
+def rosto_f(f, skin, cy=18.5, brow='castanho', age=0.0, boca=True):
+    """o rosto comum com sobrancelha fina, cílios e boca pintada (mulheres e meninas)"""
+    rosto(f, skin, cy=cy, brow=brow, age=age)
+    c = CX; e = int(cy)
+    for x in (c - 7, c - 6, c - 2, c + 2, c + 6, c + 7): f.px(x, e - 2 - (1 if x in (c - 7, c + 7) else 0), skin, 0.5)
+    for x in (c - 5, c - 4, c - 3, c + 2, c + 3, c + 4): f.px(x, e - 1, brow, 0.12)
+    if boca:
+        for x in range(c - 2, c + 3): f.px(x, e + 9, 'labio', 0.5); f.px(x, e + 10, 'labio', 0.75)
+        f.px(c - 3, e + 9, skin, 0.3); f.px(c + 3, e + 9, skin, 0.25)
+    f.dk(c - 6, e + 4, 0.05); f.dk(c - 5, e + 4, 0.05)
+
+
+def rosto_c(f, skin, cy=18.5, brow='castanho'):
+    """criança: o rosto comum com olhos mais abertos e boca pequena"""
+    rosto(f, skin, cy=cy, brow=brow)
+    c = CX; e = int(cy)
+    for x0 in (c - 4, c + 3): f.px(x0, e + 1, 'olho', 0.0); f.px(x0, e - 1, 'olho', 0.1)
+    for x in (c - 3, c + 3): f.px(x, e + 9, skin, 0.42)
+    f.dk(c - 6, e + 4, 0.06); f.dk(c + 6, e + 4, 0.03)
+
+
+def sardas(f, cy=18.5, n=10, amt=-0.2, seed=3):
+    r = np.random.RandomState(seed); e = int(cy)
+    for _ in range(n): f.dk(CX + r.randint(-7, 8), e + r.randint(2, 6), amt)
+
+
+def chapeu_palha(f, y=10, rx=19, ry=3.6, alto=8):
+    """chapéu de palha de aba larga: copa, fita e aba por cima da testa"""
+    aba = f.m_ell(CX, y, rx, ry)
+    f.soft(aba, 0.3, sigma=1.6, off=(1, 3))
+    f.poly([(CX - 9.5, y), (CX - 8, y - alto), (CX - 3, y - alto - 1), (CX + 4, y - alto - 1), (CX + 8, y - alto), (CX + 9.5, y)], 'palha', R=6, tex=0.1, grain=1)
+    f.shape(aba, 'palha', R=3, tex=0.12)
+    for k in range(-16, 17, 4): f.dk(CX + k, y + (k % 3) - 1, -0.14)
+
+
+def barba_cheia(f, mat, y0=18, y1=37, w=9.4, bias=0.0, tex=0.12):
+    b = (f.m_poly([(CX - w, y0), (CX + w, y0), (CX + w + 0.6, y0 + 8), (CX + 6, y1 - 3), (CX, y1), (CX - 6, y1 - 3), (CX - w - 0.4, y0 + 8)])
+         & ~f.m_poly([(41, 15), (55, 15), (55, 23), (52, 24.5), (44, 24.5), (41, 23)]))
+    f.shape(b, mat, R=4, edge=0.1, tex=tex, shadow=0.15, bias=bias)
+    return b
+
+
+def cabo(f, x0, y0, x1, y1, r=1.7, mat='madeira'):
+    m = f.m_cap(x0, y0, x1, y1, r, r); f.soft(m, 0.15); f.shape(m, mat, R=1.5, tex=0.02)
+    return m
+
+
+def faz_velho():
+    """lavrador velho: magro, curvado, chapéu de aba larga, barba branca comprida e enxada"""
+    f = Fig(PW, PH, seed=61); sk = 'pele_v'
+    pernas(f, 112, 189, o=11, i=4, mat='cinza_l', bota='marrom', cano=172)
+    arms = [braco(f, -1, (16, 50), (20, 76), (19, 100), 6, 5, 4.2), braco(f, 1, (16, 50), (21, 74), (22, 92), 6, 5, 4.2)]
+    t = tunica(f, 'cinza_l', arms, y0=40, ys=54, yw=86, yh=134, sh=18, wa=15, hem=20)
+    axila(f, 13, 54, .14)
+    for x0, x1 in ((39, 36), (47, 47), (56, 59)): f.fold([(x0, 92), (x1, 132)], .2, .08)
+    # remendo no peito e bainha esfiapada
+    f.poly([(36, 96), (46, 95), (47, 108), (37, 109)], 'marrom', R=3, shadow=0.1, bias=0.1)
+    for (x, y) in ((36, 98), (36, 103), (46, 97), (46, 104)): f.dk(x, y, 0.2)
+    for x in range(30, 67, 3): f.dk(x, 133 - (x % 2) * 2, -0.25)
+    corda = faixa(f, 86, 33, 63, 'corda', 3)
+    for x in range(34, 63, 3): f.dk(x, 87, -0.25)
+    # enxada: cabo do chão até acima do ombro, lâmina de ferro no alto
+    cabo(f, CX + 26, 186, CX + 31, 34, 1.6)
+    h = f.m_poly([(CX + 24, 30), (CX + 40, 33), (CX + 41, 44), (CX + 36, 43), (CX + 34, 38), (CX + 26, 37)])
+    f.soft(h, 0.12); f.shape(h, 'ferro', R=3, bias=-0.05)
+    mao(f, CX + 28, 94, sk, 1.0, flip=True, edge=0.0); f.crease([(CX + 25, 92), (CX + 31, 92)], .12)
+    mao(f, CX - 19, 105, sk, 0.95, edge=0.0)
+    # cabeça baixa, entre os ombros
+    pescoco(f, sk, 30, 42, 4.5)
+    cabeca(f, sk, cy=22.5, wide=-0.6, jaw=-0.4)
+    rosto(f, sk, cy=22.5, brow='branco', age=1.2)
+    b = (f.m_poly([(39, 25), (57, 25), (58, 32), (55, 44), (50, 58), (47, 60), (42, 46), (38, 32)])
+         & ~f.m_poly([(41, 19), (55, 19), (55, 27), (52, 28.5), (44, 28.5), (41, 27)]))
+    f.shape(b, 'branco', R=4, edge=0.1, tex=0.1, shadow=0.15, bias=-0.05)
+    for x0 in (44, 48, 52): f.fold([(x0, 36), (x0 + (48 - x0) * 0.3, 54)], .16, .06)
+    for x in range(46, 51): f.px(x, 31, 'branco', 0.0)
+    chapeu_palha(f, 14, 20, 3.8, 9)
+    return f
+
+
+def faz_forte():
+    """lavrador forte: moreno, ombros largos, colete sobre a camisa de mangas arregaçadas, forcado"""
+    f = Fig(PW, PH, seed=62); sk = 'pele_m'
+    pernas(f, 100, 189, o=15, i=2.5, mat='marrom', cano=160)
+    arms = [braco(f, -1, (22, 49), (27, 70), (27, 72), 9, 8, 8), braco(f, 1, (22, 49), (27, 70), (27, 72), 9, 8, 8)]
+    t = tunica(f, 'linho_c', arms, y0=35, ys=50, yw=80, yh=108, sh=27, wa=20, hem=21)
+    axila(f, 17.5, 50, .16)
+    f.fold([(43, 41), (48, 52), (53, 41)], .3, .05); f.poly([(44, 40), (52, 40), (48, 50)], sk, R=3, bias=-0.15)
+    # colete de couro aberto na frente, amarrado por um cordão
+    for sx in (-1, 1):
+        v = f.m_poly([(CX + sx * 5, 40), (CX + sx * 19, 40), (CX + sx * 22, 54), (CX + sx * 19, 80), (CX + sx * 20, 106), (CX + sx * 5, 106), (CX + sx * 6, 70)])
+        f.soft(v, 0.14); f.shape(v, 'avental', R=9, tex=0.03)
+    for y in (58, 66, 74): f.line([(43, y), (53, y + 2)], 'corda', 0.45)
+    faixa(f, 82, 28, 68)
+    f.poly([(45, 81), (51, 81), (51, 87), (45, 87)], 'ferro', R=2)
+    # antebraços nus, grossos
+    for sx in (-1, 1):
+        fa = f.m_cap(CX + sx * 27, 72, CX + sx * 29, 86, 7.5, 7) | f.m_cap(CX + sx * 29, 86, CX + sx * 29, 100, 7, 5.6)
+        f.soft(fa, 0.16); f.shape(fa, sk, R=5, tex=0.02)
+        f.crease([(CX + sx * 26, 78), (CX + sx * 25.5, 92)], .08)
+        cuff = f.m_ell(CX + sx * 27, 71, 9.5, 3.8); f.soft(cuff, 0.12); f.shape(cuff, 'linho_c', R=3, tex=0.03)
+        f.crease([(CX + sx * 27 - 7, 71), (CX + sx * 27 + 7, 71)], .14)
+    # forcado de três dentes, em pé, firme na mão direita
+    cabo(f, CX + 33, 187, CX + 33, 20, 1.8)
+    f.poly([(CX + 25, 18), (CX + 41, 18), (CX + 41, 21), (CX + 25, 21)], 'ferro', R=1.5)
+    for x in (CX + 26, CX + 33, CX + 40): f.cap(x, 19, x, 2, 1.3, 0.7, 'ferro', R=1)
+    mao(f, CX + 30, 104, sk, 1.2, flip=True, edge=0.0); f.crease([(CX + 27, 102), (CX + 34, 102)], .12)
+    mao(f, CX - 29, 105, sk, 1.2, edge=0.0)
+    # cabeça larga, barba curta preta, cabelo raspado dos lados com lenço vermelho na testa
+    pescoco(f, sk, 27, 39, 7.5)
+    cabeca(f, sk, wide=1.0, jaw=1.2)
+    f.shape(f.m_ell(CX, 13, 11, 10) & (f.Y < 13), 'preto', R=4, edge=0.1, tex=0.08, bias=0.1)
+    rosto(f, sk, brow='preto', stern=1)
+    lenco = f.m_poly([(CX - 11, 9), (CX + 11, 9), (CX + 11, 13), (CX - 11, 13)]) & f.m_ell(CX, 16, 11.4, 13)
+    f.shape(lenco, 'rosa', R=2, bias=0.05)
+    f.poly([(CX + 10, 10), (CX + 15, 13), (CX + 14, 18), (CX + 11, 14)], 'rosa', R=1.5, bias=-0.1)
+    b = barba_cheia(f, 'preto', 21, 34, 9.8, bias=0.05)
+    for x in range(45, 52): f.px(x, 27, 'preto', 0.0)
+    for x in range(46, 51): f.px(x, 28, sk, 0.4)
+    return f
+
+
+def faz_gordo():
+    """lavrador gordo: barriga redonda, túnica verde, gorro de lã e um saco de grãos no ombro"""
+    f = Fig(PW, PH, seed=63); sk = 'pele_c'
+    pernas(f, 118, 189, o=16, i=3, mat='linho', bota='bota', cano=170)
+    arms = [braco(f, -1, (22, 50), (31, 74), (33, 100), 8, 7.5, 6), braco(f, 1, (21, 50), (27, 62), (21, 46), 8, 7.5, 6)]
+    t = (f.m_poly([(38, 37), (58, 37), (68, 40), (72, 54), (72, 74), (24, 74), (24, 54), (28, 40)]) | f.m_ell(CX, 96, 29, 34)
+         | f.m_poly([(25, 100), (71, 100), (70, 132), (26, 132)]))
+    m = t | arms[0] | arms[1]
+    f.shape(m, 'verde', R=11, tex=0.03, vgrad=0.08)
+    f.crease([(CX - 18, 54), (CX - 21, 70), (CX - 23, 88), (CX - 23, 100)], .24, sigma=1.2)
+    f.crease([(CX + 17, 72), (CX + 26, 84)], .12)
+    for x0, x1 in ((34, 32), (62, 64)): f.fold([(x0, 112), (x1, 130)], .2, .08)
+    b = f.m_poly([(21, 106), (75, 106), (75, 110), (21, 110)]) & f.m_ell(CX, 100, 29.5, 34)
+    f.soft(b, .12); f.shape(b, 'cinto', R=1.5)
+    f.crease([(26, 112), (38, 117), (48, 119), (58, 117), (70, 112)], .14)
+    f.fold([(42, 39), (48, 49), (54, 39)], .3, .05)
+    mao(f, CX - 33, 105, sk, 1.15, edge=0.0)
+    # saco de grãos no ombro, seguro pela mão erguida
+    s = f.m_poly([(CX + 12, 24), (CX + 24, 12), (CX + 40, 15), (CX + 45, 30), (CX + 40, 56), (CX + 26, 60), (CX + 15, 48)])
+    f.soft(s, .16); f.shape(s, 'linho_c', R=11, tex=0.05, bias=-0.04)
+    f.fold([(CX + 30, 16), (CX + 26, 34), (CX + 30, 56)], .18, .08); f.fold([(CX + 38, 20), (CX + 36, 38)], .16, .06)
+    f.poly([(CX + 20, 10), (CX + 28, 13), (CX + 26, 18), (CX + 19, 16)], 'corda', R=2, shadow=.15)
+    mao(f, CX + 20, 46, sk, 1.1, flip=True, edge=0.0)
+    # cabeça redonda, bochechas coradas, papada, bigode loiro, gorro de lã caído
+    pescoco(f, sk, 27, 38, 7.5)
+    f.poly([(43, 37), (53, 37), (48, 47)], sk, R=2, bias=-0.16)
+    cabeca(f, sk, wide=1.4, jaw=1.8)
+    f.shape(f.m_ell(CX - 10.5, 17, 2.2, 4.5) | f.m_ell(CX + 10.5, 17, 2.2, 4.5), 'loiro', R=2, edge=.1, tex=.08)
+    rosto(f, sk, brow='loiro', age=0.5)
+    for (x, y) in ((39, 22), (40, 22), (41, 23), (55, 22), (56, 22), (54, 23)): f.px(x, y, 'labio', 0.8)
+    mm = f.m_poly([(44, 25), (52, 25), (54, 27), (53, 28.5), (43, 28.5), (42, 27)])
+    f.shape(mm, 'loiro', R=2, edge=0.05, shadow=0.15, bias=-0.1)
+    f.adj(f.m_ell(CX, 31.5, 9, 2) & f.m_mat(sk), -0.08)
+    g = f.m_poly([(CX - 11.4, 13), (CX - 10, 5), (CX - 3, 1), (CX + 5, 1), (CX + 10, 5), (CX + 11.4, 13)])
+    f.soft(g, .16); f.shape(g, 'mostarda', R=5, tex=.05)
+    f.poly([(CX - 12, 11), (CX + 12, 11), (CX + 12, 15), (CX - 12, 15)], 'mostarda', R=2, bias=-0.08)
+    for x in range(CX - 11, CX + 12, 3): f.dk(x, 13, -0.2)
+    return f
+
+
+def faz_jovem():
+    """lavrador jovem: alto e magro, cabelo loiro, capuz caído, canga com dois baldes nos ombros"""
+    f = Fig(PW, PH, seed=64); sk = 'pele_j'
+    pernas(f, 106, 189, o=11.5, i=3, mat='cinza_l', bota='bota', cano=150)
+    for sx in (-1, 1):   # bota alta dobrada
+        f.poly([(CX + sx * 2.5, 149), (CX + sx * 12.5, 149), (CX + sx * 12.5, 153), (CX + sx * 2.5, 153)], 'bota', R=2, bias=0.1)
+    arms = [braco(f, -1, (17, 48), (25, 66), (37, 52), 6.5, 5.5, 4.8), braco(f, 1, (17, 48), (25, 66), (37, 52), 6.5, 5.5, 4.8)]
+    t = tunica(f, 'azul', arms, y0=36, ys=50, yw=84, yh=122, sh=19, wa=15, hem=18)
+    for x0, x1 in ((40, 37), (55, 58)): f.fold([(x0, 90), (x1, 120)], .2, .08)
+    faixa(f, 84, 33, 63, 'cinto', 3)
+    # canga atravessada nos ombros, cordas e baldes
+    cg = f.m_poly([(5, 43), (91, 43), (91, 47), (5, 47)])
+    for sx in (-1, 1):
+        x = CX + sx * 39
+        f.line([(x - 5, 46), (x - 6, 100)], 'corda', 0.3); f.line([(x + 5, 46), (x + 6, 100)], 'corda', 0.25)
+        bd = f.m_poly([(x - 7, 100), (x + 7, 100), (x + 6, 122), (x - 6, 122)])
+        f.shape(bd, 'madeira', R=6, tex=0.02)
+        for y in (103, 116): f.poly([(x - 7, y), (x + 7, y), (x + 7, y + 2), (x - 7, y + 2)], 'ferro', R=1.5, bias=0.05)
+        f.ell(x, 100, 7, 1.8, 'azul', R=2, bias=0.25)
+    f.shape(cg, 'madeira', R=3, tex=0.02, shadow=.15)
+    # capuz caído sobre os ombros
+    cz = f.m_poly([(35, 34), (61, 34), (67, 41), (61, 52), (48, 57), (35, 52), (29, 41)])
+    f.soft(cz, .14); f.shape(cz, 'marrom', R=6, tex=.03)
+    f.fold([(39, 46), (47, 54)], .22, .08); f.fold([(58, 45), (50, 53)], .24, .05)
+    for sx in (-1, 1): mao(f, CX + sx * 37, 50, sk, 0.95, flip=sx > 0, edge=0.0)
+    pescoco(f, sk, 27, 37, 4.8)
+    cabeca(f, sk, wide=-0.5, jaw=-0.3)
+    hm = (f.m_ell(CX, 12.5, 11, 10.5) & (f.Y < 11 + np.abs(f.X - CX) * 0.55)) | f.m_ell(CX - 9.5, 15, 2.8, 6) | f.m_ell(CX + 9.5, 15, 2.8, 6)
+    f.shape(hm & (f.Y < 22), 'loiro', R=4, edge=0.1, tex=0.14, bias=0.05)
+    for (x, y) in ((39, 10), (43, 12), (47, 11), (51, 12), (56, 10)): f.ell(x, y, 2.2, 2, 'loiro', R=2, bias=0.05, edge=.1)
+    rosto(f, sk, brow='loiro')
+    return f
+
+
+def mulher_cesta():
+    """camponesa de vestido azul-acinzentado, touca branca e cesta no quadril"""
+    f = Fig(PW, PH, seed=65); sk = 'pele'
+    pes(f, 189, mat='marrom')
+    arms = [braco(f, -1, (15, 48), (19, 72), (20, 98), 6, 5, 4), braco(f, 1, (15, 48), (20, 72), (13, 86), 6, 5, 4)]
+    t = tunica(f, 'azul_c', arms, y0=37, ys=50, yw=78, yh=90, sh=17, wa=12.5, hem=16)
+    saia(f, 'azul_c', 80, 188, 15, 29)
+    axila(f, 12, 50, .14)
+    # avental curto de linho
+    ap = f.m_poly([(35, 86), (61, 86), (64, 150), (32, 150)]); f.soft(ap, .12); f.shape(ap, 'linho_c', R=10, tex=.03)
+    f.fold([(41, 92), (40, 148)], .16); f.fold([(54, 92), (56, 148)], .18)
+    faixa(f, 80, 34, 62, 'linho_c', 4); f.crease([(34, 84), (62, 84)], .12)
+    # decote quadrado
+    f.poly([(41, 39), (55, 39), (54, 47), (42, 47)], sk, R=3, bias=-0.08)
+    mao(f, CX - 20, 103, sk, 0.9, edge=0.0)
+    # cesta de vime apoiada no quadril
+    ct = f.m_poly([(CX + 7, 88), (CX + 40, 88), (CX + 37, 112), (CX + 10, 112)])
+    f.soft(ct, .16); f.shape(ct, 'corda', R=8, tex=.04, bias=-.05)
+    for y in range(92, 112, 4):
+        for x in range(CX + 9 + (y // 4 % 2) * 2, CX + 38, 4): f.dk(x, y, -.2); f.dk(x + 1, y + 1, .1)
+    f.ell(CX + 23.5, 88, 16.5, 3.2, 'corda', R=2, bias=.05)
+    for (x, y) in ((CX + 15, 85), (CX + 23, 84), (CX + 31, 85)): f.ell(x, y, 5, 4, 'folha', R=3, bias=.2)     # couves
+    f.fold([(CX + 8, 90), (CX + 22, 74), (CX + 37, 90)], 0, 0)
+    mao(f, CX + 12, 92, sk, 0.95, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 38, 4.2)
+    cabeca(f, sk, wide=-0.6, jaw=-0.8)
+    rosto_f(f, sk, brow='castanho')
+    # touca branca fechando o rosto até o queixo
+    tc = f.m_ell(CX, 13, 13, 12.5) | f.m_poly([(CX - 13, 13), (CX + 13, 13), (CX + 12, 34), (CX + 8, 39), (CX - 8, 39), (CX - 12, 34)])
+    face = f.m_ell(CX, 19, 8.8, 13) & (f.Y > 9)
+    f.shape(tc & ~face, 'branco_p', R=5, tex=.02, edge=.1)
+    f.fold([(CX - 11, 14), (CX - 10, 34)], .12, .05); f.fold([(CX + 11, 14), (CX + 10, 34)], .16, .05)
+    return f
+
+
+def mulher_tranca():
+    """mulher negra de vestido verde, trança preta sobre o ombro e um feixe de trigo no braço"""
+    f = Fig(PW, PH, seed=66); sk = 'pele_e'
+    pes(f, 189, mat='bota')
+    arms = [braco(f, -1, (15.5, 48), (20, 72), (15, 92), 6, 5.2, 4.2), braco(f, 1, (15.5, 48), (20, 72), (21, 98), 6, 5.2, 4.2)]
+    t = tunica(f, 'verde', arms, y0=37, ys=50, yw=78, yh=90, sh=17.5, wa=13, hem=17)
+    saia(f, 'verde', 80, 188, 15.5, 25, vincos=5)
+    axila(f, 12.5, 50, .14)
+    # sobrevestido marrom amarrado na frente, cordão cruzado
+    for sx in (-1, 1):
+        v = f.m_poly([(CX + sx * 4, 42), (CX + sx * 13, 42), (CX + sx * 14, 60), (CX + sx * 11, 80), (CX + sx * 4, 80)])
+        f.soft(v, .1); f.shape(v, 'marrom', R=5, tex=.03)
+    for y in range(46, 78, 7): f.line([(44, y), (52, y + 3)], 'corda', .5); f.line([(52, y), (44, y + 3)], 'corda', .35)
+    faixa(f, 80, 34, 62, 'cinto', 3.5)
+    f.poly([(42, 38), (54, 38), (52, 46), (44, 46)], sk, R=3, bias=-.05)
+    mao(f, CX + 21, 103, sk, .9, flip=True, edge=0.0)
+    # feixe de trigo deitado no braço
+    r = np.random.RandomState(6)
+    for k in range(22):
+        u = k / 21.0 - 0.5
+        x0, y0 = 22 + u * 5, 116 + u * 8 + r.uniform(-3, 3)            # pé do feixe, cortado reto
+        x1, y1 = 33 + u * 24, 50 + abs(u) * 9 + r.uniform(-3, 3)       # as espigas abrem em leque
+        f.cap(x0, y0, 27 + u * 8, 90 + u * 2, 1.1, 1.1, 'palha', R=1, bias=-.12 + (k % 3) * .1)
+        f.cap(27 + u * 8, 90 + u * 2, x1, y1, 1.1, .9, 'palha', R=1, bias=-.08 + (k % 3) * .1)
+    for k in range(14):
+        u = k / 13.0 - 0.5
+        x1, y1 = 33 + u * 24, 50 + abs(u) * 9 + (k % 3) * 3
+        f.ell(x1, y1 - 4, 2.1, 5, 'palha', R=1.6, bias=.12 + (k % 2) * .14, edge=.1)
+        f.dk(x1, y1 - 7, -.15); f.dk(x1, y1 - 3, -.15)
+    f.poly([(19, 90), (34, 88), (35, 93), (20, 95)], 'corda', R=1.5, shadow=.2, bias=-.05)
+    mao(f, CX - 16, 95, sk, .95, edge=0.0)
+    # trança: nasce atrás da cabeça e desce pelo ombro direito do observador
+    pescoco(f, sk, 27, 38, 4.2)
+    cabeca(f, sk, wide=-0.2, jaw=-0.6)
+    hm = f.m_ell(CX, 12.5, 11.8, 11.5) & (f.Y < 12.5 + np.abs(f.X - CX) * 0.7) & ~f.m_ell(CX, 22, 8, 10)
+    f.shape(hm, 'preto', R=4, edge=.1, tex=.08, bias=.1)
+    rosto_f(f, sk, brow='preto')
+    for k in range(9):
+        y = 26 + k * 7; x = CX + 11 + (k % 2) * 1.2 + k * .3
+        f.ell(x, y, 3.8 - k * .15, 4.4, 'preto', R=3, bias=.14, edge=.12, shadow=.1)
+    f.poly([(CX + 11, 87), (CX + 17, 87), (CX + 16, 91), (CX + 12, 91)], 'rosa', R=1.5)
+    return f
+
+
+def mulher_velha():
+    """velha curvada: xale cinza, coque branco, vestido escuro e cajado"""
+    f = Fig(PW, PH, seed=67); sk = 'pele_v'
+    pes(f, 189, mat='bota')
+    saia(f, 'marrom', 84, 188, 20, 27, vincos=5, a=.2)
+    # corcunda e xale: uma massa que vai do pescoço ao quadril, os ombros caídos
+    x = f.m_poly([(38, 40), (58, 40), (72, 54), (76, 76), (72, 104), (48, 122), (24, 104), (20, 76), (24, 54)])
+    f.shape(x, 'cinza_l', R=12, tex=.04, vgrad=.08, bias=.05)
+    f.fold([(46, 46), (34, 80), (28, 100)], .22, .08); f.fold([(50, 46), (62, 80), (68, 100)], .26, .05); f.fold([(48, 56), (48, 118)], .16, .05)
+    for k in range(25, 72, 4):
+        yy = 104 + (1 - abs(k - 48) / 24.0) * 18
+        f.cap(k, yy, k + (k - 48) * .05, yy + 7, .9, .7, 'cinza_l', R=1, bias=-.1)    # franja do xale
+    # broche de madeira
+    f.ell(48, 58, 3, 3, 'madeira', R=2, shadow=.2)
+    # cajado à direita do observador, mão por fora do xale
+    cabo(f, CX + 31, 188, CX + 28, 66, 1.9)
+    f.ell(CX + 27.5, 64, 3.2, 3, 'madeira', R=2.5)
+    sl = f.m_cap(CX + 22, 66, CX + 27, 86, 6, 5); f.soft(sl, .14); f.shape(sl, 'cinza_l', R=4, tex=.03)
+    mao(f, CX + 28, 90, sk, 1.0, flip=True, edge=0.0); f.crease([(CX + 25, 88), (CX + 31, 88)], .14)
+    # cabeça projetada para baixo, sobre o peito
+    cabeca(f, sk, cy=32, wide=-0.8, jaw=-1.0)
+    f.ell(CX, 13, 7, 6.5, 'branco', R=5, tex=.08, edge=.1, bias=.02)        # coque
+    hm = f.m_ell(CX, 26.5, 11, 11.5) & (f.Y < 25.5 + np.abs(f.X - CX) * 0.8) & ~f.m_ell(CX, 36, 8, 10)
+    f.shape(hm, 'branco', R=4, edge=.1, tex=.08, bias=-.02)
+    for x0 in (41, 45, 51, 55): f.fold([(x0, 19), (CX + (x0 - CX) * 1.5, 26)], .14, .05)
+    rosto_f(f, sk, cy=32, brow='branco', age=1.5, boca=False)
+    for x in range(45, 52): f.dk(x, 41, -.15)
+    return f
+
+
+def padeira():
+    """padeira robusta: vestido mostarda, avental branco enfarinhado, tabuleiro de pães nas mãos"""
+    f = Fig(PW, PH, seed=68); sk = 'pele_r'
+    pes(f, 189, mat='marrom')
+    arms = [braco(f, -1, (20, 50), (26, 72), (21, 84), 8, 7, 6), braco(f, 1, (20, 50), (26, 72), (21, 84), 8, 7, 6)]
+    t = (f.m_poly([(38, 37), (58, 37), (68, 41), (71, 54), (66, 84), (30, 84), (25, 54), (28, 41)]) | f.m_ell(CX, 66, 22, 18))
+    f.shape(t | arms[0] | arms[1], 'mostarda', R=9, tex=.03, vgrad=.06)
+    saia(f, 'mostarda', 82, 188, 22, 32, vincos=6)
+    f.poly([(42, 37), (54, 37), (53, 44), (43, 44)], sk, R=3, bias=-.1)
+    f.line([(41, 37), (43, 45), (53, 45), (55, 37)], 'mostarda', .15)
+    ap = f.m_poly([(32, 60), (64, 60), (70, 92), (72, 168), (24, 168), (26, 92)]); f.soft(ap, .14); f.shape(ap, 'branco_p', R=12, tex=.03, bias=-.05)
+    for sx in (-1, 1): f.line([(CX + sx * 15, 60), (CX + sx * 11, 42)], 'branco_p', .4); f.line([(CX + sx * 16, 60), (CX + sx * 12, 42)], 'branco_p', .55)
+    for x0, x1 in ((38, 33), (47, 47), (58, 62)): f.fold([(x0, 110), (x1, 166)], .16, .05)
+    f.smudge(40, 130, 8, 16, .08, 30); f.smudge(58, 145, 7, 10, .08, 18)
+    # mangas arregaçadas e o tabuleiro à frente do ventre
+    tb = f.m_poly([(16, 84), (80, 84), (77, 92), (19, 92)]); f.soft(tb, .22, sigma=2, off=(1, 3)); f.shape(tb, 'madeira', R=3, tex=.02)
+    for (x, y, rx) in ((26, 79, 9), (42, 78, 9.5), (58, 78, 9.5), (72, 79, 8)):
+        f.ell(x, y, rx, 6.5, 'pao', R=5, tex=.02, edge=.12)
+        for k in (-4, 0, 4): f.fold([(x + k - 1, y - 4), (x + k + 1, y - 1)], .2, .12)
+    mao(f, 24, 93, sk, 1.05, edge=0.0); mao(f, 72, 93, sk, 1.05, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 37, 4.8)
+    cabeca(f, sk, wide=0.8, jaw=0.6)
+    rosto_f(f, sk, brow='loiro')
+    for (x, y) in ((40, 23), (41, 23), (55, 23), (56, 23)): f.px(x, y, 'labio', .85)
+    # touca alta de pano, mechas loiras saindo dos lados
+    f.ell(CX - 10.5, 17, 2.6, 5, 'loiro', R=2, tex=.1); f.ell(CX + 10.5, 17, 2.6, 5, 'loiro', R=2, tex=.1)
+    g = f.m_ell(CX, 8.5, 14.5, 8.5) & (f.Y < 13) | f.m_poly([(CX - 11, 9), (CX + 11, 9), (CX + 11, 13.5), (CX - 11, 13.5)])
+    f.soft(g, .14); f.shape(g, 'branco_p', R=5, tex=.02)
+    f.crease([(CX - 11, 11), (CX + 11, 11)], .14)
+    return f
+
+
+def menino_a():
+    """menino de cabelo castanho desgrenhado, túnica curta, pernas e pés de fora, espada de pau erguida"""
+    f = Fig(PW, CH, seed=69); sk = 'pele_j'; G = CH - 3
+    for sx in (-1, 1):
+        f.cap(CX + sx * 7, 88, CX + sx * 8, 118, 4.6, 3.6, sk, R=3, edge=.12, tex=.02)
+        f.ell(CX + sx * 9, G - 2, 5, 2.6, sk, R=2, bias=-.05)
+    f.dk(CX - 8, 104, -.2); f.dk(CX - 7, 105, -.25); f.dk(CX + 6, 108, -.25)
+    arms = [braco(f, -1, (14, 44), (17, 60), (17, 74), 5, 4.2, 3.6), braco(f, 1, (14, 44), (21, 54), (28, 40), 5, 4.2, 3.6)]
+    tunica(f, 'ocre', arms, y0=35, ys=44, yw=66, yh=94, sh=15.5, wa=13.5, hem=17, R=6)
+    f.fold([(42, 72), (39, 92)], .2, .08); f.fold([(55, 72), (58, 92)], .22, .08)
+    faixa(f, 65, 34, 62, 'corda', 3)
+    f.fold([(43, 37), (48, 44), (53, 37)], .26, .05); f.poly([(45, 37), (51, 37), (48, 43)], sk, R=2, bias=-.15)
+    mao(f, CX - 17, 78, sk, .8, edge=0.0)
+    # espada de pau: duas ripas amarradas
+    cabo(f, CX + 29, 44, CX + 34, 2, 1.8, 'madeira')
+    cabo(f, CX + 23, 31, CX + 37, 33, 1.5, 'madeira')
+    f.line([(CX + 29, 31), (CX + 32, 34)], 'corda', .5)
+    mao(f, CX + 29, 41, sk, .85, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 37, 4)
+    cabeca(f, sk, wide=.2, jaw=-1.0)
+    hm = (f.m_ell(CX, 12.5, 11.4, 11) & (f.Y < 10 + np.abs(f.X - CX) * 0.5))
+    f.shape(hm, 'castanho', R=4, edge=.1, tex=.14, bias=.15)
+    for (x, y, a) in ((38, 6, -1), (43, 2, -1), (48, 1, 0), (54, 2, 1), (58, 6, 1)):
+        f.cap(x, y + 4, x + a * 2.5, y - 1, 2.6, .8, 'castanho', R=2, bias=.15, tex=.1)
+    for x in (42, 46, 50, 54): f.cap(x, 9, x + 1, 14, 2, .8, 'castanho', R=1.5, bias=.1)
+    rosto_c(f, sk)
+    sardas(f, n=7, amt=-.16)
+    return f
+
+
+def menino_b():
+    """menino menor, moreno, cabelo preto cortado em cuia, calça e túnica azul, bola de pano no braço"""
+    f = Fig(PW, CH, seed=70); sk = 'pele_m'; G = CH - 3
+    pernas(f, 82, G, o=11.5, i=2, mat='marrom', bota='bota', cano=G - 10, sola=2)
+    arms = [braco(f, -1, (13, 46), (16, 62), (15, 78), 4.8, 4, 3.4), braco(f, 1, (13, 46), (17, 62), (10, 70), 4.8, 4, 3.4)]
+    tunica(f, 'azul', arms, y0=36, ys=46, yw=68, yh=90, sh=14.5, wa=13, hem=15, R=6)
+    faixa(f, 68, 35, 61, 'cinto', 2.5)
+    f.fold([(43, 38), (48, 45), (53, 38)], .26, .05); f.poly([(45, 38), (51, 38), (48, 44)], sk, R=2, bias=-.15)
+    mao(f, CX - 15, 82, sk, .8, edge=0.0)
+    bl = f.m_ell(CX + 13, 72, 10, 10); f.soft(bl, .16); f.shape(bl, 'linho', R=8, tex=.03, bias=.05)
+    f.fold([(CX + 5, 70), (CX + 13, 66), (CX + 21, 72)], .2, .08); f.fold([(CX + 13, 62), (CX + 10, 72), (CX + 14, 82)], .2, .08)
+    mao(f, CX + 7, 72, sk, .8, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 38, 4)
+    cabeca(f, sk, wide=.4, jaw=-.6)
+    hm = f.m_ell(CX, 13, 12.2, 11.5) & (f.Y < 15) | (f.m_ell(CX, 13, 12.2, 13) & (np.abs(f.X - CX) > 8.5) & (f.Y < 21))
+    f.shape(hm, 'preto', R=4, edge=.1, tex=.08, bias=.14)
+    rosto_c(f, sk, brow='preto')
+    return f
+
+
+def menina():
+    """menina de tranças loiras, vestido rosa gasto com avental e flores na mão"""
+    f = Fig(PW, CH, seed=71); sk = 'pele_c'; G = CH - 3
+    pes(f, CH, xs=(41, 55), mat='marrom')
+    arms = [braco(f, -1, (13, 45), (15, 60), (14, 74), 4.6, 3.8, 3.2), braco(f, 1, (13, 45), (17, 58), (21, 48), 4.6, 3.8, 3.2)]
+    tunica(f, 'rosa', arms, y0=36, ys=45, yw=62, yh=70, sh=14, wa=11, hem=13, R=6)
+    saia(f, 'rosa', 60, G + 1, 12, 21, vincos=5, a=.22)
+    ap = f.m_poly([(38, 64), (58, 64), (61, 104), (35, 104)]); f.soft(ap, .1); f.shape(ap, 'linho_c', R=8, tex=.03, bias=.03)
+    f.fold([(43, 70), (42, 102)], .14); f.fold([(53, 70), (55, 102)], .16)
+    faixa(f, 61, 36, 60, 'linho_c', 3)
+    f.poly([(43, 37), (53, 37), (52, 43), (44, 43)], sk, R=2, bias=-.1)
+    mao(f, CX - 14, 78, sk, .75, edge=0.0)
+    # ramalhete
+    for (x, y, c) in ((CX + 23, 34, 'azul_c'), (CX + 28, 38, 'palha'), (CX + 19, 39, 'rosa'), (CX + 25, 41, 'branco_p')):
+        f.cap(CX + 22, 50, x, y, .6, .6, 'folha', R=1, bias=.3)
+    for (x, y, c) in ((CX + 23, 33, 'azul_c'), (CX + 29, 37, 'palha'), (CX + 18, 38, 'rosa'), (CX + 25, 40, 'branco_p')):
+        f.ell(x, y, 2.6, 2.4, c, R=2, bias=.3)
+    mao(f, CX + 21, 49, sk, .75, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 37, 3.8)
+    cabeca(f, sk, wide=0, jaw=-1.2)
+    hm = f.m_ell(CX, 12.5, 11.6, 11.2) & (f.Y < 11 + np.abs(f.X - CX) * 0.75) & ~f.m_ell(CX, 22, 8, 10)
+    f.shape(hm, 'loiro', R=4, edge=.1, tex=.08, bias=.05)
+    f.line([(CX, 3), (CX, 11)], 'loiro', .25)
+    rosto_c(f, sk)
+    for x in range(CX - 1, CX + 2): f.px(x, 27, 'labio', .6)
+    sardas(f, n=6, amt=-.12, seed=5)
+    for sx in (-1, 1):      # tranças curtas com laço
+        for k in range(5):
+            f.ell(CX + sx * (12 + k * .5), 22 + k * 6, 3.2 - k * .12, 3.8, 'loiro', R=2.5, edge=.12, shadow=.1)
+        f.poly([(CX + sx * 11, 50), (CX + sx * 18, 50), (CX + sx * 17, 53), (CX + sx * 12, 53)], 'azul_c', R=1.5)
+    return f
+
+
+def soldado_lanca():
+    """soldado jovem: chapéu de ferro de aba, cota de malha, tabardo vinho do senhor e lança"""
+    f = Fig(PW, PH, seed=72); sk = 'pele'
+    pernas(f, 104, 189, o=13, i=3, mat='calca', bota='bota', cano=150)
+    for sx in (-1, 1): f.poly([(CX + sx * 2.5, 150), (CX + sx * 13.5, 150), (CX + sx * 13.5, 154), (CX + sx * 2.5, 154)], 'cinto', R=2)
+    arms = [braco(f, -1, (19, 47), (22, 72), (22, 96), 7, 6, 5), braco(f, 1, (19, 47), (24, 70), (27, 88), 7, 6, 5)]
+    t = tunica(f, 'malha', arms, y0=35, ys=50, yw=84, yh=128, sh=23, wa=17, hem=22, R=7, vgrad=.05)
+    gm = f.m_mat('malha')
+    # elos da malha: pontos alternados
+    for y in range(40, 128, 3):
+        for x in range(20 + (y // 3 % 2) * 2, 78, 4):
+            if gm[y, x]: f.dk(x, y, -.2); f.dk(x + 1, y, .14)
+    axila(f, 14.5, 50, .14)
+    tb = f.m_poly([(35, 40), (61, 40), (62, 84), (66, 136), (30, 136), (34, 84)]); f.soft(tb, .14); f.shape(tb, 'vinho', R=8, tex=.03)
+    f.fold([(40, 92), (37, 134)], .2); f.fold([(56, 92), (59, 134)], .2)
+    f.poly([(45, 41), (51, 41), (51, 136), (45, 136)], 'mostarda', R=2, bias=.05)
+    f.fold([(45, 92), (44, 134)], .1)
+    faixa(f, 84, 30, 66)
+    f.poly([(45, 83), (51, 83), (51, 89), (45, 89)], 'ferro', R=2, bias=.1)
+    # lança
+    cabo(f, CX + 29, 188, CX + 29, 18, 1.7)
+    f.poly([(CX + 29, 0), (CX + 33, 10), (CX + 31, 19), (CX + 27, 19), (CX + 25, 10)], 'aco', R=3)
+    f.poly([(CX + 27, 19), (CX + 31, 19), (CX + 31, 24), (CX + 27, 24)], 'ferro', R=1.5)
+    mao(f, CX + 28, 92, sk, 1.05, flip=True, edge=0.0); f.crease([(CX + 25, 90), (CX + 31, 90)], .12)
+    mao(f, CX - 22, 101, sk, 1, edge=0.0)
+    pescoco(f, sk, 27, 37, 5)
+    cabeca(f, sk, jaw=.3)
+    rosto(f, sk, brow='castanho', stern=.5)
+    # coifa de malha em volta do rosto, chapéu de ferro por cima
+    cf = (f.m_ell(CX, 18, 13, 18) | f.m_poly([(CX - 15, 30), (CX + 15, 30), (CX + 20, 42), (CX - 20, 42)])) & ~(f.m_ell(CX, 20, 9, 12.5))
+    f.shape(cf, 'malha', R=4, edge=.1, bias=.02)
+    for y in range(8, 44, 3):
+        for x in range(26 + (y // 3 % 2) * 2, 72, 4):
+            if cf[y, x]: f.dk(x, y, -.2); f.dk(x + 1, y, .14)
+    aba = f.m_ell(CX, 11, 19.5, 4); f.soft(aba, .3, sigma=1.5, off=(0, 3))
+    f.poly([(CX - 12, 11), (CX - 10, 3), (CX - 4, 0), (CX + 4, 0), (CX + 10, 3), (CX + 12, 11)], 'ferro', R=7)
+    f.shape(aba, 'ferro', R=3, bias=-.02)
+    return f
+
+
+def soldado_escudo():
+    """soldado veterano: elmo cônico com nasal, bigode, gibão acolchoado e escudo do senhor"""
+    f = Fig(PW, PH, seed=73); sk = 'pele_r'
+    pernas(f, 104, 189, o=15, i=3, mat='gambeson', bota='bota', cano=162)
+    arms = [braco(f, -1, (22, 48), (26, 70), (22, 88), 8, 7, 6), braco(f, 1, (22, 48), (26, 72), (26, 98), 8, 7, 6)]
+    t = tunica(f, 'gambeson', arms, y0=35, ys=50, yw=84, yh=130, sh=26, wa=20, hem=24, R=8, vgrad=.06)
+    gm = f.m_mat('gambeson')
+    for x in range(26, 72, 5): f.fold([(x, 44), (x + (x - 48) * .08, 130)], .16, .08, clip=gm & t)
+    axila(f, 17, 50, .14)
+    for y in range(52, 100, 7): f.fold([(CX + 18, y), (CX + 34, y)], .1, 0, clip=gm & arms[1] & ~t)
+    tb = f.m_poly([(36, 40), (60, 40), (60, 84), (63, 124), (33, 124), (36, 84)]); f.soft(tb, .14); f.shape(tb, 'vinho', R=8, tex=.03)
+    faixa(f, 84, 27, 69)
+    # espada à cinta
+    sc = f.m_poly([(64, 87), (68, 87), (74, 142), (71, 143)]); f.soft(sc, .15); f.shape(sc, 'cinto', R=2)
+    f.poly([(70, 140), (74, 139), (75, 145), (72, 146)], 'ferro', R=1.5)
+    f.poly([(58, 86), (72, 84), (72, 87), (58, 89)], 'lamina', R=1.5)
+    mao(f, CX + 26, 103, sk, 1.15, flip=True, edge=0.0)
+    # escudo amendoado no braço esquerdo do soldado (à esquerda da imagem), vinho com faixa dourada
+    sd = f.m_poly([(5, 58), (17, 53), (30, 52), (43, 53), (55, 58), (54, 92), (47, 116), (30, 136), (13, 116), (6, 92)])
+    f.soft(sd, .2, sigma=2, off=(2, 3)); f.shape(sd, 'vinho', R=16, tex=.03, bias=.06)
+    f.shape(sd & (np.abs(f.X - 30) < 4), 'mostarda', R=16, bias=.0)
+    f.shape(sd & (np.abs(f.Y - 78) < 4), 'mostarda', R=16, bias=.0)
+    bd = sd & ndimage.binary_dilation(ndimage.binary_dilation(~sd)); f.shape(bd, 'madeira', flat=.5)
+    f.ell(30, 78, 5, 5, 'ferro', R=4, shadow=.2)
+    f.fold([(40, 70), (42, 100)], .12, 0, clip=sd); f.smudge(38, 104, 8, 8, .14, 20, clip=sd); f.fold([(14, 62), (22, 74)], .2, .1, clip=sd)
+    pescoco(f, sk, 27, 37, 6.5)
+    cabeca(f, sk, wide=.8, jaw=.8)
+    rosto(f, sk, brow='bigode', stern=1, age=.8)
+    mm = f.m_poly([(43, 24.6), (53, 24.6), (56, 27), (57, 33), (54.5, 32), (52, 27.6), (44, 27.6), (41.5, 32), (39, 33), (40, 27)])
+    f.shape(mm, 'bigode', R=2, edge=.05, shadow=.15)
+    # cicatriz na bochecha
+    f.line([(55, 15), (53, 21)], sk, .28)
+    # aventail de malha e elmo cônico com nasal
+    av = f.m_poly([(CX - 12, 22), (CX - 10, 34), (CX, 39), (CX + 10, 34), (CX + 12, 22), (CX + 15, 26), (CX + 19, 42), (CX - 19, 42), (CX - 15, 26)])
+    f.shape(av, 'malha', R=4, edge=.1, shadow=.1)
+    for y in range(22, 43, 3):
+        for x in range(28 + (y // 3 % 2) * 2, 70, 4):
+            if av[y, x]: f.dk(x, y, -.2); f.dk(x + 1, y, .14)
+    h = f.m_poly([(CX - 11.5, 13), (CX - 9, 7), (CX, 0), (CX + 9, 7), (CX + 11.5, 13)]); f.soft(h, .2, off=(0, 2)); f.shape(h, 'ferro', R=8, bias=.02)
+    f.poly([(CX - 12, 11), (CX + 12, 11), (CX + 12, 14), (CX - 12, 14)], 'ferro', R=1.5, bias=-.05)
+    f.poly([(CX - 1.5, 12), (CX + 1.5, 12), (CX + 1.5, 24), (CX - 1.5, 24)], 'ferro', R=1.5, bias=.05)
+    return f
+
+
+def rapaz():
+    """rapaz desengonçado: cabelo na testa, braços compridos, túnica larga e trouxa no pau, 96x176"""
+    f = Fig(PW, TH, seed=74); sk = 'pele_j'; G = TH - 3
+    pernas(f, 96, G, o=10, i=3, mat='gambeson', bota='marrom', cano=G - 12)
+    arms = [braco(f, -1, (15, 46), (18, 70), (19, 96), 5, 4.2, 3.6), braco(f, 1, (15, 46), (25, 58), (24, 36), 5, 4.2, 3.6)]
+    tunica(f, 'musgo_t', arms, y0=35, ys=46, yw=78, yh=112, sh=16.5, wa=15, hem=17, R=6)
+    for x0, x1 in ((41, 38), (47, 47), (56, 59)): f.fold([(x0, 84), (x1, 110)], .2, .08)
+    faixa(f, 78, 33, 63, 'corda', 2.5)
+    f.fold([(43, 37), (48, 44), (53, 37)], .26, .05); f.poly([(45, 37), (51, 37), (48, 43)], sk, R=2, bias=-.15)
+    mao(f, CX - 19, 101, sk, .95, edge=0.0)
+    # pau no ombro com a trouxa pendurada atrás
+    bd = f.m_ell(CX + 35, 45, 11, 12); f.shape(bd, 'linho', R=8, tex=.04, bias=.05)
+    f.fold([(CX + 28, 42), (CX + 36, 46), (CX + 44, 40)], .2, .08); f.fold([(CX + 35, 34), (CX + 33, 46), (CX + 38, 56)], .18, .06)
+    f.poly([(CX + 32, 30), (CX + 38, 30), (CX + 37, 35), (CX + 33, 35)], 'linho', R=2, bias=-.05)
+    cabo(f, CX + 13, 41, CX + 37, 29, 1.6)
+    mao(f, CX + 23, 35, sk, .95, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 37, 4)
+    cabeca(f, sk, wide=-.6, jaw=-.2)
+    rosto(f, sk, brow='preto')
+    for (x, y) in ((42, 25), (55, 22), (52, 19)): f.px(x, y, 'labio', .6)         # espinhas
+    # cabelo comprido caindo em franja sobre os olhos e dos dois lados
+    hm = (f.m_ell(CX, 12.5, 11.8, 11.2) & (f.Y < 16)) | f.m_poly([(CX - 11.5, 10), (CX - 8, 10), (CX - 8.5, 26), (CX - 12, 28)]) | f.m_poly([(CX + 11.5, 10), (CX + 8, 10), (CX + 8.5, 26), (CX + 12, 28)])
+    f.shape(hm, 'preto', R=4, edge=.1, tex=.1, bias=.2)
+    for (x, l) in ((41, 2), (44, 1), (49, 1), (52, 2), (55, 1)): f.cap(x, 13, x + 1, 15 + l, 1.4, .7, 'preto', R=1, bias=.2)
+    return f
+
+
+def filha_senhor():
+    """filha do senhor, 96x176: ruiva como o pai, vestido esmeralda justo, tiara e cinto dourados"""
+    f = Fig(PW, TH, seed=75); sk = 'pele_c'; G = TH - 3
+    # cabelo comprido atrás de tudo
+    hb = f.m_poly([(CX - 12, 12), (CX + 12, 12), (CX + 16, 40), (CX + 15, 72), (CX + 9, 78), (CX, 72), (CX - 9, 78), (CX - 15, 72), (CX - 16, 40)])
+    f.shape(hb, 'ruivo', R=6, tex=.08, vgrad=.15)
+    pes(f, G + 1, xs=(41, 55), mat='couro_v')
+    arms = [braco(f, -1, (14, 46), (17, 68), (9, 80), 5, 4.2, 3.6), braco(f, 1, (14, 46), (17, 68), (9, 80), 5, 4.2, 3.6)]
+    tunica(f, 'esmeralda', arms, y0=37, ys=47, yw=72, yh=84, sh=15.5, wa=10.5, hem=14, R=6)
+    saia(f, 'esmeralda', 74, G, 12, 25, vincos=6, a=.26)
+    axila(f, 11, 47, .12)
+    # bainha e gola bordadas a ouro
+    hem = f.m_poly([(CX - 25, G - 11), (CX + 25, G - 11), (CX + 26, G - 7), (CX - 26, G - 7)])
+    f.shape(hem, 'latao', R=2, bias=.02)
+    for x in range(CX - 24, CX + 25, 4): f.dk(x, G - 9, -.25)
+    f.poly([(41, 38), (55, 38), (54, 44), (42, 44)], sk, R=3, bias=-.05)
+    f.line([(40, 38), (42, 45), (54, 45), (56, 38)], 'latao', .6)
+    # cinto dourado com ponta caída
+    b = faixa(f, 72, 36, 60, 'latao', 2.5)
+    f.cap(48, 75, 48, 112, 1, .8, 'latao', R=1, shadow=.2); f.ell(48, 113, 1.8, 2.2, 'latao', R=1.5)
+    # mangas compridas pendentes, mãos juntas à frente
+    for sx in (-1, 1):
+        cf = f.m_poly([(CX + sx * 6, 76), (CX + sx * 20, 72), (CX + sx * 25, 102), (CX + sx * 18, 106), (CX + sx * 13, 90)])
+        f.soft(cf, .12); f.shape(cf, 'esmeralda', R=5, tex=.03, bias=.02)
+        f.fold([(CX + sx * 16, 78), (CX + sx * 20, 100)], .2, .06)
+    mao(f, CX - 4, 82, sk, .85, edge=0.0); mao(f, CX + 4, 82, sk, .85, flip=True, edge=0.0)
+    pescoco(f, sk, 27, 38, 3.8)
+    cabeca(f, sk, wide=-.5, jaw=-1.0)
+    hm = f.m_ell(CX, 12.5, 11.4, 11) & (f.Y < 10 + np.abs(f.X - CX) * 0.95) & ~f.m_ell(CX, 22, 7.8, 10.5)
+    f.shape(hm, 'ruivo', R=4, edge=.1, tex=.08, bias=.08)
+    f.line([(CX, 3), (CX - 1, 10)], 'ruivo', .25)
+    for sx in (-1, 1): f.shape(f.m_poly([(CX + sx * 8, 14), (CX + sx * 12, 14), (CX + sx * 13, 42), (CX + sx * 9.5, 40)]), 'ruivo', R=3, tex=.08, edge=.1, bias=.04)
+    rosto_f(f, sk, brow='ruivo')
+    sardas(f, n=8, amt=-.14, seed=9)
+    # tiara fina
+    f.line([(CX - 11, 8), (CX - 5, 6), (CX, 5), (CX + 5, 6), (CX + 11, 8)], 'latao', .85)
+    f.px(CX, 4, 'latao', 1.0); f.px(CX, 6, 'vinho', .8)
+    return f
+
+
+def senhor():
+    """o senhor da vila: alto, ruivo de barba cheia, capa com gola de pele, sobreveste vinho e corrente de ouro"""
+    f = Fig(PW, PH, seed=76); sk = 'pele_c'
+    # capa atrás do corpo: abre a silhueta até a canela
+    cp = f.m_poly([(26, 38), (70, 38), (80, 70), (85, 124), (84, 170), (66, 174), (30, 174), (12, 170), (11, 124), (16, 70)])
+    f.shape(cp, 'tabardo', R=10, tex=.03, vgrad=.14, bias=-.08)
+    for x0, x1 in ((20, 16), (76, 80)): f.fold([(x0, 88), (x1, 168)], .24, .08)
+    pernas(f, 124, 189, o=13, i=3, mat='calca', bota='couro_v', cano=146)
+    for sx in (-1, 1): f.poly([(CX + sx * 2.5, 146), (CX + sx * 14, 146), (CX + sx * 14, 150), (CX + sx * 2.5, 150)], 'latao', R=1.5, bias=-.1)
+    arms = [braco(f, -1, (22, 48), (25, 72), (15, 86), 8, 7, 5.5), braco(f, 1, (22, 48), (26, 72), (26, 96), 8, 7, 5.5)]
+    t = tunica(f, 'vinho', arms, y0=35, ys=50, yw=84, yh=142, sh=26, wa=19, hem=27, R=8, vgrad=.08)
+    axila(f, 17, 50, .15)
+    for x0, x1 in ((38, 30), (46, 44), (53, 54), (60, 66)): f.fold([(x0, 92), (x1, 140)], .22, .08)
+    hb = f.m_poly([(CX - 27, 137), (CX + 27, 137), (CX + 27, 142), (CX - 27, 142)]); f.shape(hb, 'latao', R=2)
+    for x in range(CX - 26, CX + 27, 4): f.dk(x, 139, -.25)
+    f.poly([(46, 44), (50, 44), (50, 137), (46, 137)], 'latao', R=1.5, bias=-.04)
+    # cinto largo com fivela, punhal
+    faixa(f, 84, 28, 68, 'cinto', 5)
+    f.poly([(43, 82), (53, 82), (53, 91), (43, 91)], 'latao', R=2.5, bias=.05); f.poly([(46, 84.5), (50, 84.5), (50, 88.5), (46, 88.5)], 'cinto', flat=0)
+    # corrente de ouro em arco com medalhão
+    for k in range(-13, 14):
+        x = CX + k; y = 47 + 15 * (1 - (k / 13.0) ** 2)
+        if k % 2 == 0: f.px(x, y, 'latao', .95); f.px(x, y + 1, 'latao', .5)
+    f.ell(48, 65, 4.6, 4.6, 'latao', R=3.5, shadow=.25); f.ell(48, 65, 2, 2, 'vinho', R=2, bias=.2)
+    # mão no cinto e mão pendente
+    mao(f, CX - 13, 88, sk, 1.1, edge=0.0)
+    mao(f, CX + 26, 101, sk, 1.1, flip=True, edge=0.0)
+    f.px(CX + 26, 103, 'latao', .9); f.px(CX + 27, 103, 'latao', .6)      # anel
+    # gola de pele sobre os ombros, presa por dois broches
+    gp = f.m_poly([(32, 34), (64, 34), (76, 42), (75, 52), (62, 50), (54, 45), (42, 45), (34, 50), (21, 52), (20, 42)])
+    f.soft(gp, .16); f.shape(gp, 'arminho', R=5, tex=.1, grain=2)
+    f.ell(30, 49, 2.6, 2.6, 'latao', R=2); f.ell(66, 49, 2.6, 2.6, 'latao', R=2)
+    pescoco(f, sk, 27, 37, 6)
+    cabeca(f, sk, wide=.8, jaw=.8)
+    hm = (f.m_ell(CX, 13.5, 12.2, 11.5) & (f.Y < 12.5 + np.abs(f.X - CX) * .4) & ~f.m_ell(CX, 22, 8, 9.5)) | f.m_poly([(CX - 13, 10), (CX - 10.4, 10), (CX - 10.4, 26), (CX - 14, 31)]) | f.m_poly([(CX + 13, 10), (CX + 10.4, 10), (CX + 10.4, 26), (CX + 14, 31)])
+    f.shape(hm, 'ruivo', R=3, edge=.1, tex=.1, bias=.08)
+    rosto(f, sk, brow='ruivo', stern=1, age=.5)
+    b = barba_cheia(f, 'ruivo', 18, 40, 9.8, bias=.02)
+    for x in range(45, 52): f.px(x, 27, 'ruivo', 0.0)
+    for x in range(46, 51): f.px(x, 28, 'labio', .55)
+    for x0 in (43, 48, 53): f.fold([(x0, 30), (x0, 38)], .14, .08)
+    return f
+
+
+def intendente():
+    """intendente do senhor: peito estufado, cintura apertada, gibão roxo de mangas fendidas, calça em duas
+    cores, sapatos de bico, chapéu de pluma, mão na cintura. Quer parecer nobre: o ouro é latão e há remendo."""
+    f = Fig(PW, PH, seed=77); sk = 'pele_j'
+    # pernas finas de duas cores e sapatos de bico comprido, pés abertos
+    for sx, m in ((-1, 'roxo'), (1, 'mostarda')):
+        f.poly([(CX + sx * 2, 104), (CX + sx * 13, 104), (CX + sx * 12, 140), (CX + sx * 11.5, 180), (CX + sx * 5, 180), (CX + sx * 3, 140)], m, R=5, edge=.12, tex=.02)
+        f.poly([(CX + sx * 4.5, 177), (CX + sx * 12, 177), (CX + sx * 16, 184), (CX + sx * 27, 186), (CX + sx * 29, 183), (CX + sx * 28, 188.5), (CX + sx * 4, 189)], 'couro_v', R=3, edge=.15, shadow=.12)
+    # gibão: peito largo e alto, cintura de vespa, saiote rodado
+    armL = braco(f, -1, (20, 46), (32, 70), (15, 84), 7, 5.5, 4.5)       # mão na cintura: cotovelo aberto
+    armR = braco(f, 1, (20, 46), (23, 70), (25, 94), 7, 6, 4.8)
+    torso = f.m_poly([(38, 34), (58, 34), (70, 38), (72, 50), (66, 66), (58, 84), (38, 84), (30, 66), (24, 50), (26, 38)]) | f.m_ell(CX, 54, 21, 18)
+    f.shape(torso | armL | armR, 'roxo', R=8, tex=.03, vgrad=.06)
+    f.adj(f.m_ell(40, 50, 9, 10) & f.m_mat('roxo'), .1)
+    sk_ = f.m_poly([(37, 84), (59, 84), (70, 112), (63, 116), (54, 113), (48, 116), (42, 113), (33, 116), (26, 112)])
+    f.soft(sk_, .1); f.shape(sk_, 'roxo', R=8, tex=.03)
+    for x0, x1 in ((42, 36), (48, 48), (54, 60)): f.fold([(x0, 88), (x1, 113)], .24, .08)
+    # botões e peitilho
+    f.poly([(44.5, 40), (51.5, 40), (51.5, 84), (44.5, 84)], 'mostarda', R=2)
+    for y in range(44, 84, 7): f.ell(48, y, 1.6, 1.6, 'latao', R=1.5, bias=.1, shadow=.2)
+    faixa(f, 81, 36, 60, 'cinto', 3); f.poly([(45, 80), (51, 80), (51, 85.5), (45, 85.5)], 'latao', R=2, bias=-.12)
+    # mangas fendidas: tiras amarelas
+    for (x0, y0, x1, y1) in ((CX + 19, 52, CX + 21, 62), (CX + 23, 56, CX + 25, 66), (CX + 20, 72, CX + 22, 84), (CX + 26, 74, CX + 27, 86)):
+        f.cap(x0, y0, x1, y1, 1, 1, 'mostarda', R=1, bias=.05)
+    for (x0, y0, x1, y1) in ((CX - 23, 52, CX - 28, 62), (CX - 28, 52, CX - 33, 62)):
+        f.cap(x0, y0, x1, y1, 1, 1, 'mostarda', R=1, bias=.05)
+    # remendo discreto no cotovelo
+    f.poly([(CX - 36, 66), (CX - 29, 65), (CX - 28, 73), (CX - 35, 74)], 'tabardo', R=2, bias=.08)
+    for (x, y) in ((CX - 35, 67), (CX - 29, 67), (CX - 34, 73), (CX - 29, 72)): f.dk(x, y, .25)
+    # corrente de latão, maior que a do senhor e mais gasta
+    for k in range(-15, 16):
+        x = CX + k; y = 42 + 12 * (1 - (k / 15.0) ** 2)
+        if k % 2 == 0: f.px(x, y, 'latao', .6); f.px(x, y + 1, 'latao', .3)
+    mao(f, CX - 14, 86, sk, .95, edge=0.0)
+    # rolo de pergaminho na mão
+    rl = f.m_cap(CX + 21, 112, CX + 30, 86, 3.2, 3.2); f.soft(rl, .14); f.shape(rl, 'papel', R=3)
+    f.line([(CX + 24, 101), (CX + 29, 103)], 'vinho', .5)
+    mao(f, CX + 25, 98, sk, .95, flip=True, edge=0.0)
+    # gola alta engomada, pescoço esticado, queixo para cima: a cabeça fica alta e os olhos altos
+    cy = 17
+    pescoco(f, sk, 26, 37, 4.6)
+    cabeca(f, sk, cy=cy, wide=-.7, jaw=-.6)
+    gl = f.m_poly([(CX - 13, 37), (CX - 8, 29), (CX, 34), (CX + 8, 29), (CX + 13, 37), (CX, 40)])
+    f.soft(gl, .1); f.shape(gl, 'branco_p', R=3, tex=.02)
+    for x in range(CX - 11, CX + 12, 3): f.dk(x, 35, -.2)
+    hm = (f.m_ell(CX, 12, 11, 10) & (f.Y < 11)) | f.m_ell(CX - 10, 16, 2.4, 6) | f.m_ell(CX + 10, 16, 2.4, 6)
+    f.shape(hm, 'preto', R=3, edge=.1, tex=.06, bias=.15)
+    rosto(f, sk, cy=cy, brow='preto')
+    e = int(cy)
+    for x in (CX - 7, CX + 7): f.px(x, e - 4, 'preto', .25)                 # sobrancelhas arqueadas
+    for x in (CX - 6, CX - 5, CX + 5, CX + 6): f.px(x, e - 3, 'preto', .25)
+    # bigodinho fino de pontas viradas e cavanhaque
+    f.line([(42, e + 8), (44, e + 7), (47, e + 7)], 'preto', .15); f.line([(49, e + 7), (52, e + 7), (54, e + 8)], 'preto', .15)
+    f.px(41, e + 7, 'preto', .15); f.px(55, e + 7, 'preto', .15)
+    f.poly([(46, e + 11), (50, e + 11), (49, e + 16), (47, e + 16)], 'preto', R=1.5, bias=.1)
+    # chapéu de aba virada com pluma alta
+    hat = f.m_poly([(CX - 13, 10), (CX - 11, 3), (CX, 1), (CX + 11, 3), (CX + 13, 10)])
+    f.soft(hat, .18, off=(0, 2)); f.shape(hat, 'vinho', R=5, tex=.03)
+    f.poly([(CX - 14, 8), (CX + 14, 8), (CX + 15, 12), (CX - 15, 12)], 'mostarda', R=2)
+    f.px(CX + 5, 9, 'latao', 1.0); f.px(CX + 6, 9, 'latao', .7)
+    pl = f.m_cap(CX + 8, 8, CX + 20, 0, 2.2, 1) | f.m_cap(CX + 8, 8, CX + 28, 3, 3, .7) | f.m_cap(CX + 12, 8, CX + 33, 13, 2.4, .6)
+    f.shape(pl, 'branco_p', R=2, bias=.02, tex=.05)
+    return f
+
+
+def vaca():
+    """vaca malhada de lado (3/4), virada para a esquerda; quadro 240x152, 100 px por metro"""
+    f = Fig(240, 152, seed=81); W = 'vaca_b'
+    # pernas de trás (lado de lá), mais escuras
+    f.poly([(70, 92), (88, 92), (86, 128), (84, 146), (72, 146), (73, 128)], W, R=5, bias=-.26)
+    f.poly([(176, 92), (196, 92), (192, 118), (188, 146), (176, 146), (178, 118)], W, R=5, bias=-.26)
+    for x in (78, 182): f.poly([(x - 7, 142), (x + 6, 142), (x + 7, 149), (x - 8, 149)], 'casco', R=2, bias=-.1)
+    # rabo
+    f.cap(219, 42, 228, 72, 2.6, 2, W, R=2, bias=-.08); f.cap(228, 72, 228, 104, 2, 1.8, W, R=2, bias=-.12)
+    tl = f.m_ell(228, 114, 4.8, 13); f.shape(tl, 'vaca_m', R=3, tex=.1)
+    # corpo, pescoço e as duas pernas de cá numa peça só: o volume corre sem emenda
+    body = (f.m_ell(132, 68, 80, 37) | f.m_ell(192, 64, 31, 37) | f.m_ell(72, 70, 30, 36)
+            | f.m_poly([(56, 40), (205, 34), (222, 48), (218, 92), (176, 104), (90, 104), (50, 96)])
+            | f.m_poly([(32, 42), (66, 34), (80, 44), (76, 92), (58, 100), (44, 84), (34, 66)])
+            | f.m_poly([(58, 88), (88, 88), (84, 118), (81, 130), (80, 146), (64, 146), (66, 128), (62, 116)])
+            | f.m_poly([(184, 72), (218, 72), (217, 100), (206, 116), (205, 146), (189, 146), (192, 118), (182, 104)]))
+    f.shape(body, W, R=22, tex=.03, vgrad=.1)
+    # malhas castanhas: trocam só a cor, o volume fica
+    mid = f.mid('vaca_m')
+    mal = [f.m_ell(146, 54, 32, 21) | f.m_ell(120, 66, 20, 18) | f.m_ell(172, 44, 15, 12),
+           f.m_ell(204, 58, 19, 24) | f.m_ell(196, 84, 15, 12),
+           f.m_ell(78, 58, 24, 20) | f.m_ell(72, 84, 10, 10)]
+    r = np.random.RandomState(4)
+    for m in mal:
+        bord = ndimage.binary_dilation(ndimage.binary_dilation(m)) & (r.uniform(size=m.shape) < .3)
+        f.mat[(m | bord) & body] = mid
+    # úbere rosado sob a barriga, na frente da perna de trás
+    ub = f.m_ell(160, 106, 19, 13); f.soft(ub, .1); f.shape(ub, 'focinho', R=9, edge=.12)
+    for x in (150, 160, 170): f.cap(x, 115, x, 122, 2.2, 1.6, 'focinho', R=1.5, bias=-.05)
+    # anca, costelas, juntas das pernas e barbela
+    f.crease([(196, 36), (203, 46), (205, 60)], .1); f.crease([(160, 92), (176, 66), (186, 42)], .12)
+    for x0 in (96, 110, 124): f.crease([(x0, 58), (x0 + 4, 76)], .06)
+    f.crease([(87, 90), (86, 112)], .16); f.crease([(182, 96), (191, 118)], .16); f.crease([(46, 70), (54, 92)], .1)
+    f.adj(f.m_ell(120, 42, 70, 8), .05)
+    for x in (72, 197):
+        f.poly([(x - 9, 141), (x + 8, 141), (x + 9, 150), (x - 10, 150)], 'casco', R=2.5, edge=.1)
+        f.crease([(x - 8, 128), (x + 7, 128)], .1)
+    # cabeça
+    f.cap(27, 28, 16, 17, 3, 2, 'chifre', R=2, bias=-.1)                    # chifre de lá
+    f.ell(44, 30, 11, 5.5, W, R=4, bias=-.14)                               # orelha de lá
+    hd = f.m_poly([(16, 26), (32, 22), (44, 30), (42, 52), (32, 72), (20, 82), (6, 80), (3, 66), (8, 44)])
+    f.shape(hd, W, R=11, tex=.02, edge=.06)
+    f.mat[f.m_poly([(24, 22), (46, 28), (44, 50), (30, 58), (22, 42)]) & hd] = mid
+    f.cap(34, 26, 46, 11, 3.4, 1.8, 'chifre', R=2.2, edge=.1)               # chifre de cá
+    f.px(46, 11, 'casco', .3); f.px(45, 12, 'casco', .4)
+    f.ell(50, 38, 11, 5.5, W, R=4, edge=.1, bias=-.02)                      # orelha
+    f.ell(50, 39, 7, 2.8, 'focinho', R=2, bias=-.08)
+    mz = f.m_ell(14, 73, 12, 10.5); f.shape(mz, 'focinho', R=7, edge=.05)   # focinho
+    f.ell(8, 70, 2, 2.6, 'casco', flat=.15); f.ell(17, 70, 1.7, 2.2, 'casco', flat=.2)
+    f.line([(4, 78), (10, 81), (22, 80)], 'casco', .3)
+    # olho
+    f.ell(25, 44, 4.6, 3.8, 'casco', flat=.15); f.ell(25, 44, 3, 2.8, 'olho', flat=0)
+    f.px(24, 43, 'olho', .95); f.px(23, 43, 'olho', .6)
+    for x in range(21, 29): f.dk(x, 40, -.16)
     return f
 
 
@@ -1243,7 +2067,11 @@ if __name__ == '__main__':
                                                  ('anselmo', anselmo), ('arvore', arvore), ('toco', toco), ('veio', veio), ('veio_vazio', veio_vazio),
                                                  ('espada', lambda: espada('aco')), ('espada_afiada', lambda: espada('aco_af')),
                                                  ('espada_temperada', lambda: espada('aco_t')), ('espada_rastro', espada_rastro),
-                                                 ('quadro_frente', quadro_frente), ('bau_frente', bau_frente), ('bau_tampa', bau_tampa), ('bau_couro', bau_couro), ('lenha_topo', lenha_topo))]
+                                                 ('quadro_frente', quadro_frente), ('bau_frente', bau_frente), ('bau_tampa', bau_tampa), ('bau_couro', bau_couro), ('lenha_topo', lenha_topo),
+                                                 ('faz_velho', faz_velho), ('faz_forte', faz_forte), ('faz_gordo', faz_gordo), ('faz_jovem', faz_jovem), ('mulher_cesta', mulher_cesta),
+                                                 ('mulher_tranca', mulher_tranca), ('mulher_velha', mulher_velha), ('padeira', padeira), ('menino_a', menino_a), ('menino_b', menino_b),
+                                                 ('menina', menina), ('soldado_lanca', soldado_lanca), ('soldado_escudo', soldado_escudo), ('rapaz', rapaz), ('filha_senhor', filha_senhor),
+                                                 ('senhor', senhor), ('intendente', intendente), ('vaca', vaca))]
 
     wsheet = Image.new('RGBA', (S * len(walls), S), (0, 0, 0, 0))
     for i, (_, t) in enumerate(walls): wsheet.paste(t, (i * S, 0))

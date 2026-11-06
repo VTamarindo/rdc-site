@@ -540,6 +540,36 @@
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
   var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
 
+  // ---------- moradores e vacas: ambiente, só na tela ----------
+  // a posição sai do relógio, nunca de tiques: nada disto entra na simulação, nas colisões ou no save
+  function trilha(pts) { // fechada: o último ponto liga no primeiro
+    var acc = [0];
+    pts.forEach(function (a, i) { var b = pts[(i + 1) % pts.length]; acc.push(acc[i] + Math.hypot(b[0] - a[0], b[1] - a[1])); });
+    return { pts: pts, acc: acc, len: acc[pts.length] };
+  }
+  function trilhaEm(T, s) {
+    s = (s % T.len + T.len) % T.len;
+    var i = 0;
+    while (i < T.pts.length - 1 && s > T.acc[i + 1]) { i++; }
+    var a = T.pts[i], b = T.pts[(i + 1) % T.pts.length], t = (s - T.acc[i]) / ((T.acc[i + 1] - T.acc[i]) || 1);
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  }
+  // s = metros andados; o lado desvia a pessoa da linha da trilha, medido na tangente média para não pular nos cantos
+  function passoEm(T, s, lado) {
+    var p = trilhaEm(T, s); if (!lado) { return p; }
+    var a = trilhaEm(T, s - 0.6), b = trilhaEm(T, s + 0.6), dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
+    return [p[0] - dz / l * lado, p[1] + dx / l * lado];
+  }
+  // a vaca oscila em volta do seu centro; u só avança na parte do ciclo em que ela anda, então ela para sem saltar
+  function vacaU(c, h, seg) {
+    var q = seg / c.ciclo + h[8], k = Math.floor(q), f = q - k, e = f < c.anda ? ease(f / c.anda) : 1;
+    return { u: (k + e) * 3, anda: f < c.anda };
+  }
+  function vacaEm(c, h, u) {
+    var A = c.area;
+    return [Math.max(A[0], Math.min(A[2], h[0] + h[2] * Math.sin(u * h[4] + h[6]))), Math.max(A[1], Math.min(A[3], h[1] + h[3] * Math.sin(u * h[5] + h[7])))];
+  }
+
   function View(canvas, world, art) {
     this.w = world; this.r = new Renderer(canvas); this.art = art;
     var self = this;
@@ -547,7 +577,7 @@
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {};
     this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [26, 100] };
-    this.buildStatic(); this.buildDynamic();
+    this.buildStatic(); this.buildDynamic(); this.buildAmbient();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
     this.areaRing.visible = false;
     this.yaw = Math.PI; this.pitch = -0.05; this.swing = -1; this.bob = 0; this.shake = 0; this.fov = 70 * Math.PI / 180; this.aspect = 1;
@@ -635,6 +665,34 @@
     w.spawns.forEach(function (s, i) {
       var o = self.sprite('coelho', SIZE.coelho); o.userData.ref = { type: 'mob', id: 'coelho' + i };
       self.root.add(o); self.pick.push(o); self.objs['coelho' + i] = o;
+    });
+  };
+
+  View.prototype.buildAmbient = function () {
+    var self = this, V = this.w.vila, T = {}; this.amb = {}; this.walkers = []; this.cows = [];
+    function add(id, img, name, h) {
+      var o = self.sprite(img, h); o.userData.ref = { type: 'amb', id: id };
+      self.root.add(o); self.pick.push(o); self.amb[id] = { o: o, name: name };
+      return o;
+    }
+    Object.keys(V.trails || {}).forEach(function (k) { T[k] = trilha(V.trails[k]); });
+    (V.walkers || []).forEach(function (w) {
+      self.walkers.push({ d: w, T: T[w.trail], o: add(w.id, w.id, w.name, w.h), passo: 0.42 * w.h });
+    });
+    if (V.cows) { V.cows.herd.forEach(function (h, i) { self.cows.push({ h: h, o: add('vaca' + i, 'vaca', V.cows.name, V.cows.h) }); }); }
+  };
+  View.prototype.ambient = function (ms) {
+    var seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+    this.walkers.forEach(function (w) {
+      var d = w.d, s = seg * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
+      var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
+      w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
+    });
+    this.cows.forEach(function (v) {
+      var m = vacaU(c, v.h, seg), p = vacaEm(c, v.h, m.u), n = vacaEm(c, v.h, m.u + 0.05);
+      v.o.at(p[0], m.anda ? Math.abs(Math.sin(m.u * 40)) * 0.02 : 0, p[1]);
+      var face = (n[0] - p[0]) * rx + (n[1] - p[1]) * rz;      // o desenho olha para a esquerda: indo para a direita da tela, espelha
+      if (face) { v.o.scale[0] = face > 0 ? -1 : 1; }
     });
   };
 
@@ -733,12 +791,14 @@
     var tgt = [px + Math.sin(this.yaw) * cy, eye[1] + Math.sin(this.pitch), pz + Math.cos(this.yaw) * cy];
     var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
+    this.ambient(opts.now === undefined ? Date.now() : opts.now);
     this.r.draw(this.root, this.cam, this.env);
     this.r.overlay(this.swordNodes(st, dt, opts.moving));
   };
 
-  // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga)
-  View.prototype.pickAt = function (nx, ny) {
+  // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga).
+  // solid: ignora moradores e vacas, que só têm nome ao passar o mouse e não podem tapar o que está atrás
+  View.prototype.pickAt = function (nx, ny, solid) {
     var c = this.cam; if (!c) { return null; }
     var cy = Math.cos(c.pitch), f = [Math.sin(c.yaw) * cy, Math.sin(c.pitch), Math.cos(c.yaw) * cy];
     var r = norm([-f[2], 0, f[0]]);
@@ -747,7 +807,7 @@
     var d = norm([f[0] + r[0] * ax + u[0] * ay, f[1] + r[1] * ax + u[1] * ay, f[2] + r[2] * ax + u[2] * ay]);
     var best = null, bt = 1e9;
     for (var i = 0; i < this.pick.length; i++) {
-      var o = this.pick[i]; if (!o.visible || !o.world) { continue; }
+      var o = this.pick[i]; if (!o.visible || !o.world || (solid && o.userData.ref.type === 'amb')) { continue; }
       var tt = o.userData.box ? this.hitBox(o.userData.box, c.eye, d) : this.hitSprite(o, c.eye, d);
       if (tt !== null && tt < bt) { bt = tt; best = o; }
     }
@@ -768,7 +828,7 @@
     var den = d[0] * n[0] + d[2] * n[2]; if (Math.abs(den) < 1e-6) { return null; }
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
-    var lu = (hx - o.pos[0]) * co - (hz - o.pos[2]) * s, lv = hy - o.pos[1];
+    var lu = ((hx - o.pos[0]) * co - (hz - o.pos[2]) * s) * (o.scale[0] < 0 ? -1 : 1), lv = hy - o.pos[1];
     var g = o.geo, a = this.art.alpha[o.userData.img];
     if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
     var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
