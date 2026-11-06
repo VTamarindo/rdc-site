@@ -71,10 +71,11 @@
     </nav>
 
     <div id="pad" hidden>
-      <div class="dpad">
+      <div id="stick" role="img" aria-label="Analógico: arraste para andar"><i></i></div>
+      <div class="dpad" hidden>
         <button type="button" data-k="fwd" class="up" aria-label="Frente">▲</button>
-        <button type="button" data-k="left" class="lf" aria-label="Girar à esquerda">◀</button>
-        <button type="button" data-k="right" class="rt" aria-label="Girar à direita">▶</button>
+        <button type="button" data-k="left" class="lf" aria-label="Andar para a esquerda">◀</button>
+        <button type="button" data-k="right" class="rt" aria-label="Andar para a direita">▶</button>
         <button type="button" data-k="back" class="dn" aria-label="Trás">▼</button>
       </div>
       <div class="ab">
@@ -100,6 +101,12 @@
         <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mw-def" data-tip="Torna a caminhada como navegação no mapa como o padrão">Padrão</button>
       </div>
       <p id="map-tip" role="status" hidden></p>
+    </div>
+    <div class="mapzoom sell-qty" role="group" aria-label="Zoom do mapa">
+      <button type="button" id="map-zout" aria-label="Diminuir o zoom">−</button>
+      <input type="range" id="map-zoom" min="0" max="100" step="1" value="0" aria-label="Zoom do mapa">
+      <button type="button" id="map-zin" aria-label="Aumentar o zoom">+</button>
+      <small id="map-zval">1.0×</small>
     </div>
     <div class="maprow">
       <button type="button" id="map-macro" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Macro (G)">Macro ▴</button>
@@ -185,6 +192,13 @@
       <div>
         <h3>Tela</h3>
         <div class="col"><button type="button" id="btn-full" data-cmd="fullscreen">Tela cheia</button></div>
+        <div id="menu-ctrl" hidden>
+          <span id="ctrl-t">Controles</span>
+          <div class="seg" role="group" aria-labelledby="ctrl-t">
+            <button type="button" data-ctrl="analogico" aria-pressed="true">Analógico</button>
+            <button type="button" data-ctrl="botoes" aria-pressed="false">Botões</button>
+          </div>
+        </div>
         <h3>Testes</h3>
         <div class="col">
           <button type="button" data-dbg="away30">Simular 30 min fora</button>

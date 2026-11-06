@@ -44,7 +44,7 @@
     view = new NZ.View($('view'), world, art);
     view.yaw = st.player.yaw;
     $('loading').hidden = true; $('hud').hidden = false; $('ver').textContent = VERSION;
-    if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
+    if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
@@ -157,15 +157,16 @@
 
   function manualMove(dt) {
     if (openWin && openWin !== 'w-report') { return false; }
-    var f = (keys.KeyW || keys.ArrowUp || pad.fwd ? 1 : 0) - (keys.KeyS || keys.ArrowDown || pad.back ? 1 : 0);
-    var s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-    var turn = (keys.ArrowLeft || pad.left ? 1 : 0) - (keys.ArrowRight || pad.right ? 1 : 0);
+    // pad.sf e pad.ss: o analógico, de -1 a 1
+    var f = (keys.KeyW || keys.ArrowUp || pad.fwd ? 1 : 0) - (keys.KeyS || keys.ArrowDown || pad.back ? 1 : 0) + (pad.sf || 0);
+    var s = (keys.KeyD || pad.right ? 1 : 0) - (keys.KeyA || pad.left ? 1 : 0) + (pad.ss || 0);
+    var turn = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
     if (!f && !s && !turn) { return false; }
     if (sim.takeControl(st)) { toast('Macro pausada: você assumiu o controle.'); }
     view.yaw += turn * G.player.turnSpeed * dt;
     if (!f && !s) { return false; }
     var y = view.yaw, fx = Math.sin(y), fz = Math.cos(y), rx = -Math.cos(y), rz = Math.sin(y);
-    var vx = fx * f + rx * s, vz = fz * f + rz * s, l = Math.hypot(vx, vz), spd = G.player.walkSpeed * dt;
+    var vx = fx * f + rx * s, vz = fz * f + rz * s, l = Math.hypot(vx, vz), spd = G.player.walkSpeed * dt * Math.min(1, l); // teclas dão l >= 1; o analógico, a intensidade
     return sim.walk(st, vx / l * spd, vz / l * spd);
   }
 
@@ -259,6 +260,27 @@
   // ---------- mapa ----------
   // mapArmed: o próximo clique, avulso ('macro', 'caminhada' ou false); mapMenu: o submenu aberto (idem)
   var mapHover = null, mapArmed = false, mapMenu = false, mapTipT = 0;
+  // zoom do mapa grande: mapZ é a ampliação; (mapCx, mapCz), o ponto do mundo no centro da janela.
+  // mapDragged: o gesto atual passou de MAP_DRAG_MIN pixels e virou arrasto, então não é clique
+  var mapZ = 1, mapZMax = 3, mapCx = 0, mapCz = 0, mapDrag = null, mapDragged = false, MAP_DRAG_MIN = 8;
+  function mapLimit() { // a janela nunca sai da imagem
+    var h = world.B * (1 - 1 / mapZ);
+    mapCx = Math.max(-h, Math.min(h, mapCx)); mapCz = Math.max(-h, Math.min(h, mapCz));
+  }
+  // v vai de 0 a 100 em escala geométrica: cada passo amplia na mesma proporção, seja qual for o tamanho da vila
+  function mapZoomTo(v) {
+    v = Math.max(0, Math.min(100, v));
+    var z = Math.pow(mapZMax, v / 100), p = st.player, h = world.B / mapZ;
+    if (Math.abs(p.x - mapCx) <= h && Math.abs(p.z - mapCz) <= h) { // o jogador à vista fica parado na janela
+      mapCx = p.x - (p.x - mapCx) * mapZ / z; mapCz = p.z - (p.z - mapCz) * mapZ / z;
+    }
+    mapZ = z; mapLimit();
+    var r = $('map-zoom'); r.value = v; r.style.setProperty('--p', v + '%');
+    r.setAttribute('aria-valuetext', z.toFixed(1) + ' vezes');
+    $('map-zval').textContent = z.toFixed(1) + '×';
+    $('map-zout').disabled = v <= 0; $('map-zin').disabled = v >= 100;
+    drawMap($('bigmap'), 560, true);
+  }
   function macroOn() { return st.player.mode === 'macro' && st.player.macro.on; }
   // o que o próximo clique no mapa vai fazer: o armado vale mais que o padrão
   function mapNext() { return mapArmed || st.player.mapNav; }
@@ -311,7 +333,7 @@
     trigger.focus(); // a opção some com o menu: o foco do teclado volta ao botão
     mapTip(b, 4);
   }
-  function openMap() { mapArmed = false; mapMenu = false; mapHover = null; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
+  function openMap() { mapArmed = false; mapMenu = false; mapHover = null; mapDrag = null; mapDragged = false; mapCx = mapCz = 0; mapZ = 1; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); mapZoomTo(0); }
   function pauseMacro() {
     if (!macroOn()) { return false; }
     sim.takeControl(st); st.player.macro.stop = 'Macro pausada · G para marcar a área';
@@ -366,12 +388,13 @@
     c.fillStyle = INK; c.fillText(t, x, y);
   }
   function drawMap(cv, S, big) {
-    var c = cv.getContext('2d'), B = world.B, k = S / (B * 2);
+    var c = cv.getContext('2d'), B = world.B, zm = big ? mapZ : 1, ox = big ? mapCx : 0, oz = big ? mapCz : 0, k = S / (B * 2) * zm;
     var u = big ? Math.max(1, Math.min(1.4, S / (cv.clientWidth || S))) : 1; // mapa encolhido (celular): letras maiores
-    function X(x) { return (x + B) * k; }
-    function Z(z) { return (z + B) * k; }
+    function X(x) { return (x - ox) * k + S / 2; }
+    function Z(z) { return (z - oz) * k + S / 2; }
     c.setLineDash([]); c.lineCap = 'butt'; c.lineJoin = 'miter';
-    c.drawImage(parchment(S), 0, 0);
+    var pw = S / zm; // o papel acompanha o zoom: as bordas queimadas marcam o fim da imagem
+    c.drawImage(parchment(S), (ox + B) / (B * 2) * S - pw / 2, (oz + B) / (B * 2) * S - pw / 2, pw, pw, 0, 0, S, S);
     var F = V.fence.half, gt0 = V.fence.gate.from, gt1 = V.fence.gate.to, f = F - 0.5;
     // dentro da cerca, um leve tom de terra cultivada
     c.fillStyle = 'rgba(160,120,60,.10)'; c.fillRect(X(-f), Z(-f), f * 2 * k, f * 2 * k);
@@ -480,8 +503,8 @@
     c.strokeStyle = INK; c.lineWidth = 0.8; c.stroke();
   }
   function mapPoint(e) {
-    var cv = $('bigmap'), r = cv.getBoundingClientRect(), B = world.B;
-    return { x: (e.clientX - r.left) / r.width * B * 2 - B, z: (e.clientY - r.top) / r.height * B * 2 - B };
+    var cv = $('bigmap'), r = cv.getBoundingClientRect(), h = world.B / mapZ; // client*: a imagem, sem a moldura do canvas
+    return { x: mapCx + ((e.clientX - r.left - cv.clientLeft) / cv.clientWidth * 2 - 1) * h, z: mapCz + ((e.clientY - r.top - cv.clientTop) / cv.clientHeight * 2 - 1) * h };
   }
 
   // ---------- janelas ----------
@@ -988,7 +1011,7 @@
     window.addEventListener('keydown', function (e) {
       // submenu de venda aberto: Esc fecha só ele e os atalhos do jogo ficam desligados
       if (sellPop) { if (e.code === 'Escape') { closeSell(); e.preventDefault(); } return; }
-      if (e.target.tagName === 'INPUT') { return; }
+      if (e.target.tagName === 'INPUT' && e.target.id !== 'map-zoom') { return; } // a barra de zoom não tira M e Esc
       if (e.code === 'Escape') { if (openWin) { hide(); } else { cmd('menu'); } e.preventDefault(); return; }
       if (openWin === 'w-report' && (e.code === 'Enter' || e.code === 'Space')) { hide(); e.preventDefault(); return; }
       var map = { KeyM: 'map', KeyR: 'rules', KeyT: 'stance', KeyF: 'potion', KeyG: 'macro', KeyI: 'inv', KeyB: 'bag' };
@@ -1039,9 +1062,37 @@
     });
     $('mini').addEventListener('click', function () { cmd('map'); });
     var big = $('bigmap');
-    big.addEventListener('pointermove', function (e) { mapHover = mapPoint(e); });
+    mapZMax = Math.max(3, world.B / 12); // no máximo, a janela mostra cerca de 24 m de lado
+    big.addEventListener('pointerdown', function (e) {
+      mapDragged = false;
+      if (mapDrag || (e.pointerType === 'mouse' && (mapZ <= 1 || e.button !== 0))) { return; } // mouse sem zoom: como sempre foi
+      mapDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, cx: mapCx, cz: mapCz };
+      big.setPointerCapture(e.pointerId);
+    });
+    big.addEventListener('pointermove', function (e) {
+      if (mapDrag && mapDrag.id === e.pointerId) {
+        var dx = e.clientX - mapDrag.x, dy = e.clientY - mapDrag.y;
+        if (!mapDragged && Math.hypot(dx, dy) >= MAP_DRAG_MIN) { // a imagem sai do lugar sem saltar a distância mínima
+          mapDragged = true; mapHover = null; big.classList.add('drag');
+          mapDrag.x = e.clientX; mapDrag.y = e.clientY; dx = dy = 0;
+        }
+        if (mapDragged) {
+          var q = world.B * 2 / mapZ / big.clientWidth;
+          mapCx = mapDrag.cx - dx * q; mapCz = mapDrag.cz - dy * q; mapLimit();
+          drawMap(big, 560, true);
+          return;
+        }
+      }
+      mapHover = mapPoint(e);
+    });
+    var mapDragEnd = function (e) { if (mapDrag && mapDrag.id === e.pointerId) { mapDrag = null; big.classList.remove('drag'); } };
+    big.addEventListener('pointerup', mapDragEnd); big.addEventListener('pointercancel', mapDragEnd); big.addEventListener('lostpointercapture', mapDragEnd);
     big.addEventListener('pointerleave', function () { mapHover = null; });
+    $('map-zoom').addEventListener('input', function () { mapZoomTo(+this.value); });
+    $('map-zout').addEventListener('click', function () { mapZoomTo(+$('map-zoom').value - 10); });
+    $('map-zin').addEventListener('click', function () { mapZoomTo(+$('map-zoom').value + 10); });
     big.addEventListener('click', function (e) {
+      if (mapDragged) { mapDragged = false; return; } // fim de um arrasto não é clique
       var pt = mapPoint(e), wasMacro = macroOn();
       if (mapMenu) { mapMenu = false; mapUi(); return; } // clique fora do menu só fecha o menu
       mapHover = null;
@@ -1069,7 +1120,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', hide); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-dbg]'), function (b) { b.addEventListener('click', function () { debug(b.dataset.dbg); }); });
 
-    // botões de toque: segurar = andar/girar
+    // botões de toque: segurar = andar
     Array.prototype.forEach.call(document.querySelectorAll('#pad [data-k]'), function (b) {
       var k = b.dataset.k;
       b.addEventListener('pointerdown', function (e) {
@@ -1081,6 +1132,41 @@
       var up = function () { pad[k] = false; b.classList.remove('down'); };
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
     });
+    bindStick();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ctrl]'), function (b) {
+      b.addEventListener('click', function () { ctrlSet(b.dataset.ctrl); try { localStorage.setItem(CTRL_KEY, ctrlMode); } catch (e) { /* sem armazenamento: vale até fechar */ } });
+    });
+  }
+  // analógico: o dedo fica preso a ele, então o arrasto de câmera (no #view) nunca recebe esse toque, e vice-versa
+  function bindStick() {
+    var el = $('stick'), knob = el.firstElementChild, id = null;
+    function aim(e) {
+      var r = el.getBoundingClientRect(), R = r.width * STICK_TRAVEL, dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
+      var m = Math.hypot(dx, dy) || 1, q = Math.min(1, R / m), n = Math.min(1, m / R), a = Math.max(0, (n - STICK_DEAD) / (1 - STICK_DEAD));
+      knob.style.transform = 'translate(' + dx * q + 'px, ' + dy * q + 'px)';
+      pad.ss = dx / m * a; pad.sf = -dy / m * a;
+    }
+    function off(e) {
+      if (e.pointerId !== id) { return; }
+      id = null; pad.ss = pad.sf = 0; knob.style.transform = ''; el.classList.remove('down');
+    }
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (id !== null) { return; } // um segundo dedo não troca quem comanda
+      if (openWin === 'w-report') { hide(); }
+      id = e.pointerId; el.setPointerCapture(id); el.classList.add('down'); aim(e);
+    });
+    el.addEventListener('pointermove', function (e) { if (e.pointerId === id) { aim(e); } });
+    el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
+  }
+  // controles do celular: analógico (padrão) ou botões em cruz; a escolha fica fora do save, e sobrevive a recomeçar o jogo
+  var CTRL_KEY = 'zg-vila-controles', ctrlMode = 'analogico', STICK_TRAVEL = 0.32, STICK_DEAD = 0.18;
+  function ctrlLoad() { try { return localStorage.getItem(CTRL_KEY); } catch (e) { return null; } }
+  function ctrlSet(mode) {
+    ctrlMode = mode === 'botoes' ? 'botoes' : 'analogico';
+    document.querySelector('.dpad').hidden = ctrlMode !== 'botoes';
+    $('stick').hidden = ctrlMode === 'botoes';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ctrl]'), function (b) { b.setAttribute('aria-pressed', b.dataset.ctrl === ctrlMode ? 'true' : 'false'); });
   }
   function pickEvent(e) {
     var r = $('view').getBoundingClientRect();

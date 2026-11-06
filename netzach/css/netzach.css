@@ -105,6 +105,10 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 .dpad button { width: 52px; height: 52px; }
 .dpad .up { left: 52px; top: 0; } .dpad .dn { left: 52px; top: 104px; }
 .dpad .lf { left: 0; top: 52px; } .dpad .rt { left: 104px; top: 52px; }
+/* analógico: base de pergaminho translúcido e botão de cera ao ser tocado */
+#stick { position: absolute; left: 18px; bottom: 70px; width: 132px; height: 132px; display: grid; place-items: center; border-radius: 50%; touch-action: none; background: radial-gradient(circle, rgba(236, 219, 176, .22) 0 40%, rgba(236, 219, 176, .5) 41% 100%); border: 2px solid rgba(59, 36, 20, .85); box-shadow: inset 0 0 0 2px rgba(250, 240, 215, .5), inset 0 0 14px rgba(95, 50, 12, .45), 0 2px 6px rgba(0, 0, 0, .4); }
+#stick i { width: 58px; height: 58px; border-radius: 50%; pointer-events: none; background: var(--grain), linear-gradient(#f4e8c8, #d3b67c); border: 2px solid rgba(59, 36, 20, .9); box-shadow: inset 0 0 0 2px rgba(250, 240, 215, .7), 0 2px 5px rgba(0, 0, 0, .5); }
+#stick.down i { background: var(--grain), linear-gradient(#a8332a, #741711); box-shadow: inset 0 0 0 2px rgba(232, 190, 100, .7), 0 2px 5px rgba(0, 0, 0, .5); }
 .ab { position: absolute; right: 18px; bottom: 74px; width: 92px; height: 92px; }
 .ab .a { right: 0; bottom: 0; width: 92px; height: 92px; border-radius: 50%; font-size: 15px; font-family: var(--serif); }
 body.touch #log { display: none; }
@@ -138,10 +142,15 @@ body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13
 @media (max-width: 620px) { .cols { grid-template-columns: 1fr; } }
 
 /* mapa: botões embaixo, menu da macro por cima do mapa */
-#w-map { --mapw: min(100%, calc(92vh - 170px), 560px); }
+#w-map { --mapw: min(100%, calc(92vh - 224px), 560px); }
 .mapbox { position: relative; width: var(--mapw); margin: 4px auto 0; }
 #bigmap { display: block; width: 100%; height: auto; border: 3px double var(--edge); border-radius: 2px; cursor: crosshair; touch-action: none; background: var(--paper); box-shadow: 0 2px 8px rgba(40, 20, 5, .4); }
 #bigmap.armed { outline: 3px dashed #b07a10; outline-offset: 2px; }
+#bigmap.drag { cursor: grabbing; }
+/* barra de zoom: a mesma barra da quantidade na venda (.sell-qty) */
+.mapzoom { width: var(--mapw); margin: 6px auto 0; }
+.mapzoom button { flex: none; width: 36px; height: 36px; padding: 0; font-size: 20px; line-height: 1; }
+#map-zval { width: 2.6em; text-align: right; }
 .maprow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: var(--mapw); margin: 10px auto 0; }
 .maprow .hint { flex: 1 1 180px; margin: 0; }
 #map-macro, #map-walk { white-space: nowrap; }
@@ -149,6 +158,14 @@ body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13
 .maprow button.padrao::before { content: '★ '; color: var(--wax); }
 .maprow button.padrao[aria-pressed="true"]::before { color: inherit; }
 @media (max-width: 560px) { .maprow { column-gap: 8px; } .maprow button { padding: 8px 9px; font-size: 14px; } } /* os dois botões cabem na mesma linha */
+/* celular deitado: mapa à esquerda, controles à direita, para o mapa não ficar minúsculo */
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch #w-map { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 14px; width: min(860px, 96vw); max-height: 96vh; padding: 6px 14px 10px; --mapw: calc(96vh - 76px); }
+  body.touch #w-map header { grid-column: 1 / -1; }
+  body.touch #w-map .mapbox { grid-row: 2 / span 2; }
+  body.touch #w-map .mapzoom, body.touch #w-map .maprow { grid-column: 2; width: auto; margin: 4px 0 0; align-self: start; }
+  body.touch #w-map .popmenu::after { display: none; }
+}
 .popmenu {
   position: absolute; left: 6px; bottom: 8px; z-index: 2; min-width: 210px;
   display: flex; flex-direction: column; gap: 6px; padding: 10px;
@@ -188,6 +205,8 @@ body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13
 .seg button { border-radius: 0; }
 .seg button:first-child { border-radius: 3px 0 0 3px; }
 .seg button:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
+#menu-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+#menu-ctrl .seg { margin-bottom: 0; }
 #iv-drink { margin-left: 8px; }
 #iv-stance { display: block; }
 #iv-res { display: inline-block; margin-top: 4px; color: var(--wax); }
