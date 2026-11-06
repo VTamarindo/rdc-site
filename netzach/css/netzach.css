@@ -140,18 +140,30 @@ body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13
 .mapbox { position: relative; width: var(--mapw); margin: 4px auto 0; }
 #bigmap { display: block; width: 100%; height: auto; border: 3px double var(--edge); border-radius: 2px; cursor: crosshair; touch-action: none; background: var(--paper); box-shadow: 0 2px 8px rgba(40, 20, 5, .4); }
 #bigmap.armed { outline: 3px dashed #b07a10; outline-offset: 2px; }
-.maprow { display: flex; align-items: center; gap: 12px; width: var(--mapw); margin: 10px auto 0; }
-.maprow .hint { flex: 1; margin: 0; }
-#map-macro { white-space: nowrap; }
+.maprow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: var(--mapw); margin: 10px auto 0; }
+.maprow .hint { flex: 1 1 180px; margin: 0; }
+#map-macro, #map-walk { white-space: nowrap; }
+/* estrela no botão do modo que é o padrão do clique no mapa */
+.maprow button.padrao::before { content: '★ '; color: var(--wax); }
+.maprow button.padrao[aria-pressed="true"]::before { color: inherit; }
+@media (max-width: 560px) { .maprow { column-gap: 8px; } .maprow button { padding: 8px 9px; font-size: 14px; } } /* os dois botões cabem na mesma linha */
 .popmenu {
   position: absolute; left: 6px; bottom: 8px; z-index: 2; min-width: 210px;
   display: flex; flex-direction: column; gap: 6px; padding: 10px;
   background: var(--burn), var(--parch); border: 3px double var(--edge); border-radius: 3px;
   box-shadow: inset 0 0 16px rgba(95, 50, 12, .45), 0 6px 18px rgba(0, 0, 0, .55);
 }
-.popmenu::after { content: ''; position: absolute; left: 26px; bottom: -11px; border: 8px solid transparent; border-top-color: var(--edge); border-bottom: 0; }
+.popmenu::after { content: ''; position: absolute; left: var(--seta, 26px); bottom: -11px; border: 8px solid transparent; border-top-color: var(--edge); border-bottom: 0; }
 .popmenu button { text-align: left; }
+.popmenu button[aria-checked="true"]::after { content: ' ✓'; color: var(--wax); }
 #mm-pause { color: var(--wax); }
+/* texto explicativo da opção Padrão: acima do menu aberto, ou sobre o mapa depois de aplicar */
+#map-tip {
+  position: absolute; left: 6px; bottom: 8px; z-index: 3; max-width: calc(100% - 12px); margin: 0; padding: 6px 10px;
+  font-size: 14px; line-height: 1.35; pointer-events: none;
+  background: var(--burn), var(--parch); border: 1px solid var(--wax); border-radius: 3px;
+  box-shadow: inset 0 0 10px rgba(95, 50, 12, .4), 0 3px 10px rgba(0, 0, 0, .5);
+}
 
 /* regras */
 #rules { padding-left: 22px; margin: 0; }
