@@ -51,6 +51,14 @@
 
     this.spawns = vila.rabbits.map(function (p) { return { x: p[0] + 0.5, z: p[1] + 0.5 }; });
     this.npcs = vila.npcs.map(function (n) { self.block(n.x, n.z); return { id: n.id, x: n.x, z: n.z }; });
+
+    // objetos do cenário: só figura e colisão; w x d em metros é a pegada bloqueada, centrada em (x, z)
+    this.props = (vila.props || []).map(function (p) {
+      for (var x = Math.floor(p.x - p.w / 2); x < Math.ceil(p.x + p.w / 2); x++) {
+        for (var z = Math.floor(p.z - p.d / 2); z < Math.ceil(p.z + p.d / 2); z++) { self.block(x, z); }
+      }
+      return { id: p.id, x: p.x, z: p.z };
+    });
     this.plaza = vila.plaza;
   }
   World.prototype.idx = function (x, z) {
