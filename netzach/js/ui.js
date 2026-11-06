@@ -38,7 +38,7 @@
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
     world = new NZ.World(G, V); sim = new NZ.Sim(world);
     var saved = load();
-    if (saved) { st = NZ.migrate(saved.state); lastReal = saved.lastReal || clockNow(); }
+    if (saved) { st = NZ.settle(world, NZ.migrate(saved.state)); lastReal = saved.lastReal || clockNow(); }
     else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); lastReal = clockNow(); }
 
     view = new NZ.View($('view'), world, art);
@@ -380,6 +380,23 @@
     c.fillStyle = 'rgba(196,160,98,.45)'; c.fillRect(rx0, rz0, rx1 - rx0, rz1 - rz0);
     c.strokeStyle = INK2; c.lineWidth = big ? 1.2 : 0.8;
     c.beginPath(); c.moveTo(rx0, rz0); c.lineTo(rx0, rz1); c.moveTo(rx1, rz0); c.lineTo(rx1, rz1); c.stroke();
+    // ruas de terra, plantações e pasto
+    c.fillStyle = 'rgba(196,160,98,.38)';
+    V.streets.forEach(function (r) { c.fillRect(X(r.x0), Z(r.z0), (r.x1 - r.x0) * k, (r.z1 - r.z0) * k); });
+    function canteiro(x0, x1, z0, z1, tinta, risco) {
+      c.fillStyle = tinta; c.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k);
+      if (big) { c.strokeStyle = risco; c.lineWidth = 1; c.beginPath(); for (var y = z0 + 1; y < z1; y += 2) { c.moveTo(X(x0) + 2, Z(y)); c.lineTo(X(x1) - 2, Z(y)); } c.stroke(); }
+    }
+    var TINTA = { trigo: ['rgba(214,168,52,.5)', 'rgba(140,96,20,.55)'], cebola: ['rgba(196,136,56,.42)', 'rgba(110,70,24,.5)'],
+      nabo: ['rgba(150,88,142,.34)', 'rgba(90,44,84,.5)'], alho_poro: ['rgba(84,140,108,.42)', 'rgba(36,84,64,.5)'] };
+    V.fields.forEach(function (f) {
+      (f.strips || [f]).forEach(function (s) { canteiro(f.x0, f.x1, s.z0, s.z1, TINTA[s.kind][0], TINTA[s.kind][1]); });
+      c.strokeStyle = INK2; c.lineWidth = big ? 1 : 0.6; c.strokeRect(X(f.x0), Z(f.z0), (f.x1 - f.x0) * k, (f.z1 - f.z0) * k);
+    });
+    var P = V.pasture, q0 = P.x0 + 0.5, q1 = P.x1 - 0.5, r0 = P.z0 + 0.5, r1 = P.z1 - 0.5;
+    c.fillStyle = 'rgba(110,140,50,.2)'; c.fillRect(X(q0), Z(r0), (q1 - q0) * k, (r1 - r0) * k);
+    c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.beginPath();
+    c.moveTo(X(q0), Z(P.gate.from)); c.lineTo(X(q0), Z(r0)); c.lineTo(X(q1), Z(r0)); c.lineTo(X(q1), Z(r1)); c.lineTo(X(q0), Z(r1)); c.lineTo(X(q0), Z(P.gate.to)); c.stroke();
     // praça
     c.fillStyle = 'rgba(196,160,98,.5)'; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k, 0, 7); c.fill();
     c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.stroke();
@@ -443,7 +460,14 @@
       c.strokeText('!', X(qd.x), Z(qd.z)); c.fillText('!', X(qd.x), Z(qd.z)); c.restore();
     }
     if (big) {
-      V.buildings.forEach(function (b) { label(c, { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar' }[b.type], X(b.x), Z(b.z), Math.round(14 * u), false); });
+      var NOME = { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar', casa_senhor: 'Casa do senhor', padaria: 'Padaria' };
+      var ACIMA = { casa_senhor: 8, padaria: 6.5, ferreiro: 7, bar: 7 }; // metros ao norte: nesta escala o nome não cabe sobre a casa sem bater no vizinho
+      V.buildings.forEach(function (b) { if (NOME[b.type]) { label(c, NOME[b.type], X(b.x), Z(b.z - (ACIMA[b.type] || 0)), Math.round(14 * u), false); } });
+      label(c, 'Moradias', X(-30), Z(25), Math.round(13 * u), false);
+      label(c, 'Pasto', X((P.x0 + P.x1) / 2), Z((P.z0 + P.z1) / 2), Math.round(13 * u), true);
+      V.fields.forEach(function (f) {
+        (f.strips || [f]).forEach(function (s) { label(c, s.name, X((f.x0 + f.x1) / 2), Z((s.z0 + s.z1) / 2), Math.round(12 * u), true); });
+      });
       label(c, 'Praça', X(V.plaza.x), Z(V.plaza.z), Math.round(12 * u), true);
       label(c, 'Portão', X(V.road.x) + 22 + 8 * u, Z(F) + 8 * u, Math.round(11 * u), true);
       compass(c, S - 36, S - 40, 22);

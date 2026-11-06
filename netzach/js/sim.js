@@ -33,6 +33,14 @@
       if (!(c >= g.from && c < g.to)) { this.block(c, F - 1); }
     }
 
+    // pasto: cerca nas células da borda, aberta na porteira da face oeste
+    var P = vila.pasture, pg = P.gate;
+    for (c = P.x0; c < P.x1; c++) { this.block(c, P.z0); this.block(c, P.z1 - 1); }
+    for (c = P.z0; c < P.z1; c++) {
+      this.block(P.x1 - 1, c);
+      if (!(c >= pg.from && c < pg.to)) { this.block(P.x0, c); }
+    }
+
     // construções (pegada no mundo: troca w/d quando gira 90°)
     this.buildings = vila.buildings.map(function (b) {
       var turned = Math.abs(b.rot) === 90;
@@ -137,7 +145,7 @@
     g[s] = 0; push(s, h(s));
     var DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
     var found = false, guard = 0;
-    while (heap.length && guard++ < 9000) {
+    while (heap.length && guard++ < N * N * 2) { // o teto cobre o mapa inteiro: dar a volta por fora da cerca passa de 150 m
       var cur = pop();
       if (closed[cur]) { continue; }
       if (cur === e) { found = true; break; }
@@ -172,7 +180,7 @@
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
     var st = {
-      v: 1, seed: seed | 0, t: 0,
+      v: 1, mapa: 2, seed: seed | 0, t: 0,
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
@@ -773,6 +781,32 @@
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
     if (st.player.mapNav !== 'macro') { st.player.mapNav = 'caminhada'; }
+    return st;
+  };
+
+  // acerta um save com o mapa atual. Save de antes da cidade (sem st.mapa): coelhos voltam aos pontos novos e a área da
+  // macro anda com o bosque, 25 m para fora. Em qualquer save, quem parou dentro de algo sai para a célula livre mais perto.
+  NZ.settle = function (world, st) {
+    var p = st.player, m = p.macro;
+    function fora(v) { return Math.abs(v) < 20 ? v : v + (v < 0 ? -25 : 25); }
+    if (!(st.mapa >= 2)) {
+      st.mapa = 2;
+      st.mobs.forEach(function (b) { var s = world.spawns[b.sp]; b.x = b.wx = s.x; b.z = b.wz = s.z; b.fight = false; });
+      var a = m.area;
+      if (a && (fora(a.x) !== a.x || fora(a.z) !== a.z)) {
+        var x = fora(a.x), z = fora(a.z), best = null, bd = 1e9;
+        world.nodes.forEach(function (n) { var d = dist(x, z, n.x, n.z); if (d < bd) { best = n; bd = d; } });
+        if (best && bd > a.r) { x = best.x; z = best.z; }
+        var c = world.nearestFree(x, z) || { x: x, z: z };
+        m.area = { x: c.x, z: c.z, r: a.r };
+      }
+      m.path = null; m.goal = null; p.goto = null;
+      if (p.action && (p.action.type === 'gather' || p.action.type === 'attack')) { p.action = null; }
+    }
+    if (!world.free(p.x, p.z, 0.3)) {
+      var f = world.nearestFree(p.x, p.z) || { x: world.plaza.x, z: world.plaza.z + 1 };
+      p.x = f.x; p.z = f.z; m.path = null; m.goal = null;
+    }
     return st;
   };
 

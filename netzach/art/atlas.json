@@ -1,5 +1,5 @@
 {"size": 64,
- "walls": ["pedra", "tijolo", "porta", "cal", "telha", "telha_escura", "palha", "tabuas", "enxaimel", "janela", "grama", "terra", "pavimento", "placa", "placa_ferreiro"],
+ "walls": ["pedra", "tijolo", "porta", "cal", "telha", "telha_escura", "palha", "tabuas", "enxaimel", "janela", "grama", "terra", "pavimento", "placa", "placa_ferreiro", "placa_padaria", "lavoura", "trigo_caule", "trigo_espiga", "cebola", "nabo", "alho_poro", "brasao", "bulbos"],
  "sprites": [
   {"name": "coelho", "x": 0, "y": 0, "w": 96, "h": 64},
   {"name": "padre", "x": 96, "y": 0, "w": 96, "h": 192},
