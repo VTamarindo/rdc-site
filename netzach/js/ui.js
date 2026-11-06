@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261106-10', SAVE_VER = '20261105-3';
+  var VERSION = '20261107-1', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -288,12 +288,13 @@
   function mapUi() {
     var a = st.player.macro.area, on = macroOn(), nav = st.player.mapNav, mb = $('map-macro'), wb = $('map-walk');
     var mOpen = mapMenu === 'macro', wOpen = mapMenu === 'caminhada', box = mOpen ? $('map-menu') : wOpen ? $('map-walk-menu') : null;
-    $('map-hint').textContent = mapArmed === 'macro'
+    var mapText = mapArmed === 'macro'
       ? 'Macro armada: clique onde o personagem deve trabalhar sozinho (o círculo dourado mostra a área).'
       : mapArmed === 'caminhada' ? (on ? 'Caminhada armada: clique num ponto para pausar a macro e andar até lá.' : 'Caminhada armada: clique no ponto até onde o personagem deve andar.')
       : nav === 'macro' ? (on ? 'A macro está trabalhando e é o padrão. Um clique no mapa muda a área de trabalho para o ponto.' : 'Macro é o padrão: clique onde o personagem deve trabalhar sozinho.')
       : on ? 'A macro está trabalhando na área marcada. Um clique no mapa pausa e leva o personagem até o ponto.'
       : 'Clique num ponto para o personagem andar até lá.';
+    $('map-hint').textContent = isTouch ? mapText.replace(/clique/g, 'toque').replace(/Clique/g, 'Toque') : mapText; // no celular não existe clique
     mb.setAttribute('aria-pressed', mapArmed === 'macro' ? 'true' : 'false');
     mb.setAttribute('aria-expanded', mOpen ? 'true' : 'false');
     mb.textContent = mapArmed === 'macro' ? 'Macro armada · cancelar' : (on ? 'Macro (trabalhando) ' : 'Macro ') + (mOpen ? '▾' : '▴');
@@ -336,7 +337,7 @@
   function openMap() { mapArmed = false; mapMenu = false; mapHover = null; mapDrag = null; mapDragged = false; mapCx = mapCz = 0; mapZ = 1; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); mapZoomTo(0); }
   function pauseMacro() {
     if (!macroOn()) { return false; }
-    sim.takeControl(st); st.player.macro.stop = 'Macro pausada · G para marcar a área';
+    sim.takeControl(st); st.player.macro.stop = isTouch ? 'Macro pausada · marque a área no mapa' : 'Macro pausada · G para marcar a área';
     return true;
   }
 
