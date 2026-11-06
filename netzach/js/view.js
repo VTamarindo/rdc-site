@@ -142,6 +142,32 @@
     return { data: new Float32Array(d), count: 6 };
   }
 
+  // ---------- recorte: só desenha o que pode aparecer ----------
+  // os quatro lados da visão, tirados da matriz da câmera; o que passa da névoa é cortado pela distância
+  function frustum(m) {
+    return [[3, 0, 1], [3, 0, -1], [3, 1, 1], [3, 1, -1]].map(function (k) {
+      var p = [0, 4, 8, 12].map(function (c) { return m[c + k[0]] + k[2] * m[c + k[1]]; }), l = Math.hypot(p[0], p[1], p[2]);
+      return [p[0] / l, p[1] / l, p[2] / l, p[3] / l];
+    });
+  }
+  // esfera que envolve a malha, medida uma vez
+  function bound(g) {
+    var d = g.data, lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9], i, k, r = 0;
+    for (i = 0; i < d.length; i += 8) { for (k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], d[i + k]); hi[k] = Math.max(hi[k], d[i + k]); } }
+    g.bc = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    for (i = 0; i < d.length; i += 8) { r = Math.max(r, Math.hypot(d[i] - g.bc[0], d[i + 1] - g.bc[1], d[i + 2] - g.bc[2])); }
+    g.br = r;
+  }
+  var FOLGA = 0.5; // metros além da esfera: o balanço de quem anda e o giro das figuras nunca cortam nada à vista
+  function seen(g, m, pl, eye, fim) {
+    if (!g.bc) { bound(g); }
+    var c = xform(m, g.bc[0], g.bc[1], g.bc[2]);
+    var r = g.br * Math.sqrt(Math.max(m[0] * m[0] + m[1] * m[1] + m[2] * m[2], m[4] * m[4] + m[5] * m[5] + m[6] * m[6], m[8] * m[8] + m[9] * m[9] + m[10] * m[10])) + FOLGA;
+    if (Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]) - r > fim) { return false; }
+    for (var i = 0; i < 4; i++) { var p = pl[i]; if (p[0] * c[0] + p[1] * c[1] + p[2] * c[2] + p[3] < -r) { return false; } }
+    return true;
+  }
+
   // ---------- cena ----------
   function Node(geo, color, opt) {
     opt = opt || {};
@@ -154,11 +180,11 @@
 
   var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;varying vec3 vn;varying vec3 vw;varying vec2 vu;' +
     'void main(){vec4 w=M*vec4(p,1.0);vn=N*n;vw=w.xyz;vu=uv;gl_Position=VP*w;}';
-  var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;' +
+  var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;uniform vec3 tint;' +
     'uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;uniform vec3 fogCol;uniform vec2 fog;' +
     'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;vec3 nn=normalize(vn);' +
     'vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vec3 b=col*t.rgb;' +
-    'vec3 c=mix(b*l,b,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
+    'vec3 c=mix(b*l,b*tint,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
 
   function Renderer(canvas) {
     var gl = this.gl = canvas.getContext('webgl', { antialias: false, alpha: false }) || canvas.getContext('experimental-webgl');
@@ -168,7 +194,7 @@
     var pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
     var u = this.u = {};
-    ['VP', 'M', 'N', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
+    ['VP', 'M', 'N', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
     this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
     gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
@@ -196,19 +222,36 @@
     var gl = this.gl, u = this.u, self = this;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(env.fogCol[0], env.fogCol[1], env.fogCol[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.vp)); gl.uniform3fv(u.eye, cam.eye);
+    gl.uniform3fv(u.fogCol, env.fogCol);
+    if (env.ceu) { this.ceu(env.ceu, cam); }
+    gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.vp)); gl.uniform3fv(u.eye, cam.eye); gl.uniform3fv(u.tint, env.tint);
     gl.uniform3fv(u.sky, env.sky); gl.uniform3fv(u.gnd, env.gnd); gl.uniform3fv(u.sunDir, env.sunDir); gl.uniform3fv(u.sunCol, env.sunCol);
-    gl.uniform3fv(u.fogCol, env.fogCol); gl.uniform2fv(u.fog, env.fog);
-    var late = [];
+    gl.uniform2fv(u.fog, env.fog);
+    var late = [], pl = frustum(cam.vp);
     (function walk(n, parentM) {
       if (!n.visible) { return; }
       if (n.sprite) { n.rotY = Math.atan2(cam.eye[0] - n.pos[0], cam.eye[2] - n.pos[2]); } // sempre de frente para a câmera
       var m = parentM ? mul(parentM, local(n)) : local(n);
       n.world = m;
-      if (n.geo) { if (n.alpha < 1) { late.push(n); } else { self.mesh(n); } }
+      if (n.geo && seen(n.geo, m, pl, cam.eye, env.fog[1])) { if (n.alpha < 1) { late.push(n); } else { self.mesh(n); } }
       for (var i = 0; i < n.children.length; i++) { walk(n.children[i], m); }
     })(root, null);
     if (late.length) { gl.enable(gl.BLEND); gl.depthMask(false); late.forEach(function (n) { self.mesh(n); }); gl.depthMask(true); gl.disable(gl.BLEND); }
+  };
+  // fundo: desenhado antes do mundo, sem profundidade, por uma câmera parada na origem; tudo o que vem depois passa por cima
+  var SEM_NEVOA = [1e6, 2e6], BRANCO = [1, 1, 1];
+  Renderer.prototype.ceu = function (nodes, cam) {
+    var gl = this.gl, u = this.u, self = this;
+    gl.disable(gl.DEPTH_TEST); gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.skyVp));
+    gl.uniform3fv(u.eye, [0, 0, 0]); gl.uniform3fv(u.tint, BRANCO);
+    nodes.forEach(function (n) {
+      if (!n.visible) { return; }
+      gl.uniform2fv(u.fog, n.userData.fog || SEM_NEVOA);
+      if (n.alpha < 1) { gl.enable(gl.BLEND); }
+      self.mesh(n);
+      if (n.alpha < 1) { gl.disable(gl.BLEND); }
+    });
+    gl.enable(gl.DEPTH_TEST);
   };
   // sobreposição em espaço de tela (espada em primeira pessoa): sem profundidade, sem neblina, recorte por alfa
   var ID4 = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -419,7 +462,9 @@
   }
 
   // ---------- peças fundidas ----------
-  // cada Node custa uma chamada de desenho por quadro; a cidade tem milhares de peças fixas, então elas viram uma só malha por textura
+  // cada Node custa uma chamada de desenho por quadro; a cidade tem milhares de peças fixas, então elas viram uma malha por textura
+  // em cada setor do mapa: uma malha só atravessaria a cidade inteira e nunca sairia da tela
+  var SETOR = 48;
   var CLARO = hex(0xf2f2f2);
   function Lote() { this.fila = {}; }
   Lote.prototype.get = function (tex, color, unlit) {
@@ -451,8 +496,16 @@
   Lote.prototype.poe = function (R) {
     var f = this.fila;
     Object.keys(f).forEach(function (k) {
-      var o = new Node({ data: new Float32Array(f[k].v), count: f[k].v.length / 8 }, 0xffffff, { tex: f[k].tex, unlit: f[k].unlit });
-      o.color = f[k].color; R.add(o);
+      var v = f[k].v, grupos = {};
+      for (var i = 0; i < v.length; i += 24) { // 3 vértices de 8 números: o triângulo vai inteiro para o setor do seu centro
+        var c = Math.floor((v[i] + v[i + 8] + v[i + 16]) / 3 / SETOR) + ',' + Math.floor((v[i + 2] + v[i + 10] + v[i + 18]) / 3 / SETOR);
+        var g = grupos[c] || (grupos[c] = []);
+        for (var j = 0; j < 24; j++) { g.push(v[i + j]); }
+      }
+      Object.keys(grupos).forEach(function (c) {
+        var o = new Node({ data: new Float32Array(grupos[c]), count: grupos[c].length / 8 }, 0xffffff, { tex: f[k].tex, unlit: f[k].unlit });
+        o.color = f[k].color; R.add(o);
+      });
     });
   };
   function sorte(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
@@ -576,8 +629,8 @@
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {};
-    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [26, 100] };
-    this.buildStatic(); this.buildDynamic(); this.buildAmbient();
+    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1] };
+    this.buildStatic(); this.buildDynamic(); this.buildAmbient(); this.buildCeu();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
     this.areaRing.visible = false;
     this.yaw = Math.PI; this.pitch = -0.05; this.swing = -1; this.bob = 0; this.shake = 0; this.fov = 70 * Math.PI / 180; this.aspect = 1;
@@ -597,7 +650,7 @@
   };
 
   View.prototype.buildStatic = function () {
-    var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 78) * 2;
+    var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2;
     R.add(new Node(planeGeo(S, S, 3), 0xffffff, { tex: 'grama' }));
     R.add(new Node(planeGeo(V.fence.half * 2, V.fence.half * 2, 3), 0xe6eccc, { tex: 'grama' }).at(0, 0.01, 0));
     var rd = V.road; R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
@@ -696,6 +749,73 @@
     });
   };
 
+  // ---------- céu ----------
+  // cúpula: v = 0 no zênite; abaixo do horizonte fica a cor do horizonte, a mesma da névoa, e o chão some nela
+  function cupula(R, voltas) {
+    var v = [], S = 48, E = [-30, 0, 3, 8, 15, 25, 40, 60, 90];
+    function p(i, e) {
+      var a = i / S * Math.PI * 2, r = e * Math.PI / 180, c = Math.cos(r);
+      v.push(Math.sin(a) * c * R, Math.sin(r) * R, Math.cos(a) * c * R, 0, 1, 0, i / S * voltas, e <= 0 ? 0.998 : Math.min(0.998, 1 - e / 90));
+    }
+    for (var j = 0; j + 1 < E.length; j++) { for (var i = 0; i < S; i++) {
+      p(i, E[j]); p(i + 1, E[j]); p(i + 1, E[j + 1]); p(i, E[j]); p(i + 1, E[j + 1]); p(i, E[j + 1]);
+    } }
+    return { data: new Float32Array(v), count: v.length / 8 };
+  }
+  // anel de pé em volta do jogador, com a textura repetida 'voltas' vezes
+  function anel(R, h, voltas) {
+    var v = [], S = 96;
+    for (var i = 0; i < S; i++) {
+      var a = i / S * Math.PI * 2, b = (i + 1) / S * Math.PI * 2;
+      Lote.prototype.plano(v, Math.sin(a) * R, Math.cos(a) * R, Math.sin(b) * R, Math.cos(b) * R, 0, h, i / S * voltas, (i + 1) / S * voltas);
+    }
+    return { data: new Float32Array(v), count: v.length / 8 };
+  }
+  View.prototype.buildCeu = function () {
+    var self = this, P = NZ.ceu.pinturas(), L = [];
+    Object.keys(P).forEach(function (k) { self.r.addTexture('c:' + k, P[k], true); });
+    function poe(geo, tex, fog) { var o = new Node(geo, 0xffffff, { tex: 'c:' + tex, unlit: true }); o.userData.fog = fog; L.push(o); return o; }
+    var domo = poe(cupula(2000, 6), 'degrade'), est = poe(cupula(1900, 2), 'estrelas');
+    var sol = poe(screenGeo(0.5, 0.5), 'sol'), lua = poe(screenGeo(0.5, 0.5), 'lua');
+    var nuv = poe(planeGeo(6000, 6000, 1400), 'nuvens', [500, 2700]); nuv.pos[1] = 300;
+    // o anel mais perto fica além de tudo o que o jogador alcança, e os outros atrás dele. névoa: quanto cada um se dilui no ar
+    var r0 = this.w.vila.bounds * 1.42 + 215;
+    var serras = [[3, 2, 22.5, 0.8], [1.7, 3, 15, 0.68], [1, 4, 11.25, 0.55]].map(function (s, i) {
+      var R = r0 * s[0];
+      return poe(anel(R, R * Math.tan(s[2] * Math.PI / 180), s[1]), 'serra' + (i + 1), [0, R / s[3]]);
+    });
+    var bruma = poe(anel(250, 250 * Math.tan(3.5 * Math.PI / 180), 12), 'nevoa');
+    this.ceuN = { domo: domo, est: est, sol: sol, lua: lua, nuv: nuv, serras: serras, bruma: bruma };
+    this.env.ceu = L; this.ceuMs = null;
+  };
+  // sol e lua: quadro voltado para o centro, a 1500 m na direção d
+  function astro(n, d, s) {
+    var f = [-d[0], -d[1], -d[2]], r = norm([f[2], 0, -f[0]]), u = [f[1] * r[2] - f[2] * r[1], f[2] * r[0] - f[0] * r[2], f[0] * r[1] - f[1] * r[0]];
+    n.world = [r[0] * s, r[1] * s, r[2] * s, 0, u[0] * s, u[1] * s, u[2] * s, 0, f[0], f[1], f[2], 0, d[0] * 1500, d[1] * 1500, d[2] * 1500, 1];
+    n.visible = d[1] > -0.12;
+  }
+  // a hora vem do relógio do jogo, no fuso de quem joga; as cores mudam devagar, então basta recalcular uma vez por segundo
+  View.prototype.ceuHora = function (ms) {
+    if (this.ceuMs !== null && Math.abs(ms - this.ceuMs) < 1000) { return; }
+    this.ceuMs = ms;
+    var d = new Date(ms), h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600, m = NZ.ceu.momento(h), E = this.env, C = this.ceuN;
+    E.sky = m.sky; E.gnd = m.gnd; E.sunCol = m.sun; E.sunDir = m.luz; E.fogCol = m.hor; E.tint = m.tint;
+    C.domo.color = [m.zen[0] - m.hor[0], m.zen[1] - m.hor[1], m.zen[2] - m.hor[2]]; C.domo.emissive = m.hor; // cinza 0 vira horizonte; 1, zênite
+    C.est.alpha = m.noite; C.est.visible = m.noite > 0.02; C.est.rotY = h / 24 * Math.PI * 2;
+    C.nuv.color = m.nuvem; C.bruma.color = m.hor; C.sol.color = m.solCor;
+    C.serras.forEach(function (n) { n.color = m.tint; });
+    astro(C.sol, m.solDir, 420); astro(C.lua, m.luaDir, 300);
+  };
+  // as serras ficam no mundo, então o jogador anda em relação a elas (paralaxe); as nuvens correm com o relógio
+  View.prototype.ceuQuadro = function (eye, tgt, ms) {
+    this.ceuHora(ms);
+    var C = this.ceuN;
+    C.serras.forEach(function (n) { n.pos[0] = -eye[0]; n.pos[2] = -eye[2]; n.world = local(n); });
+    C.nuv.pos[0] = (ms / 1000 * 1.6) % 1400; C.nuv.world = local(C.nuv);
+    [C.domo, C.est, C.bruma].forEach(function (n) { n.world = local(n); });
+    this.cam.skyVp = mul(perspective(this.fov, this.aspect, 1, 8000), lookAt([0, 0, 0], [tgt[0] - eye[0], tgt[1] - eye[1], tgt[2] - eye[2]]));
+  };
+
   View.prototype.resize = function (wpx, hpx, scale) {
     this.r.setSize(Math.max(1, Math.round(wpx * scale)), Math.max(1, Math.round(hpx * scale)));
     this.aspect = wpx / hpx;
@@ -791,6 +911,7 @@
     var tgt = [px + Math.sin(this.yaw) * cy, eye[1] + Math.sin(this.pitch), pz + Math.cos(this.yaw) * cy];
     var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
+    this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
     this.ambient(opts.now === undefined ? Date.now() : opts.now);
     this.r.draw(this.root, this.cam, this.env);
     this.r.overlay(this.swordNodes(st, dt, opts.moving));
