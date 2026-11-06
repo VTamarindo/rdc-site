@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261106-6', SAVE_VER = '20261105-3';
+  var VERSION = '20261106-8', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   var calc = NZ.calc;
   var G, V, world, sim, st, view;
@@ -600,7 +600,7 @@
   }
   function dailyBoard() { return world.props.filter(function (o) { return o.npc === 'quadro'; })[0]; }
   function dailyOpen() { return Object.keys(G.daily.quests).some(function (q) { return sim.dailyState(st, q) === 'available'; }); }
-  function dailyProg(id) { var Q = G.daily.quests[id]; return G.items[Q.item].name.toLowerCase() + ' ' + (Q.n - sim.dailyLeft(st, id)) + '/' + Q.n; }
+  function dailyProg(id) { var Q = G.daily.quests[id]; return G.items[Q.item].name.toLowerCase() + ' ' + sim.dailyGot(st, id) + '/' + Q.n; }
   function dailyTalk(id) {
     var D = G.daily, ids = Object.keys(D.quests), act = sim.dailyActive(st);
     var state = function (q) { return sim.dailyState(st, q); };
@@ -616,10 +616,10 @@
     }), dailyLeftText());
   }
   function dailyShow(id, q) {
-    var Q = G.daily.quests[q], W = G.daily.reward, s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
+    var Q = G.daily.quests[q], r = sim.dailyReward(q), s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
     setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); dailyTalk(id); } }, back] : [back],
       s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' :
-      'Recompensa: ' + W.moedasPorPeca + ' moedas e ' + W.xpPorPeca + ' XP por peça, ' + W.reputacao + ' de reputação ao concluir.');
+      'Recompensa: ' + r.moedas + ' moedas, ' + r.xp + ' XP e ' + r.rp + ' rp.');
   }
   function talk(id, said) {
     var def = G.npcs[id], dlg = def.dialogue && G.dialogues[def.dialogue];

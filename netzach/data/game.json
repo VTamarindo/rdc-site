@@ -319,14 +319,18 @@
     }
   },
   "daily": {
-    "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O material fica no baú: dá para entregar aos poucos.",
+    "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O baú aceita entregas parciais; a recompensa só sai ao completar a missão.",
     "resetHour": 0,
     "resetMinute": 1,
     "reward": {
-      "_nota": "moedas e XP valem por peça, pagos a cada entrega; reputação vale por missão concluída",
-      "moedasPorPeca": 2,
+      "_nota": "valores por peça; o total da missão é arredondado para inteiro, e o quadro mostra o que a entrega paga",
+      "ouroPorPeca": {
+        "madeira": 0.9,
+        "pedra": 1.5,
+        "carne": 2.3
+      },
       "xpPorPeca": 1,
-      "reputacao": 12
+      "rpPorPeca": 0.3
     },
     "textos": {
       "quadro": "A vila precisa de ajuda. Veja o que falta hoje.",

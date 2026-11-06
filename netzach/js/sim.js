@@ -640,36 +640,38 @@
     var self = this;
     return Object.keys(this.w.game.daily.quests).filter(function (id) { return self.dailyState(st, id) === 'active'; });
   };
-  Sim.prototype.dailyLeft = function (st, id) { var q = st.daily.q[id]; return this.w.game.daily.quests[id].n - (q ? q.got : 0); };
+  Sim.prototype.dailyGot = function (st, id) { var q = st.daily.q[id]; return (q && q.got) || 0; };
+  // recompensa inteira da missão: é o que o quadro mostra e o que a última entrega paga
+  Sim.prototype.dailyReward = function (id) {
+    var D = this.w.game.daily, Q = D.quests[id], W = D.reward;
+    return { moedas: Math.round(Q.n * W.ouroPorPeca[Q.item]), xp: Math.round(Q.n * W.xpPorPeca), rp: Math.round(Q.n * W.rpPorPeca) };
+  };
   // o que o baú aceita agora: só o material das missões diárias em andamento
   Sim.prototype.dailyItems = function (st) {
     var Q = this.w.game.daily.quests, out = [];
     this.dailyActive(st).forEach(function (id) { if (out.indexOf(Q[id].item) < 0) { out.push(Q[id].item); } });
     return out;
   };
-  Sim.prototype.dailyNeed = function (st, item) {
-    var Q = this.w.game.daily.quests, self = this, n = 0;
-    this.dailyActive(st).forEach(function (id) { if (Q[id].item === item) { n += self.dailyLeft(st, id); } });
-    return n;
+  Sim.prototype.dailyFor = function (st, item) {
+    var Q = this.w.game.daily.quests;
+    return this.dailyActive(st).filter(function (id) { return Q[id].item === item; })[0] || null;
   };
+  Sim.prototype.dailyNeed = function (st, item) { var id = this.dailyFor(st, item); return id ? this.w.game.daily.quests[id].n - this.dailyGot(st, id) : 0; };
   Sim.prototype.dailyMax = function (st, item) { return Math.min(this.sellable(st, item), this.dailyNeed(st, item)); };
+  // o material entra aos poucos, mas a recompensa só sai quando a missão fica completa
   Sim.prototype.dailyPut = function (st, item, n) {
-    var G = this.w.game, Q = G.daily.quests, W = G.daily.reward, self = this, p = st.player, def = G.items[item], done = [];
+    var G = this.w.game, p = st.player, def = G.items[item], id = this.dailyFor(st, item);
     n = Math.min(n, this.dailyMax(st, item));
     if (!(n > 0)) { return 'O baú só aceita o material que a vila pediu.'; }
-    p.inv[item] -= n;
-    var left = n;
-    this.dailyActive(st).forEach(function (id) {
-      if (Q[id].item !== item || !left) { return; }
-      var q = st.daily.q[id], put = Math.min(left, self.dailyLeft(st, id));
-      q.got += put; left -= put;
-      if (q.got >= Q[id].n) { q.state = 'done'; p.rep += W.reputacao; done.push(Q[id].title); self.log(st, 'Missão diária concluída: ' + Q[id].title + '.'); self.emit(st, { type: 'quest', id: id }); }
-    });
-    var coins = n * W.moedasPorPeca, xp = n * W.xpPorPeca;
-    p.inv.moeda = (p.inv.moeda || 0) + coins;
-    this.gainXp(st, xp);
-    return 'Colocou ' + n + ' ' + (n === 1 ? def.name : (def.plural || def.name)).toLowerCase() + ' no baú: +' + coins + ' moedas e +' + xp + ' XP.' +
-      (done.length ? ' Missão concluída: ' + done.join(', ') + ' (+' + done.length * W.reputacao + ' de reputação).' : '');
+    var Q = G.daily.quests[id], q = st.daily.q[id], put = 'Colocou ' + n + ' ' + (n === 1 ? def.name : (def.plural || def.name)).toLowerCase() + ' no baú.';
+    p.inv[item] -= n; q.got = this.dailyGot(st, id) + n;
+    if (q.got < Q.n) { return put + ' Faltam ' + (Q.n - q.got) + '.'; }
+    var r = this.dailyReward(id);
+    q.state = 'done'; p.inv.moeda = (p.inv.moeda || 0) + r.moedas; p.rep += r.rp;
+    this.gainXp(st, r.xp);
+    this.log(st, 'Missão diária concluída: ' + Q.title + '.');
+    this.emit(st, { type: 'quest', id: id });
+    return put + ' Missão concluída: +' + r.moedas + ' moedas, +' + r.xp + ' XP e +' + r.rp + ' rp.';
   };
 
   // vende exatamente n unidades de um item que este serviço compra
