@@ -108,6 +108,17 @@
     }
     return geo;
   }
+  // gira a peça em torno do eixo x (a tampa aberta, as toras deitadas); os UVs ficam como estavam
+  function rotX(geo, a) {
+    var v = geo.data, c = Math.cos(a), s = Math.sin(a);
+    for (var i = 0; i < v.length; i += 8) {
+      for (var k = 0; k < 4; k += 3) {
+        var y = v[i + k + 1], z = v[i + k + 2];
+        v[i + k + 1] = y * c - z * s; v[i + k + 2] = y * s + z * c;
+      }
+    }
+    return geo;
+  }
   function planeGeo(w, d, map) { var x = w / 2, z = d / 2; return new Geo().quad([-x, 0, z], [x, 0, z], [x, 0, -z], [-x, 0, -z]).done(map); }
   function ringGeo(ri, ro, seg) {
     var g = new Geo();
@@ -277,10 +288,44 @@
     return g;
   }
 
+  // objetos fixos do cenário, como as construções e a cerca. PX = metros por repetição de 'tabuas' a 100 px por metro
+  var PX = 0.64;
+  // peça com a arte pintada: sem sombra do sol, como as figuras, senão some nas faces viradas para o oeste
+  function pintura(o) { o.color = hex(0xf2f2f2); o.unlit = true; return o; }
+  function quadroAvisos() {
+    var g = new Node();
+    [-0.66, 0.66].forEach(function (x) { g.add(box(0.14, 2.1, 0.14, 'tabuas', PX, x, 1.05, -0.1)); }); // postes atrás do painel
+    g.add(box(1.6, 1.28, 0.06, 'tabuas', PX, 0, 1.36, 0));
+    g.add(pintura(box(1.56, 1.24, 0.01, 's:quadro_frente', 'fit', 0, 1.36, 0.036)));
+    g.add(new Node(cached('telhadinho', function () { return gableGeo(1.95, 0.42, 0.56, PX); }), 0xc9b8a4, { tex: 'tabuas' }).at(0, 2.03, 0));
+    return g;
+  }
+  function tora(x, y) {
+    var r = 0.08, len = 0.46, z = 0.04, t = new Node(cached('tora', function () { return rotX(cylGeo(r, r, len, 8, 0, PX), Math.PI / 2); }), 0x8a6a4a, { tex: 'tabuas' }).at(x, y, z);
+    return [t, pintura(box(0.16, 0.16, 0.006, 's:lenha_topo', 'fit', x, y, z + len / 2 + 0.004))];
+  }
+  function bauAberto() {
+    var g = new Node(), W = 1, H = 0.46, D = 0.66, t = 0.05, a = 0.42, L = 0.6;
+    g.add(box(W, H, t, 'tabuas', PX, 0, H / 2, D / 2 - t / 2)); g.add(box(W, H, t, 'tabuas', PX, 0, H / 2, -D / 2 + t / 2));
+    [-1, 1].forEach(function (s) { g.add(box(t, H, D - 2 * t, 'tabuas', PX, s * (W - t) / 2, H / 2, 0)); });
+    g.add(box(W - 2 * t, 0.04, D - 2 * t, 'tabuas', PX, 0, 0.26, 0, 0x6a5444));   // fundo falso: o baú está cheio
+    g.add(pintura(box(0.98, 0.45, 0.01, 's:bau_frente', 'fit', 0, 0.225, D / 2 + 0.006)));
+    // tampa aberta: dobradiça no alto do fundo, inclinada para trás; o lado de dentro olha para cima e para a frente
+    var cy = H + Math.cos(a) * L / 2, cz = -D / 2 - Math.sin(a) * L / 2, ny = Math.sin(a), nz = Math.cos(a);
+    g.add(new Node(cached('tampa', function () { return rotX(boxGeo(W, L, 0.04, PX), -a); }), 0xffffff, { tex: 'tabuas' }).at(0, cy, cz));
+    g.add(pintura(new Node(cached('tampa_in', function () { return rotX(boxGeo(0.98, 0.6, 0.006, 'fit'), -a); }), 0xffffff, { tex: 's:bau_tampa' }).at(0, cy + ny * 0.024, cz + nz * 0.024)));
+    // conteúdo: toras à esquerda, lingotes à direita, couro pendurado na borda
+    [[-0.34, 0.36], [-0.17, 0.36], [-0.255, 0.5]].forEach(function (p) { tora(p[0], p[1]).forEach(function (n) { g.add(n); }); });
+    [[0.14, 0.32, 0.08], [0.33, 0.32, 0.08], [0.235, 0.32, -0.12], [0.235, 0.41, 0]].forEach(function (p) {
+      g.add(box(0.2, 0.08, 0.13, null, 1, p[0], p[1], p[2], 0x8d939e)); g.add(box(0.16, 0.02, 0.09, null, 1, p[0], p[1] + 0.05, p[2], 0xb4bac4));
+    });
+    g.add(pintura(box(0.48, 0.6, 0.006, 's:bau_couro', 'fit', 0.08, 0.36, D / 2 + 0.016)));
+    return g;
+  }
+
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  // objetos do cenário: 100 px por metro, a densidade das pessoas (192 px / ~1,92 m)
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4, quadro_missoes: 2.16, bau_missoes: 1.04 };
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
 
   function View(canvas, world, art) {
     this.w = world; this.r = new Renderer(canvas); this.art = art;
@@ -335,7 +380,12 @@
       var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
       p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p);
     });
-    w.props.forEach(function (p) { R.add(self.sprite(p.id, SIZE[p.id]).at(p.x, 0, p.z)); });
+    w.props.forEach(function (p) {
+      var o = p.id === 'quadro_missoes' ? quadroAvisos() : bauAberto();
+      o.at(p.x, 0, p.z); o.rotY = p.rot * Math.PI / 180;
+      o.userData.ref = { type: 'prop', id: p.id }; o.userData.box = p;
+      R.add(o); self.pick.push(o);
+    });
   };
   View.prototype.buildDynamic = function () {
     var self = this, w = this.w;
@@ -460,10 +510,20 @@
     var best = null, bt = 1e9;
     for (var i = 0; i < this.pick.length; i++) {
       var o = this.pick[i]; if (!o.visible || !o.world) { continue; }
-      var tt = this.hitSprite(o, c.eye, d);
+      var tt = o.userData.box ? this.hitBox(o.userData.box, c.eye, d) : this.hitSprite(o, c.eye, d);
       if (tt !== null && tt < bt) { bt = tt; best = o; }
     }
     return best ? { ref: best.userData.ref, d: bt } : null;
+  };
+  // objeto fixo: raio contra a caixa da pegada, do chão até a altura h
+  View.prototype.hitBox = function (b, e, d) {
+    var lo = [b.x - b.w / 2, 0, b.z - b.d / 2], hi = [b.x + b.w / 2, b.h, b.z + b.d / 2], t0 = 0, t1 = 1e9;
+    for (var i = 0; i < 3; i++) {
+      if (Math.abs(d[i]) < 1e-9) { if (e[i] < lo[i] || e[i] > hi[i]) { return null; } continue; }
+      var a = (lo[i] - e[i]) / d[i], c = (hi[i] - e[i]) / d[i];
+      t0 = Math.max(t0, Math.min(a, c)); t1 = Math.min(t1, Math.max(a, c));
+    }
+    return t0 <= t1 ? t0 : null;
   };
   View.prototype.hitSprite = function (o, e, d) {
     var s = Math.sin(o.rotY), co = Math.cos(o.rotY), n = [s, 0, co];
@@ -492,7 +552,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=5' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=6' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

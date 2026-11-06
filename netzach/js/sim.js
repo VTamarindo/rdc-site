@@ -52,12 +52,12 @@
     this.spawns = vila.rabbits.map(function (p) { return { x: p[0] + 0.5, z: p[1] + 0.5 }; });
     this.npcs = vila.npcs.map(function (n) { self.block(n.x, n.z); return { id: n.id, x: n.x, z: n.z }; });
 
-    // objetos do cenário: só figura e colisão; w x d em metros é a pegada bloqueada, centrada em (x, z)
+    // objetos fixos do cenário: w x d em metros é a pegada no mundo, centrada em (x, z); h é a altura para o clique
     this.props = (vila.props || []).map(function (p) {
       for (var x = Math.floor(p.x - p.w / 2); x < Math.ceil(p.x + p.w / 2); x++) {
         for (var z = Math.floor(p.z - p.d / 2); z < Math.ceil(p.z + p.d / 2); z++) { self.block(x, z); }
       }
-      return { id: p.id, x: p.x, z: p.z };
+      return { id: p.id, name: p.name, npc: p.npc, x: p.x, z: p.z, w: p.w, d: p.d, h: p.h, rot: p.rot || 0 };
     });
     this.plaza = vila.plaza;
   }
@@ -576,8 +576,9 @@
 
   // ---------- serviços da vila (ações do jogador) ----------
   Sim.prototype.nearNpc = function (st, id) {
-    var n = null; this.w.npcs.forEach(function (x) { if (x.id === id) { n = x; } });
-    return n && dist(st.player.x, st.player.z, n.x, n.z) <= this.w.game.settings.interactRange + 0.5;
+    // além das pessoas, objetos fixos abrem a mesma janela (props com o campo npc)
+    var p = st.player, r = this.w.game.settings.interactRange + 0.5;
+    return this.w.npcs.concat(this.w.props).some(function (x) { return (x.id === id || x.npc === id) && dist(p.x, p.z, x.x, x.z) <= r; });
   };
   Sim.prototype.service = function (st, npc, s, arg) {
     var w = this.w, G = w.game, p = st.player;

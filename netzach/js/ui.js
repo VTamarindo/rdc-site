@@ -1,8 +1,9 @@
 /* Netzach · interface, entrada, laço de tempo e save (protótipo da vila) */
 (function (NZ) {
   'use strict';
-  // ao publicar uma versão nova, troque VERSION aqui e o ?v= no index.html (evita cache velho)
-  var VERSION = '20261105-3';
+  // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
+  // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
+  var VERSION = '20261106-1', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   var calc = NZ.calc;
   var G, V, world, sim, st, view;
@@ -33,6 +34,7 @@
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
+    fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
     NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
     renderLog();
 
@@ -50,14 +52,14 @@
 
   // ---------- save ----------
   function save() {
-    try { localStorage.setItem(G.settings.saveKey, JSON.stringify({ v: 1, ver: VERSION, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
+    try { localStorage.setItem(G.settings.saveKey, JSON.stringify({ v: 1, ver: SAVE_VER, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
   }
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(G.settings.saveKey));
       if (!(s && s.v === 1 && s.state)) { return null; }
-      // protótipo: versão nova publicada = jogo recomeça do zero (sem precisar limpar o cache)
-      if (G.settings.resetSaveOnNewVersion && s.ver !== VERSION) { localStorage.removeItem(G.settings.saveKey); newVersion = true; return null; }
+      // protótipo: SAVE_VER novo = jogo recomeça do zero (sem precisar limpar o cache)
+      if (G.settings.resetSaveOnNewVersion && s.ver !== SAVE_VER) { localStorage.removeItem(G.settings.saveKey); newVersion = true; return null; }
       return s;
     } catch (e) { return null; }
   }
@@ -372,6 +374,10 @@
         [[t, -f], [-f, t], [f, t]].concat(t < gt0 || t > gt1 ? [[t, f]] : []).forEach(function (q) { c.fillRect(X(q[0]) - 1.5, Z(q[1]) - 1.5, 3, 3); });
       }
     }
+    // objetos fixos: a mesma tinta das casas
+    world.props.forEach(function (o) {
+      c.fillStyle = 'rgba(122,72,34,.55)'; c.fillRect(X(o.x - o.w / 2), Z(o.z - o.d / 2), o.w * k, o.d * k);
+    });
     // casas: tinta sépia com hachura
     world.buildings.forEach(function (b) {
       var x = X(b.x0), z = Z(b.z0), w = (b.x1 - b.x0) * k, h = (b.z1 - b.z0) * k;
@@ -786,18 +792,25 @@
   function refName(ref) {
     if (ref.type === 'npc') { return G.npcs[ref.id].name; }
     if (ref.type === 'mob') { return G.monsters.coelho.name; }
+    if (ref.type === 'prop') { return propById(ref.id).name; }
     var n = world.nodeById[ref.id], def = G.nodes[n.kind], ns = st.nodes[n.id];
     return def.name + (ns.alive ? '' : ' (volta em ' + Math.ceil(ns.left) + ' s)');
   }
+  function propById(id) { return world.props.filter(function (o) { return o.id === id; })[0]; }
   function refPos(ref) {
     if (ref.type === 'npc') { var r = null; world.npcs.forEach(function (n) { if (n.id === ref.id) { r = n; } }); return r; }
     if (ref.type === 'mob') { return sim.mobById(st, ref.id); }
+    if (ref.type === 'prop') { return propById(ref.id); }
     return world.nodeById[ref.id];
   }
   function interact(ref) {
     var p = st.player, pos = refPos(ref), d = calc.dist(p.x, p.z, pos.x, pos.z);
     if (ref.type === 'npc') {
       if (d <= G.settings.interactRange + 0.5) { openNpc(ref.id); } else { toast('Aproxime-se de ' + G.npcs[ref.id].name + '.'); }
+      return;
+    }
+    if (ref.type === 'prop') {
+      if (d <= G.settings.interactRange + 0.5) { openNpc(pos.npc); } else { toast('Aproxime-se: ' + pos.name + '.'); }
       return;
     }
     if (ref.type === 'node') {
@@ -823,11 +836,13 @@
       if (d < bd) { bd = d; best = ref; }
     }
     world.npcs.forEach(function (n) { consider({ type: 'npc', id: n.id }, n.x, n.z, G.settings.interactRange); });
+    world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, G.settings.interactRange); });
     world.nodes.forEach(function (n) { if (st.nodes[n.id].alive) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.reach + 0.6); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, G.settings.interactRange); } });
     if (best) { interact(best); return; }
     // nada ao alcance: diz o que está à frente, mais longe
     world.npcs.forEach(function (n) { consider({ type: 'npc', id: n.id }, n.x, n.z, 12); });
+    world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, 12); });
     world.nodes.forEach(function (n) { if (st.nodes[n.id].alive) { consider({ type: 'node', id: n.id }, n.x, n.z, 12); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, 12); } });
     toast(best ? 'Aproxime-se: ' + refName(best) + ' (' + bd.toFixed(1) + ' m).' : 'Nada ao alcance à sua frente.');
@@ -838,6 +853,7 @@
     if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(false); } }
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
+    else if (c === 'fullscreen') { toggleFull(); }
     else if (c === 'inv') { toggle('w-inv', function () { $('iv-res').textContent = ''; }); if (openWin === 'w-inv') { renderInv(); } }
     else if (c === 'bag') { toggle('w-bag'); if (openWin === 'w-bag') { renderBag(); } }
     else if (c === 'stance') { setStance(); }
@@ -847,6 +863,21 @@
       else if (openWin === 'w-map') { mapArmed = false; mapMenu = mapMenu === 'macro' ? false : 'macro'; mapUi(); }
       else { openMap(true); }
     }
+  }
+
+  // ---------- tela cheia (o iPhone não oferece isso às páginas: o botão avisa em vez de falhar calado) ----------
+  function fullEl() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function fullCan() { var d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen); }
+  function fullUi() {
+    var b = $('btn-full');
+    b.textContent = !fullCan() ? 'Tela cheia indisponível neste navegador' : fullEl() ? 'Sair da tela cheia' : 'Tela cheia';
+    b.disabled = !fullCan();
+  }
+  function toggleFull() {
+    var d = document.documentElement, r;
+    if (fullEl()) { r = (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+    else { r = (d.requestFullscreen || d.webkitRequestFullscreen).call(d); }
+    if (r && r.catch) { r.catch(function () { toast('O navegador recusou a tela cheia.'); }); }
   }
 
   function debug(c) {

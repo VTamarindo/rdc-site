@@ -81,17 +81,25 @@
   "props": [
     {
       "id": "quadro_missoes",
-      "x": 8,
+      "name": "Quadro de avisos",
+      "npc": "quadro",
+      "x": 8.5,
       "z": 11,
-      "w": 2,
-      "d": 2
+      "w": 1,
+      "d": 2,
+      "h": 2.45,
+      "rot": -90
     },
     {
       "id": "bau_missoes",
-      "x": 7.5,
-      "z": 12.5,
+      "name": "Baú",
+      "npc": "quadro",
+      "x": 8.5,
+      "z": 12.7,
       "w": 1,
-      "d": 1
+      "d": 1,
+      "h": 1,
+      "rot": -90
     }
   ],
   "trees": [

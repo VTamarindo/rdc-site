@@ -753,26 +753,22 @@ def veio_vazio():
 
 
 # ---------------- objetos do cenário: mesma densidade das pessoas (100 px por metro) ----------------
-FONTE = {'M': '10001 11011 10101 10101 10001 10001 10001', 'I': '111 010 010 010 010 010 111',
-         'S': '01111 10000 10000 01110 00001 00001 11110', 'O': '01110 10001 10001 10001 10001 10001 01110',
-         'E': '11111 10000 10000 11110 10000 10000 11111', 'D': '11110 10001 10001 10001 10001 10001 11110',
-         'A': '01110 10001 10001 11111 10001 10001 10001', 'R': '11110 10001 10001 11110 10100 10010 10001'}
+FONTE = {'Q': '0110 1001 1001 1001 1001 1011 0111', 'U': '1001 1001 1001 1001 1001 1001 0110',
+         'A': '0110 1001 1001 1111 1001 1001 1001', 'D': '1110 1001 1001 1001 1001 1001 1110',
+         'R': '1110 1001 1001 1110 1010 1001 1001', 'O': '0110 1001 1001 1001 1001 1001 0110',
+         'E': '1111 1000 1000 1110 1000 1000 1111', 'V': '1001 1001 1001 1001 1001 0110 0110',
+         'I': '111 010 010 010 010 010 111', 'S': '0111 1000 1000 0110 0001 0001 1110'}
 
 
 def letreiro(f, txt, cx, y, mat, lum):
-    """letras de 5x7 com traço de 2 px, centradas em cx; til e acento ficam acima de y"""
-    base = {'Õ': 'O', 'Á': 'A'}
-    larg = [len(FONTE[base.get(c, c)].split()[0]) * 2 for c in txt]
+    """letras de 4x7 com traço de 2 px, centradas em cx, numa linha só; espaço de 2 px além dos vãos"""
+    larg = [2 if c == ' ' else len(FONTE[c].split()[0]) * 2 for c in txt]
     x = int(cx - (sum(larg) + 2 * (len(txt) - 1)) / 2)
     for c, w in zip(txt, larg):
-        for j, row in enumerate(FONTE[base.get(c, c)].split()):
+        for j, row in enumerate(FONTE[c].split() if c != ' ' else []):
             for i, b in enumerate(row):
                 if b == '1':
                     for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)): f.px(x + i * 2 + dx, y + j * 2 + dy, mat, lum)
-        if c == 'Õ':
-            for dx, dy in ((1, -3), (2, -4), (3, -4), (4, -4), (5, -3), (6, -3), (7, -3), (8, -4)): f.px(x + dx, y + dy, mat, lum)
-        if c == 'Á':
-            for dx, dy in ((4, -2), (5, -2), (5, -3), (6, -3), (6, -4), (7, -4)): f.px(x + dx, y + dy, mat, lum)
         x += w + 2
 
 
@@ -803,86 +799,69 @@ def aviso(f, x, y, w, h, tilt, seed, selo=False):
     for dx, dy, l in ((0, 2, .5), (1, 2, .3), (0, 3, .3), (1, 3, .15)): f.px(cx + dx, y + dy, 'ferro', l + .2)
 
 
-def quadro_missoes():
-    """quadro de avisos das missões diárias, de 1,8 m de largura; quadro 180x216, pé na linha 213"""
-    f = Fig(180, 216, seed=81); G2 = 213
-    for x in (24, 156): f.ell(x, G2 - 1, 17, 3, 'terra', R=2, tex=0.1)
-    for k, x in enumerate((24, 156)):                                                # postes fincados no chão
-        f.poly([(x - 6, 24), (x + 6, 24), (x + 7, G2), (x - 7, G2)], 'madeira', R=7, tex=0.07, vgrad=0.14, seed=810 + k)
-        for dx in (-3, 2): f.fold([(x + dx, 90), (x + dx + 1, 150), (x + dx, G2 - 2)], .14, .05)
-    # letreiro: tábua escura com as letras pintadas de claro
-    tabua(f, 12, 40, 168, 64, bias=-0.2, seed=82, veios=4); tabua(f, 12, 64, 168, 86, bias=-0.24, seed=83, veios=4)
-    letreiro(f, 'MISSÕES', 90, 47, 'linho_c', 0.95); letreiro(f, 'DIÁRIAS', 90, 69, 'linho_c', 0.95)
-    # painel de tábuas onde os papéis são pregados
-    for i, y in enumerate(range(88, 176, 15)): tabua(f, 16, y, 164, y + 15, bias=-0.04 + 0.03 * (i % 2), seed=84 + i)
-    tabua(f, 12, 176, 168, 186, bias=-0.12, seed=91, veios=2)                        # travessa de baixo
-    aviso(f, 25, 94, 32, 44, 1, 92); aviso(f, 62, 99, 28, 36, -1, 93, selo=True)
-    aviso(f, 95, 92, 30, 40, 1, 94); aviso(f, 130, 98, 26, 46, -1, 95)
-    aviso(f, 40, 132, 30, 36, -1, 96, selo=True); aviso(f, 88, 128, 34, 42, 1, 97)
-    # telhadinho de duas águas, de ripas
-    f.poly([(14, 42), (90, 14), (166, 42)], 'madeira', flat=0.2, tex=0.05, seed=99)      # empena, na sombra do beiral
-    f.poly([(2, 31), (90, 5), (178, 31), (178, 44), (90, 19), (2, 44)], 'madeira', flat=0.56, tex=0.05, seed=98)
-    f.adj(f.m_poly([(90, 5), (178, 31), (178, 44), (90, 19)]), -0.2)
-    for x in range(8, 176, 10):
-        y = 5 + abs(90 - x) * 26 / 88
-        f.fold([(x, y), (x, y + 13)], .2, .08)
-    f.fold([(2, 38), (90, 12), (178, 38)], .16, .0)
-    for (x, y) in ((16, 52), (16, 76), (164, 52), (164, 76), (20, 181), (160, 181)): f.px(x, y, 'ferro', 0.8); f.px(x + 1, y + 1, 'ferro', 0.3)
+def quadro_frente():
+    """frente do quadro de avisos, aplicada numa peça 3D de 1,56 x 1,24 m: letreiro, tábuas, papéis e travessa"""
+    f = Fig(156, 124, seed=81)
+    tabua(f, 0, 0, 156, 26, bias=-0.22, seed=83, veios=4)                             # letreiro: tábua escura, letras claras
+    letreiro(f, 'QUADRO DE AVISOS', 78, 6, 'linho_c', 0.95)
+    for i, y in enumerate(range(26, 116, 15)): tabua(f, 0, y, 156, y + 15, bias=-0.04 + 0.03 * (i % 2), seed=84 + i)
+    tabua(f, 0, 114, 156, 124, bias=-0.12, seed=91, veios=2)                          # travessa de baixo
+    aviso(f, 13, 32, 32, 44, 1, 92); aviso(f, 50, 37, 28, 36, -1, 93, selo=True)
+    aviso(f, 83, 30, 30, 40, 1, 94); aviso(f, 118, 36, 26, 46, -1, 95)
+    aviso(f, 28, 70, 30, 36, -1, 96, selo=True); aviso(f, 76, 66, 34, 42, 1, 97)
+    for (x, y) in ((4, 12), (151, 12), (4, 119), (151, 119)): f.px(x, y, 'ferro', 0.8); f.px(x + 1, y + 1, 'ferro', 0.3)
     return f
 
 
-def lenha(f, x, y, r):
-    """tora deitada, com o corpo de casca indo para o fundo e o topo cortado à frente: cerne e anéis (como o toco)"""
-    f.cap(x, y, x + 17, y - 9, r + 0.5, r, 'casca', R=r, tex=0.08, edge=0.2, shadow=0.2)
-    for k in (-3, 2): f.fold([(x + 4, y + k - 3), (x + 18, y + k - 10)], .2, .06)
+def bau_frente():
+    """frente do baú, aplicada numa peça 3D de 0,98 x 0,45 m: tábuas, borda, cintas de ferro e fecho"""
+    f = Fig(98, 45, seed=101)
+    f.poly([(0, 2), (98, 2), (98, 45), (0, 45)], 'madeira', R=16, tex=0.05, vgrad=0.14, shadow=0.2, seed=104)
+    for y in (17, 31): f.fold([(1, y), (97, y)], .2, .08)
+    f.poly([(0, 0), (98, 0), (98, 6), (0, 6)], 'madeira', R=3, bias=0.1, tex=0.04, seed=105)   # borda de cima
+    for x in (6, 86):
+        f.poly([(x, 0), (x + 7, 0), (x + 7, 45), (x, 45)], 'ferro', R=3.5, bias=-0.06, edge=0.1)
+        for y in (9, 23, 37): f.px(x + 3, y, 'ferro', 1.0); f.px(x + 4, y + 1, 'ferro', 0.2)
+    f.poly([(17, 6), (27, 6), (27, 18), (22, 21), (17, 18)], 'latao', R=4, shadow=0.2)         # fecho
+    f.px(22, 12, 'latao', 0.05); f.px(22, 13, 'latao', 0.05)
+    return f
+
+
+def bau_tampa():
+    """lado de dentro da tampa aberta, aplicado numa peça 3D de 0,98 x 0,60 m"""
+    f = Fig(98, 60, seed=102)
+    f.poly([(0, 0), (98, 0), (98, 60), (0, 60)], 'madeira', R=20, tex=0.05, bias=-0.26, seed=102)
+    for y in (15, 30, 45): f.fold([(1, y), (97, y)], .16, .05)
+    for x in (9, 89):
+        f.poly([(x - 3, 0), (x + 3, 0), (x + 3, 60), (x - 3, 60)], 'ferro', R=3, bias=-0.2)
+    return f
+
+
+def bau_couro():
+    """couro de coelho pendurado na borda do baú, recortado: peça 3D de 0,48 x 0,60 m"""
+    f = Fig(48, 60, seed=106); dx, dy = -42, -40
+    S = lambda pts: [(x + dx, y + dy) for x, y in pts]
+    m = (f.m_poly(S([(53, 62), (79, 62), (84, 72), (82, 88), (74, 96), (58, 96), (50, 88), (48, 72)]))
+         | f.m_cap(53 + dx, 66 + dy, 46 + dx, 63 + dy, 4, 3) | f.m_cap(79 + dx, 66 + dy, 86 + dx, 63 + dy, 4, 3)
+         | f.m_cap(54 + dx, 90 + dy, 48 + dx, 96 + dy, 4, 3) | f.m_cap(78 + dx, 90 + dy, 84 + dx, 96 + dy, 4, 3)
+         | f.m_ell(66 + dx, 58 + dy, 7, 6))
+    for x0, x1 in ((63, 58), (69, 74)):
+        f.cap(x0 + dx, 54 + dy, x1 + dx, 41 + dy, 3, 2.6, 'pelo', R=3, bias=-0.04, shadow=0.25, seed=108)
+        f.cap(x0 + dx, 53 + dy, x1 + dx, 43 + dy, 1.2, 1, 'orelha', R=2, bias=0.1)
+    f.shape(m, 'pelo', R=9, tex=0.07, shadow=0.3, bias=-0.04, seed=106)
+    f.adj(f.m_ell(66 + dx, 79 + dy, 9, 12), 0.1, clip=f.m_mat('pelo'))                # lombo mais claro
+    f.ell(66 + dx, 96 + dy, 2.6, 2.3, 'pelo_c', R=2, bias=0.1)                        # rabinho
+    return f
+
+
+def lenha_topo():
+    """topo cortado de uma tora: 0,16 m de diâmetro, com cerne e anéis (como o toco)"""
+    f = Fig(16, 16, seed=109); x = y = 7.5; r = 7.5
     f.ell(x, y, r, r, 'cerne', flat=0.72, edge=0.1)
     for q in (0.68, 0.36):
         m = f.m_ell(x, y, r * q, r * q) & ~f.m_ell(x, y, r * q - 1, r * q - 1); f.adj(m, -0.42)
     f.adj(f.m_ell(x, y, r, r) & ~f.m_ell(x, y, r - 1, r - 1), -0.3)
     f.line([(x, y), (x + r - 2, y + 2)], 'cerne', 0.25)
-
-
-def lingote(f, x, y, w=25, h=11, mat='ferro'):
-    """barra em forma de tronco de pirâmide: topo claro, frente média e lado direito escuro"""
-    f.poly([(x, y + h), (x + 4, y + 4), (x + w - 3, y + 4), (x + w, y + h)], mat, flat=0.56, edge=0.15, shadow=0.2)
-    f.poly([(x + 4, y + 4), (x + 7, y), (x + w - 2, y), (x + w - 3, y + 4)], mat, flat=0.92)
-    f.poly([(x + w - 3, y + 4), (x + w - 2, y), (x + w + 1, y + h - 4), (x + w, y + h)], mat, flat=0.3)
-    f.line([(x + 8, y + 1), (x + 13, y + 1)], mat, 1.1)
-
-
-def bau_missoes():
-    """baú aberto com lenha, lingotes e couro de coelho; 0,96 m de largura; quadro 116x104, pé na linha 101"""
-    f = Fig(116, 104, seed=101); G2 = 101
-    f.ell(58, G2 - 1, 54, 3, 'terra', R=2, tex=0.1)
-    # tampa aberta, inclinada para trás: vemos o lado de dentro
-    f.poly([(19, 42), (97, 42), (105, 12), (98, 5), (18, 5), (11, 12)], 'madeira', R=20, tex=0.05, bias=-0.26, seed=102)
-    for y in (17, 28): f.fold([(14, y), (102, y)], .16, .05)
-    for x0, x1 in ((27, 24), (89, 92)):
-        f.poly([(x0 - 3, 42), (x0 + 3, 42), (x1 + 3, 5), (x1 - 3, 5)], 'ferro', R=3, bias=-0.2)
-    # fundo do baú, escuro
-    f.poly([(19, 42), (97, 42), (106, 60), (10, 60)], 'madeira', flat=0.1, tex=0.04, seed=103)
-    # conteúdo: lenha à esquerda, lingotes à direita, pele de coelho pendurada na borda
-    for x, y, r in ((27, 38, 7), (19, 50, 7), (34, 51, 7.5)): lenha(f, x, y, r)
-    lingote(f, 62, 28); lingote(f, 53, 39); lingote(f, 80, 39)
-    # frente do baú
-    f.poly([(9, 60), (107, 60), (107, G2), (9, G2)], 'madeira', R=16, tex=0.05, vgrad=0.14, shadow=0.2, seed=104)
-    for y in (73, 87): f.fold([(10, y), (106, y)], .2, .08)
-    f.poly([(7, 56), (109, 56), (109, 62), (7, 62)], 'madeira', R=3, bias=0.1, tex=0.04, seed=105)   # borda de cima
-    for x in (15, 95):
-        f.poly([(x, 56), (x + 7, 56), (x + 7, G2), (x, G2)], 'ferro', R=3.5, bias=-0.06, edge=0.1)
-        for y in (65, 79, 93): f.px(x + 3, y, 'ferro', 1.0); f.px(x + 4, y + 1, 'ferro', 0.2)
-    f.poly([(26, 62), (36, 62), (36, 74), (31, 77), (26, 74)], 'latao', R=4, shadow=0.2)              # fecho
-    f.px(31, 68, 'latao', 0.05); f.px(31, 69, 'latao', 0.05)
-    # couro de coelho pendurado na borda: pele larga com abas curtas nas patas, cabeça e as duas orelhas compridas
-    m = (f.m_poly([(53, 62), (79, 62), (84, 72), (82, 88), (74, 96), (58, 96), (50, 88), (48, 72)])
-         | f.m_cap(53, 66, 46, 63, 4, 3) | f.m_cap(79, 66, 86, 63, 4, 3) | f.m_cap(54, 90, 48, 96, 4, 3) | f.m_cap(78, 90, 84, 96, 4, 3)
-         | f.m_ell(66, 58, 7, 6))
-    for x0, x1 in ((63, 58), (69, 74)):
-        f.cap(x0, 54, x1, 41, 3, 2.6, 'pelo', R=3, bias=-0.04, shadow=0.25, seed=108)
-        f.cap(x0, 53, x1, 43, 1.2, 1, 'orelha', R=2, bias=0.1)
-    f.shape(m, 'pelo', R=9, tex=0.07, shadow=0.3, bias=-0.04, seed=106)
-    f.adj(f.m_ell(66, 79, 9, 12), 0.1, clip=f.m_mat('pelo'))                          # lombo mais claro
-    f.ell(66, 96, 2.6, 2.3, 'pelo_c', R=2, bias=0.1)                                  # rabinho
     return f
 
 
@@ -1102,7 +1081,7 @@ if __name__ == '__main__':
                                                  ('anselmo', anselmo), ('arvore', arvore), ('toco', toco), ('veio', veio), ('veio_vazio', veio_vazio),
                                                  ('espada', lambda: espada('aco')), ('espada_afiada', lambda: espada('aco_af')),
                                                  ('espada_temperada', lambda: espada('aco_t')), ('espada_rastro', espada_rastro),
-                                                 ('quadro_missoes', quadro_missoes), ('bau_missoes', bau_missoes))]
+                                                 ('quadro_frente', quadro_frente), ('bau_frente', bau_frente), ('bau_tampa', bau_tampa), ('bau_couro', bau_couro), ('lenha_topo', lenha_topo))]
 
     wsheet = Image.new('RGBA', (S * len(walls), S), (0, 0, 0, 0))
     for i, (_, t) in enumerate(walls): wsheet.paste(t, (i * S, 0))

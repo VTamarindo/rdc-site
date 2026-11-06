@@ -193,6 +193,11 @@
         }
       ]
     },
+    "quadro": {
+      "name": "Missões diárias",
+      "idle": "Nenhuma missão diária por enquanto.",
+      "services": []
+    },
     "anselmo": {
       "name": "Escudeiro Anselmo",
       "dialogue": "anselmo_tempo",
