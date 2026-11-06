@@ -93,10 +93,17 @@
         <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
         <button type="button" role="menuitem" id="mm-rules">Regras</button>
         <button type="button" role="menuitem" id="mm-pause">Pausar macro</button>
+        <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mm-def" data-tip="Torna o macro como navegação no mapa como o padrão">Padrão</button>
       </div>
+      <div id="map-walk-menu" class="popmenu" role="menu" aria-label="Caminhada" hidden>
+        <button type="button" role="menuitem" id="mw-go">Caminhar</button>
+        <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mw-def" data-tip="Torna a caminhada como navegação no mapa como o padrão">Padrão</button>
+      </div>
+      <p id="map-tip" role="status" hidden></p>
     </div>
     <div class="maprow">
       <button type="button" id="map-macro" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Macro (G)">Macro ▴</button>
+      <button type="button" id="map-walk" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Caminhada">Caminhada ▴</button>
       <p id="map-hint" class="hint" aria-live="polite"></p>
     </div>
   </section>
@@ -167,8 +174,8 @@
         <h3>Como jogar</h3>
         <p><b>Andar:</b> W e S, frente e trás · A e D, para o lado · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
         <p><b>Interagir:</b> clique numa pessoa, árvore, veio ou coelho, ou aperte E para o que estiver à sua frente. O combate é automático quando o alvo está ao alcance.</p>
-        <p><b>Mapa:</b> toque no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe.</p>
-        <p><b>Macro:</b> no mapa, abra Macro (G) e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. As regras ficam no mesmo menu.</p>
+        <p><b>Mapa:</b> toque no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
+        <p><b>Macro:</b> no mapa, abra Macro (G) e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar. As regras ficam no mesmo menu.</p>
         <p><b>Inventário e bolsa:</b> a espada e o escudo mostram arma, postura e poções; a bolsa mostra o que você coletou.</p>
         <p><b>Fora da aba:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
         <p class="small">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas</p>

@@ -167,7 +167,7 @@
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
         potCd: 0, atkCd: 0, combatT: 99, action: null, goto: null,
-        mode: 'manual',
+        mode: 'manual', mapNav: 'caminhada', // mapNav: o que o clique no mapa faz por padrão ('caminhada' ou 'macro')
         macro: { area: null, on: false, phase: 'idle', stop: '', path: null, goal: null, repath: 0 }
       },
       rules: G.macro.defaultOrder.map(function (id) { return { id: id, on: true, val: G.macro.rules[id].val }; }),
@@ -683,6 +683,7 @@
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
+    if (st.player.mapNav !== 'macro') { st.player.mapNav = 'caminhada'; }
     return st;
   };
 

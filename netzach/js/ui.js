@@ -215,7 +215,7 @@
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     line.classList.toggle('on', on);
-    line.textContent = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || (isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho'));
+    line.textContent = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || (isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho'));
     line.classList.toggle('on', on || !!p.goto);
     renderQuests();
     drawMap($('mini'), 150, false);
@@ -234,24 +234,61 @@
   }
 
   // ---------- mapa ----------
-  var mapHover = null, mapArmed = false, mapMenu = false;
+  // mapArmed: o próximo clique, avulso ('macro', 'caminhada' ou false); mapMenu: o submenu aberto (idem)
+  var mapHover = null, mapArmed = false, mapMenu = false, mapTipT = 0;
   function macroOn() { return st.player.mode === 'macro' && st.player.macro.on; }
-  // estado dos controles da janela do mapa (botão Macro embaixo e o menu que ele abre)
+  // o que o próximo clique no mapa vai fazer: o armado vale mais que o padrão
+  function mapNext() { return mapArmed || st.player.mapNav; }
+  // estado dos controles da janela do mapa (botões Macro e Caminhada embaixo e os menus que eles abrem)
   function mapUi() {
-    var a = st.player.macro.area, on = macroOn(), mb = $('map-macro');
-    $('map-hint').textContent = mapArmed
+    var a = st.player.macro.area, on = macroOn(), nav = st.player.mapNav, mb = $('map-macro'), wb = $('map-walk');
+    var mOpen = mapMenu === 'macro', wOpen = mapMenu === 'caminhada', box = mOpen ? $('map-menu') : wOpen ? $('map-walk-menu') : null;
+    $('map-hint').textContent = mapArmed === 'macro'
       ? 'Macro armada: clique onde o personagem deve trabalhar sozinho (o círculo dourado mostra a área).'
+      : mapArmed === 'caminhada' ? (on ? 'Caminhada armada: clique num ponto para pausar a macro e andar até lá.' : 'Caminhada armada: clique no ponto até onde o personagem deve andar.')
+      : nav === 'macro' ? (on ? 'A macro está trabalhando e é o padrão. Um clique no mapa muda a área de trabalho para o ponto.' : 'Macro é o padrão: clique onde o personagem deve trabalhar sozinho.')
       : on ? 'A macro está trabalhando na área marcada. Um clique no mapa pausa e leva o personagem até o ponto.'
       : 'Clique num ponto para o personagem andar até lá.';
-    mb.setAttribute('aria-pressed', mapArmed ? 'true' : 'false');
-    mb.setAttribute('aria-expanded', mapMenu ? 'true' : 'false');
-    mb.textContent = mapArmed ? 'Macro armada · cancelar' : (on ? 'Macro (trabalhando) ' : 'Macro ') + (mapMenu ? '▾' : '▴');
-    $('map-menu').hidden = !mapMenu;
+    mb.setAttribute('aria-pressed', mapArmed === 'macro' ? 'true' : 'false');
+    mb.setAttribute('aria-expanded', mOpen ? 'true' : 'false');
+    mb.textContent = mapArmed === 'macro' ? 'Macro armada · cancelar' : (on ? 'Macro (trabalhando) ' : 'Macro ') + (mOpen ? '▾' : '▴');
+    mb.classList.toggle('padrao', nav === 'macro');
+    mb.title = nav === 'macro' ? 'Macro (G) · padrão do mapa' : 'Macro (G)';
+    wb.setAttribute('aria-pressed', mapArmed === 'caminhada' ? 'true' : 'false');
+    wb.setAttribute('aria-expanded', wOpen ? 'true' : 'false');
+    wb.textContent = mapArmed === 'caminhada' ? 'Caminhada armada · cancelar' : 'Caminhada ' + (wOpen ? '▾' : '▴');
+    wb.classList.toggle('padrao', nav === 'caminhada');
+    wb.title = nav === 'caminhada' ? 'Caminhada · padrão do mapa' : 'Caminhada';
+    $('map-menu').hidden = !mOpen;
+    $('map-walk-menu').hidden = !wOpen;
     $('mm-prev').hidden = !a;
     $('mm-pause').hidden = !on;
-    $('bigmap').classList.toggle('armed', mapArmed);
+    $('mm-def').setAttribute('aria-checked', nav === 'macro' ? 'true' : 'false');
+    $('mw-def').setAttribute('aria-checked', nav === 'caminhada' ? 'true' : 'false');
+    $('bigmap').classList.toggle('armed', !!mapArmed);
+    if (wOpen) { placeWalkMenu(); }
+    if (!box) { mapTipOff(); }
+    $('map-tip').style.bottom = (box ? box.offsetHeight + 16 : 8) + 'px';
   }
-  function openMap(menu) { mapArmed = false; mapMenu = !!menu; mapHover = null; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
+  // o menu da Caminhada abre sobre o seu botão (que muda de lugar com o texto do Macro), sem sair do mapa
+  function placeWalkMenu() {
+    var m = $('map-walk-menu'), mapbox = m.parentNode, r = mapbox.getBoundingClientRect();
+    var bx = $('map-walk').getBoundingClientRect().left - r.left, left = Math.max(6, Math.min(bx, r.width - m.offsetWidth - 6));
+    m.style.left = left + 'px'; m.style.setProperty('--seta', (bx - left + 20) + 'px');
+  }
+  // texto da opção Padrão: com sec fica esse tempo sozinho, porque no toque não existe hover
+  function mapTip(b, sec) {
+    var t = $('map-tip'); clearTimeout(mapTipT); mapTipT = 0;
+    t.textContent = b.dataset.tip; t.hidden = false;
+    if (sec) { mapTipT = setTimeout(function () { mapTipT = 0; t.hidden = true; }, sec * 1000); }
+  }
+  function mapTipOff() { if (!mapTipT) { $('map-tip').hidden = true; } }
+  function setMapNav(nav, b, trigger) {
+    st.player.mapNav = nav; mapArmed = false; mapMenu = false; save(); mapUi();
+    trigger.focus(); // a opção some com o menu: o foco do teclado volta ao botão
+    mapTip(b, 4);
+  }
+  function openMap(menu) { mapArmed = false; mapMenu = menu ? 'macro' : false; mapHover = null; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
   function pauseMacro() {
     if (!macroOn()) { return false; }
     sim.takeControl(st); st.player.macro.stop = 'Macro pausada · Macro (G) para retomar';
@@ -386,13 +423,14 @@
       c.fillStyle = 'rgba(200,150,40,.12)'; c.beginPath(); c.arc(X(a.x), Z(a.z), a.r * k, 0, 7); c.fill();
       c.strokeStyle = macroOn() ? GOLD : 'rgba(168,115,15,.6)'; c.lineWidth = big ? 2.2 : 1.2; c.stroke();
     }
-    if (big && mapArmed) {
+    var nextMacro = big && mapNext() === 'macro';
+    if (nextMacro && (mapArmed || mapHover)) {
       var hv = mapHover || { x: st.player.x, z: st.player.z };
       c.fillStyle = 'rgba(214,160,40,.18)'; c.beginPath(); c.arc(X(hv.x), Z(hv.z), G.settings.macroRadius * k, 0, 7); c.fill();
       c.strokeStyle = '#b07a10'; c.lineWidth = 2.6; c.setLineDash([7, 5]); c.stroke(); c.setLineDash([]);
       c.strokeStyle = INK; c.lineWidth = 1; c.beginPath(); c.moveTo(X(hv.x) - 5, Z(hv.z)); c.lineTo(X(hv.x) + 5, Z(hv.z)); c.moveTo(X(hv.x), Z(hv.z) - 5); c.lineTo(X(hv.x), Z(hv.z) + 5); c.stroke();
     }
-    if (big && mapHover && !mapArmed) { c.strokeStyle = WAX; c.lineWidth = 1.5; c.beginPath(); c.arc(X(mapHover.x), Z(mapHover.z), 6, 0, 7); c.stroke(); }
+    if (big && mapHover && !nextMacro) { c.strokeStyle = WAX; c.lineWidth = 1.5; c.beginPath(); c.arc(X(mapHover.x), Z(mapHover.z), 6, 0, 7); c.stroke(); }
     // destino: um X de lacre
     var gt = st.player.goto;
     if (gt) { var gx = X(gt.x), gz = Z(gt.z), q = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - q, gz - q); c.lineTo(gx + q, gz + q); c.moveTo(gx + q, gz - q); c.lineTo(gx - q, gz + q); c.stroke(); c.lineCap = 'butt'; }
@@ -806,7 +844,7 @@
     else if (c === 'potion') { drinkPotion(); }
     else if (c === 'macro') {
       if (pauseMacro()) { toast('Macro pausada.'); if (openWin === 'w-map') { mapMenu = false; mapUi(); } }
-      else if (openWin === 'w-map') { mapArmed = false; mapMenu = !mapMenu; mapUi(); }
+      else if (openWin === 'w-map') { mapArmed = false; mapMenu = mapMenu === 'macro' ? false : 'macro'; mapUi(); }
       else { openMap(true); }
     }
   }
@@ -885,11 +923,20 @@
       var pt = mapPoint(e), wasMacro = macroOn();
       if (mapMenu) { mapMenu = false; mapUi(); return; } // clique fora do menu só fecha o menu
       mapHover = null;
-      if (mapArmed) { sim.startMacro(st, pt); mapArmed = false; hide(); toast('Área marcada. O personagem vai trabalhar lá.'); return; }
-      if (sim.goTo(st, pt.x, pt.z)) { hide(); toast(wasMacro ? 'Macro pausada. Indo até o ponto marcado.' : 'Indo até o ponto marcado.'); }
+      if (mapNext() === 'macro') { sim.startMacro(st, pt); mapArmed = false; hide(); toast(wasMacro ? 'Área mudada. A macro segue trabalhando lá.' : 'Área marcada. O personagem vai trabalhar lá.'); return; }
+      if (sim.goTo(st, pt.x, pt.z)) { mapArmed = false; hide(); toast(wasMacro ? 'Macro pausada. Indo até o ponto marcado.' : 'Indo até o ponto marcado.'); }
     });
-    $('map-macro').addEventListener('click', function () { if (mapArmed) { mapArmed = false; } else { mapMenu = !mapMenu; } mapUi(); });
-    $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = true; mapUi(); });
+    $('map-macro').addEventListener('click', function () { if (mapArmed === 'macro') { mapArmed = false; } else { mapMenu = mapMenu === 'macro' ? false : 'macro'; } mapUi(); });
+    $('map-walk').addEventListener('click', function () { if (mapArmed === 'caminhada') { mapArmed = false; } else { mapMenu = mapMenu === 'caminhada' ? false : 'caminhada'; } mapUi(); });
+    $('mw-go').addEventListener('click', function () { mapMenu = false; mapArmed = 'caminhada'; mapUi(); });
+    $('mm-def').addEventListener('click', function () { setMapNav('macro', this, $('map-macro')); });
+    $('mw-def').addEventListener('click', function () { setMapNav('caminhada', this, $('map-walk')); });
+    ['mm-def', 'mw-def'].forEach(function (id) {
+      var b = $(id), on = function (e) { if (e.type === 'focus' || e.pointerType === 'mouse') { mapTip(b); } };
+      b.addEventListener('pointerenter', on); b.addEventListener('focus', on);
+      b.addEventListener('pointerleave', mapTipOff); b.addEventListener('blur', mapTipOff);
+    });
+    $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = 'macro'; mapUi(); });
     $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } });
     $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
     $('mm-pause').addEventListener('click', function () { mapMenu = false; pauseMacro(); mapUi(); toast('Macro pausada.'); });
