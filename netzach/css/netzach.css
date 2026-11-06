@@ -216,6 +216,7 @@ body.touch .only-pc { display: none; }
 .seg button:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
 #menu-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 #menu-ctrl .seg { margin-bottom: 0; }
+@media (min-width: 621px) { #menu-ctrl { flex-direction: column; align-items: flex-start; gap: 4px; } } /* com duas colunas, texto e botões não cabem lado a lado */
 #iv-drink { margin-left: 8px; }
 #iv-stance { display: block; }
 #iv-res { display: inline-block; margin-top: 4px; color: var(--wax); }
