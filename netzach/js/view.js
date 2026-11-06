@@ -1,8 +1,8 @@
-/* Zeitgeist · visão em primeira pessoa
+/* Netzach · visão em primeira pessoa
    Motor WebGL próprio e mínimo, no padrão dos protótipos: personagens, criaturas e
    recursos são figuras 2D (sprites de 64x64) sempre viradas para a câmera; construções
    e chão são formas 3D simples com texturas 2D. Só desenha o que a simulação decidiu. */
-(function (ZG) {
+(function (NZ) {
   'use strict';
 
   // ---------- matemática (matrizes 4x4 em coluna, como o WebGL) ----------
@@ -489,7 +489,7 @@
 
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
-  ZG.loadArt = function (base, ver) {
+  NZ.loadArt = function (base, ver) {
     var q = ver ? '?v=' + ver : '', iq = '?a=4' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
@@ -510,5 +510,5 @@
     });
   };
 
-  ZG.View = View;
-})(window.ZG = window.ZG || {});
+  NZ.View = View;
+})(window.NZ = window.NZ || {});

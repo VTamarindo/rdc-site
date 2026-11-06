@@ -1,10 +1,10 @@
-/* Zeitgeist · interface, entrada, laço de tempo e save (protótipo da vila) */
-(function (ZG) {
+/* Netzach · interface, entrada, laço de tempo e save (protótipo da vila) */
+(function (NZ) {
   'use strict';
   // ao publicar uma versão nova, troque VERSION aqui e o ?v= no index.html (evita cache velho)
   var VERSION = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
-  var calc = ZG.calc;
+  var calc = NZ.calc;
   var G, V, world, sim, st, view;
   var DT, CAP, THRESH;
   var lastReal = Date.now(), acc = 0, prev = null, away = null;
@@ -16,24 +16,24 @@
 
   // ---------- carregar ----------
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
-  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), ZG.loadArt('art/', VERSION)]).then(function (d) { start(d[0], d[1], d[2]); })
+  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION)]).then(function (d) { start(d[0], d[1], d[2]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
   function start(game, vila, art) {
     G = game; V = vila;
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
-    world = new ZG.World(G, V); sim = new ZG.Sim(world);
+    world = new NZ.World(G, V); sim = new NZ.Sim(world);
     var saved = load();
-    if (saved) { st = ZG.migrate(saved.state); lastReal = saved.lastReal || Date.now(); }
-    else { st = ZG.newState(world, (Date.now() % 2147483647) | 0); lastReal = Date.now(); }
+    if (saved) { st = NZ.migrate(saved.state); lastReal = saved.lastReal || Date.now(); }
+    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); lastReal = Date.now(); }
 
-    view = new ZG.View($('view'), world, art);
+    view = new NZ.View($('view'), world, art);
     view.yaw = st.player.yaw;
     $('loading').hidden = true; $('hud').hidden = false; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); resize(); window.addEventListener('resize', resize);
-    ZG.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
+    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); } }; // para testes
     renderLog();
 
     if (saved) { beginAway(lastReal); endAway(Date.now()); }
@@ -706,7 +706,7 @@
   function debug(c) {
     if (c === 'reset') {
       try { localStorage.removeItem(G.settings.saveKey); } catch (e) { /* nada */ }
-      st = ZG.newState(world, (Date.now() % 2147483647) | 0); view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
+      st = NZ.newState(world, (Date.now() % 2147483647) | 0); view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
     }
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
@@ -819,4 +819,4 @@
     var w = window.innerWidth, h = window.innerHeight;
     view.resize(w, h, G.settings.pixelScale * Math.min(1.5, dpr));
   }
-})(window.ZG = window.ZG || {});
+})(window.NZ = window.NZ || {});

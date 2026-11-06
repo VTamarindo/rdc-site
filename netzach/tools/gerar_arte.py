@@ -1,4 +1,4 @@
-"""Gera a arte PROVISÓRIA do protótipo da vila (Zeitgeist).
+"""Gera a arte PROVISÓRIA do protótipo da vila (Netzach).
 
 - walls.png: texturas repetíveis de 64x64 (pedra, tijolo e porta vêm do zeitgeist1).
 - sprites.png: figuras (billboards) em pixel art, cada uma com o seu próprio quadro

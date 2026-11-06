@@ -1,8 +1,8 @@
-/* Zeitgeist · simulação da vila (protótipo)
+/* Netzach · simulação da vila (protótipo)
    Lógica pura: não desenha nada e não toca no DOM.
    Tudo avança em tiques fixos (settings.tickSec). O mesmo código roda ao vivo e
    no recálculo do tempo fora, então assistir e voltar depois dão o mesmo resultado. */
-(function (ZG) {
+(function (NZ) {
   'use strict';
 
   // ---------- sorteio com semente (salva no save) ----------
@@ -679,15 +679,15 @@
     return pick;
   };
   // saves antigos ganham os campos novos
-  ZG.migrate = function (st) {
+  NZ.migrate = function (st) {
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
     return st;
   };
 
-  ZG.World = World;
-  ZG.Sim = Sim;
-  ZG.newState = newState;
-  ZG.calc = { maxHp: maxHp, atk: atk, bagCount: bagCount, dist: dist };
-})(window.ZG = window.ZG || {});
+  NZ.World = World;
+  NZ.Sim = Sim;
+  NZ.newState = newState;
+  NZ.calc = { maxHp: maxHp, atk: atk, bagCount: bagCount, dist: dist };
+})(window.NZ = window.NZ || {});
