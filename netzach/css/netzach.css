@@ -229,7 +229,12 @@ body.touch .only-pc { display: none; }
 .ledger li small { color: var(--wax); font-size: 12px; }
 
 /* missões e conversa */
-#quests { list-style: none; margin: 6px 0 0; padding: 6px 0 0; border-top: 1px dotted rgba(74, 44, 20, .6); font-size: 12.5px; }
+#q-toggle { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; margin: 6px 0 0; padding: 4px 0 0; background: none; border: 0; border-top: 1px dotted rgba(74, 44, 20, .6); border-radius: 0; box-shadow: none; color: var(--ink2); font: inherit; font-size: 12.5px; font-variant: small-caps; letter-spacing: .04em; text-align: left; cursor: pointer; }
+#q-toggle[hidden] { display: none; }
+#q-toggle::after { content: '▾'; font-size: 14px; line-height: 1; }
+#q-toggle[aria-expanded="false"]::after { content: '▸'; }
+body.touch #q-toggle { min-height: 34px; }
+#quests { list-style: none; margin: 0; padding: 3px 0 0; font-size: 12.5px; }
 #quests:empty { display: none; }
 #quests li { color: var(--ink); line-height: 1.35; }
 #quests li small { color: var(--dim); }

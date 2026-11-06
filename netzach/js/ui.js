@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261107-3', SAVE_VER = '20261105-3';
+  var VERSION = '20261107-4', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -729,6 +729,14 @@
     if (r.xp) { parts.push(r.xp + ' de experiência'); }
     return parts.length ? ' (Recebeu ' + parts.join(', ') + '.)' : '';
   }
+  // a escolha de recolher a lista vale para este navegador, como os controles; fora do save
+  var QUESTS_KEY = 'zg-vila-missoes', questsClosed = false;
+  try { questsClosed = localStorage.getItem(QUESTS_KEY) === '1'; } catch (e) { /* sem armazenamento: começa aberta */ }
+  function toggleQuests() {
+    questsClosed = !questsClosed;
+    try { localStorage.setItem(QUESTS_KEY, questsClosed ? '1' : '0'); } catch (e) { /* sem armazenamento: vale até fechar */ }
+    renderQuests();
+  }
   function renderQuests() {
     var html = [];
     sim.dailyActive(st).forEach(function (id) {
@@ -741,6 +749,10 @@
         (s === 'ready' ? 'entregar a ' + esc(G.npcs[Q.giver].name) : esc(objText(id))) + '</small></li>');
     });
     $('quests').innerHTML = html.join('');
+    $('quests').hidden = questsClosed;
+    $('q-toggle').hidden = !html.length;
+    $('q-toggle').setAttribute('aria-expanded', String(!questsClosed));
+    $('q-count').textContent = html.length;
   }
   // ! = tem algo a dizer ou missão a oferecer · ? = missão pronta para entregar
   var markEls = {};
@@ -1171,6 +1183,7 @@
       b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
     });
     bindStick();
+    $('q-toggle').addEventListener('click', function () { toggleQuests(); this.blur(); }); // sem foco, Espaço e Enter seguem sendo do jogo
     Array.prototype.forEach.call(document.querySelectorAll('[data-ctrl]'), function (b) {
       b.addEventListener('click', function () { ctrlSet(b.dataset.ctrl); try { localStorage.setItem(CTRL_KEY, ctrlMode); } catch (e) { /* sem armazenamento: vale até fechar */ } });
     });
