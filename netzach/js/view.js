@@ -336,6 +336,206 @@
     return g;
   }
 
+  // ---------- a cidade: construções novas ----------
+  function casaSenhor(b) {
+    var g = new Node(), W = b.w, D = b.d, H = b.h, fz = D / 2, tw = 2.8, th = H + 2.6, tx = W / 2 - tw / 2, tz = fz - tw / 2, rh = (W + 0.8) * 0.42;
+    g.add(box(W - 0.2, H, D - 0.2, 'pedra', 2, 0, H / 2, 0));
+    g.add(box(W, 0.6, D, 'pedra', 1, 0, 0.3, 0, 0x8c8880));          // embasamento
+    g.add(box(W, 0.2, D, 'pedra', 1, 0, 3.6, 0, 0xc4c0b4));          // cinta entre os andares
+    g.add(new Node(roofSlopeUV(gableGeo(W + 0.8, rh, D + 0.8, 2), D), 0xffffff, { tex: 'telha_escura' }).at(0, H, 0));
+    g.add(new Node(cached('empena', function () { return gableGeo(W + 0.5, (W + 0.5) * 0.42, 0.44, 2); }), 0xffffff, { tex: 'pedra' }).at(0, H, fz + 0.2));
+    // duas torres na fachada, mais altas que a cumeeira
+    [-1, 1].forEach(function (s) {
+      var x = s * tx;
+      g.add(box(tw, th, tw, 'pedra', 2, x, th / 2, tz));
+      g.add(box(tw + 0.2, 0.3, tw + 0.2, 'pedra', 1, x, th - 0.1, tz, 0xc4c0b4));
+      g.add(cyl(0, tw * 0.82, 3.6, 4, 'telha_escura', 1.5, Math.PI / 4).at(x, th + 1.9, tz));
+      g.add(box(0.1, 1, 0.1, null, 1, x, th + 4.1, tz, 0x2b2b2b));
+      g.add(box(0.05, 0.46, 0.7, null, 1, x + 0.01, th + 4.36, tz + 0.38, 0x8a2a26)); // flâmula
+      win(g, x, 6.2, fz + 0.05); win(g, x, 8.2, fz + 0.05); win(g, s * (W / 2 + 0.05), 6.2, tz, true);
+      // estandarte vermelho com o brasão, um de cada lado da entrada
+      g.add(box(1.1, 2.3, 0.05, null, 1, x, 2.5, fz + 0.03, 0x7a2522));
+      g.add(box(1.1, 0.12, 0.08, 'tabuas', PX, x, 3.62, fz + 0.03)); g.add(box(1.1, 0.08, 0.06, null, 1, x, 1.38, fz + 0.03, 0xd9b24a));
+      g.add(pintura(box(0.8, 0.9, 0.01, 'brasao', 'fit', x, 2.6, fz + 0.06)));
+      // as janelas dos lados e a chaminé de cada ala
+      [-3.2, 0].forEach(function (z) { win(g, s * (W / 2 - 0.05), 2.2, z, true); win(g, s * (W / 2 - 0.05), 5.2, z, true); });
+      g.add(box(1.1, 4.4, 1.1, 'pedra', 1, s * 3, H + 2.2, -2)); g.add(box(1.4, 0.2, 1.4, 'pedra', 1, s * 3, H + 4.4, -2, 0xc4c0b4));
+      win(g, s * 3, 2.2, -fz + 0.05); win(g, s * 3, 5.2, -fz + 0.05);
+      win(g, s * 1.8, 5.2, fz - 0.05);
+      // portal em duas folhas, com ombreiras de pedra
+      g.add(box(1.2, 2.7, 0.1, 'porta', 'fit', s * 0.6, 1.35, fz + 0.02));
+      g.add(box(0.4, 3, 0.34, 'pedra', 1, s * 1.42, 1.5, fz + 0.1, 0xc4c0b4));
+    });
+    g.add(box(3.4, 0.46, 0.36, 'pedra', 1, 0, 3.02, fz + 0.1, 0xc4c0b4));
+    g.add(box(4, 0.1, 1.1, 'pedra', 1, 0, 0.05, fz + 0.55)); g.add(box(3.2, 0.1, 0.6, 'pedra', 1, 0, 0.15, fz + 0.3));
+    win(g, 0, H + 2.5, fz + 0.45);
+    g.add(pintura(box(1.5, 1.7, 0.01, 'brasao', 'fit', 0, 5.2, fz - 0.09)));
+    return g;
+  }
+  function padaria(b) {
+    var g = house(b, 'tijolo', 2, 'telha'), fz = b.d / 2;
+    g.add(box(b.w + 0.1, 0.5, b.d + 0.1, 'pedra', 1, 0, 0.25, 0));
+    win(g, -2.4, 1.7, fz + 0.05); win(g, 2.4, 1.7, fz + 0.05); win(g, -b.w / 2 - 0.05, 1.7, 0, true);
+    // a chaminé do forno de dentro, larga, sobre a água leste do telhado
+    g.add(box(1.5, 4.8, 1.5, 'tijolo', 1.5, b.w / 2 - 1.4, b.h + 2.4, -0.8)); g.add(box(1.9, 0.24, 1.9, 'pedra', 1, b.w / 2 - 1.4, b.h + 4.8, -0.8));
+    placaPendurada(g, 'placa_padaria', b.w / 2 + 0.6, fz + 0.6);
+    // banca de pães junto à janela
+    var tx = -2.4, tz = fz + 0.55;
+    g.add(box(2, 0.08, 0.8, 'tabuas', PX, tx, 0.86, tz));
+    [-0.9, 0.9].forEach(function (x) { g.add(box(0.1, 0.82, 0.7, 'tabuas', PX, tx + x, 0.41, tz)); });
+    for (var i = 0; i < 5; i++) {
+      var x = tx - 0.72 + i * 0.36;
+      g.add(box(0.3, 0.13, 0.46, null, 1, x, 0.96, tz + (i % 2 ? 0.1 : -0.1), 0xb87a30)); g.add(box(0.22, 0.05, 0.36, null, 1, x, 1.04, tz + (i % 2 ? 0.1 : -0.1), 0xdca85a));
+    }
+    // sacas de farinha ao lado da porta
+    [[1.4, 0.32, 0], [2, 0.32, 0.1], [1.7, 0.86, 0.04]].forEach(function (p) { g.add(box(0.56, 0.6, 0.42, null, 1, p[0], p[1], fz + 0.34 + p[2], 0xd8d0bd)); });
+    return g;
+  }
+  // forno de barro e tijolo, encostado na padaria: base de pedra, abóbada, boca em brasa e o seu próprio cano
+  function forno(b) {
+    var g = new Node(), fz = b.d / 2;
+    g.add(box(b.w, 0.7, b.d, 'pedra', 1, 0, 0.35, 0));
+    [[1.1, 0.92, 0.3, 0.85], [0.92, 0.62, 0.3, 1.15], [0.62, 0.2, 0.22, 1.41]].forEach(function (c) { g.add(cyl(c[1], c[0], c[2], 12, 'tijolo', 1).at(0, c[3], -0.05)); });
+    g.add(box(1.1, 0.74, 0.3, 'tijolo', 1, 0, 1.07, fz - 0.3));
+    g.add(box(1.3, 0.12, 0.4, 'pedra', 1, 0, 1.48, fz - 0.28));
+    g.add(box(0.7, 0.5, 0.03, null, 1, 0, 0.98, fz - 0.14, 0x1c1410));
+    var brasa = box(0.54, 0.12, 0.02, null, 1, 0, 0.8, fz - 0.12, 0xd8581c); brasa.unlit = true; g.add(brasa);
+    g.add(box(0.44, 1.6, 0.44, 'tijolo', 1, 0, 2.2, 0.4)); g.add(box(0.6, 0.1, 0.6, 'pedra', 1, 0, 3, 0.4));
+    [[0.1, 0.08], [0.1 + 0.17, 0.08], [0.1 + 0.085, 0.22]].forEach(function (p) {
+      tora(p[0], p[1]).forEach(function (n) { n.pos[0] += 0.7; n.pos[2] += fz + 0.24; g.add(n); });
+    });
+    return g;
+  }
+  function moradia(b) {
+    var cal = b.wall === 'cal', g = house(b, b.wall, cal ? 2.5 : 1.28, 'palha'), fz = b.d / 2;
+    g.add(box(b.w + 0.1, 0.36, b.d + 0.1, 'pedra', 1, 0, 0.18, 0));
+    win(g, -1.9, 1.6, fz + 0.05); win(g, 1.9, 1.6, fz + 0.05);
+    win(g, b.w / 2 + 0.05, 1.6, 0, true); win(g, -b.w / 2 - 0.05, 1.6, 0, true);
+    if (b.chimney) { g.add(box(0.8, 2.6, 0.8, 'pedra', 1, -1.5, b.h + 1.9, -1.2)); }
+    // na frente: barril de chuva ou lenha encostada
+    if (cal) { g.add(cyl(0.34, 0.34, 0.8, 8, 'tabuas', 0.8).at(2.5, 0.4, fz + 0.4)); }
+    else { [[0, 0.08], [0.17, 0.08], [0.085, 0.22]].forEach(function (p) { tora(p[0], p[1]).forEach(function (n) { n.pos[0] += 2.2; n.pos[2] += fz + 0.26; g.add(n); }); }); }
+    return g;
+  }
+
+  // ---------- peças fundidas ----------
+  // cada Node custa uma chamada de desenho por quadro; a cidade tem milhares de peças fixas, então elas viram uma só malha por textura
+  var CLARO = hex(0xf2f2f2);
+  function Lote() { this.fila = {}; }
+  Lote.prototype.get = function (tex, color, unlit) {
+    var k = [tex, color, unlit].join('|');
+    return this.fila[k] || (this.fila[k] = { tex: tex, color: color, unlit: unlit, v: [] });
+  };
+  Lote.prototype.funde = function (n, pai) { // a peça montada com Node, com os filhos, entra no lote na posição em que está
+    var m = pai ? mul(pai, local(n)) : local(n);
+    if (n.geo) {
+      var v = this.get(n.tex, n.color, n.unlit).v, d = n.geo.data, q = normalMat(m);
+      for (var i = 0; i < d.length; i += 8) {
+        var p = xform(m, d[i], d[i + 1], d[i + 2]), a = d[i + 3], b = d[i + 4], c = d[i + 5];
+        v.push(p[0], p[1], p[2], q[0] * a + q[3] * b + q[6] * c, q[1] * a + q[4] * b + q[7] * c, q[2] * a + q[5] * b + q[8] * c, d[i + 6], d[i + 7]);
+      }
+    }
+    for (var k = 0; k < n.children.length; k++) { this.funde(n.children[k], m); }
+  };
+  // plano vertical com a textura inteira, de (ax, az) a (bx, bz), entre as alturas y0 e y1; a normal aponta para cima
+  Lote.prototype.plano = function (v, ax, az, bx, bz, y0, y1, u0, u1) {
+    v.push(ax, y0, az, 0, 1, 0, u0, 1, bx, y0, bz, 0, 1, 0, u1, 1, bx, y1, bz, 0, 1, 0, u1, 0,
+      ax, y0, az, 0, 1, 0, u0, 1, bx, y1, bz, 0, 1, 0, u1, 0, ax, y1, az, 0, 1, 0, u0, 0);
+  };
+  // pé de planta: dois planos em cruz que se cortam no meio do quadro, onde fica o caule ou o bulbo
+  Lote.prototype.pe = function (v, x, z, w, y0, y1, ang, inv) {
+    var c = Math.cos(ang) * w / 2, s = Math.sin(ang) * w / 2, u0 = inv ? 1 : 0, u1 = inv ? 0 : 1;
+    this.plano(v, x - c, z - s, x + c, z + s, y0, y1, u0, u1);
+    this.plano(v, x + s, z - c, x - s, z + c, y0, y1, u0, u1);
+  };
+  Lote.prototype.poe = function (R) {
+    var f = this.fila;
+    Object.keys(f).forEach(function (k) {
+      var o = new Node({ data: new Float32Array(f[k].v), count: f[k].v.length / 8 }, 0xffffff, { tex: f[k].tex, unlit: f[k].unlit });
+      o.color = f[k].color; R.add(o);
+    });
+  };
+  function sorte(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
+  // retângulo no chão com a textura presa ao mundo: as peças que se cruzam casam, e as fileiras de 'lavoura' caem em z = n + 0,5
+  function chao(rs, map) {
+    var g = new Geo();
+    rs.forEach(function (r) { g.quad([r.x0, 0, r.z1], [r.x1, 0, r.z1], [r.x1, 0, r.z0], [r.x0, 0, r.z0]); });
+    return g.done(map);
+  }
+
+  // ---------- plantações: fileiras leste-oeste, uma por metro, sobre a terra arada ----------
+  // o corpo da planta é peça 3D, para não dobrar nos planos em cruz: perfil = [raio, altura, v] de baixo para cima, u = faixa em 'bulbos'
+  var PLANTA = {
+    cebola: { w: 0.64, passo: 0.46, u: [0.01, 0.32], perfil: [[0.1, 0, 1], [0.155, 0.075, 0.62], [0.125, 0.15, 0.3], [0.03, 0.2, 0]] },
+    nabo: { w: 0.64, passo: 0.56, u: [0.34, 0.65], perfil: [[0.12, 0, 1], [0.165, 0.09, 0.62], [0.13, 0.19, 0.3], [0.04, 0.26, 0]] },
+    alho_poro: { w: 0.86, passo: 0.4, u: [0.67, 0.99], perfil: [[0.062, 0, 1], [0.062, 0.2, 0.55], [0.052, 0.4, 0]] }
+  };
+  function corpo(v, d, x, z, k, giro) {
+    var P = d.perfil, n = 5, top = P[P.length - 1][1], R = 0.16;
+    function ponto(i, j) {
+      var a = giro + j / n * Math.PI * 2, s = Math.sin(a), c = Math.cos(a), r = P[i][0], y = P[i][1];
+      var nx = s * r / R, ny = 0.7 + (y - top / 2) / top, nz = c * r / R; // puxada para cima: o lado de sombra não acinzenta o branco
+      return [x + s * r * k, y * k, z + c * r * k, nx, ny, nz, d.u[0] + (d.u[1] - d.u[0]) * j / n, P[i][2]];
+    }
+    for (var i = 0; i + 1 < P.length; i++) {
+      for (var j = 0; j < n; j++) {
+        var b0 = ponto(i, j), b1 = ponto(i, j + 1), t1 = ponto(i + 1, j + 1), t0 = ponto(i + 1, j);
+        v.push.apply(v, b0.concat(b1, t1, b0, t1, t0));
+      }
+    }
+  }
+  function trigal(L, f) {
+    var caule = L.get('trigo_caule', CLARO, true).v, espiga = L.get('trigo_espiga', CLARO, true).v, n = 0;
+    for (var z = f.z0 + 0.5; z < f.z1; z += 1) {
+      for (var x = f.x0 + 0.3; x < f.x1 - 0.2; x += 0.34) {
+        n++;
+        var a = sorte(n) * Math.PI, inv = sorte(n + 0.3) > 0.5, px = x + (sorte(n + 0.5) - 0.5) * 0.14, pz = z + (sorte(n + 0.7) - 0.5) * 0.2, h = 0.6 + sorte(n + 0.9) * 0.1;
+        L.pe(caule, px, pz, 0.64, 0, h, a, inv); L.pe(espiga, px, pz, 0.64, h, h + 0.64, a, inv);
+      }
+    }
+  }
+  function canteiro(L, s, x0, x1) {
+    var d = PLANTA[s.kind], v = L.get(s.kind, CLARO, true).v, b = L.get('bulbos', hex(0xffffff), false).v, n = s.z0 * 977;
+    for (var z = s.z0 + 0.5; z < s.z1; z += 1) {
+      for (var x = x0 + 0.4; x < x1 - 0.3; x += d.passo) {
+        n++;
+        var k = 0.92 + sorte(n + 0.2) * 0.16, px = x + (sorte(n) - 0.5) * 0.08, pz = z + (sorte(n + 0.5) - 0.5) * 0.08;
+        L.pe(v, px, pz, d.w * k, 0, d.w * k, Math.PI / 4 + (sorte(n + 0.7) - 0.5) * 0.9, sorte(n + 0.3) > 0.5);
+        corpo(b, d, px, pz, k, sorte(n + 0.9) * 6);
+      }
+    }
+  }
+  function espantalho(x, z) {
+    var g = new Node().at(x, 0, z);
+    g.add(box(0.1, 2.3, 0.1, 'tabuas', PX, 0, 1.15, 0)); g.add(box(1.5, 0.08, 0.08, 'tabuas', PX, 0, 1.75, 0));
+    g.add(box(0.56, 0.74, 0.2, null, 1, 0, 1.55, 0, 0x6a5a48)); g.add(box(1.3, 0.16, 0.14, null, 1, 0, 1.76, 0, 0x7a6854)); // casaco velho
+    g.add(box(0.3, 0.32, 0.3, 'palha', 0.64, 0, 2.14, 0, 0xe0d0a0));                                                       // cabeça de palha
+    g.add(cyl(0.34, 0.34, 0.03, 8, 'palha', 0.64).at(0, 2.3, 0)); g.add(cyl(0.12, 0.17, 0.2, 8, 'palha', 0.64).at(0, 2.42, 0));
+    return g;
+  }
+  // cocho de tábuas e feno para o pasto
+  function cocho(x, z) {
+    var g = new Node().at(x, 0, z);
+    g.add(box(2.2, 0.08, 0.7, 'tabuas', PX, 0, 0.24, 0));
+    [-1, 1].forEach(function (s) { g.add(box(2.2, 0.44, 0.06, 'tabuas', PX, 0, 0.34, s * 0.34)); g.add(box(0.06, 0.44, 0.7, 'tabuas', PX, s * 1.08, 0.34, 0)); g.add(box(0.12, 0.3, 0.8, 'tabuas', PX, s * 0.8, 0.15, 0)); });
+    g.add(box(2, 0.1, 0.56, 'palha', 1, 0, 0.5, 0));
+    return g;
+  }
+  function fardo(x, z, y) { return box(1.1, 0.6, 0.7, 'palha', 1, x, 0.3 + (y || 0), z); }
+  // porteira da cerca oeste do pasto: mourões altos com travessa e as duas folhas abertas, encostadas na cerca pelo lado de dentro
+  function porteira(p) {
+    var g = new Node(), x = p.x0 + 0.5, a = p.gate.from - 0.5, c = p.gate.to + 0.5;
+    [a, c].forEach(function (z) { g.add(box(0.3, 2.8, 0.3, 'tabuas', 1, x, 1.4, z)); });
+    g.add(box(0.2, 0.26, c - a + 0.7, 'tabuas', 1, x, 2.72, (a + c) / 2));
+    [[a, -1], [c, 1]].forEach(function (f) {
+      var s = f[1], m = f[0] + s * 1;
+      [0.3, 0.68, 1.06].forEach(function (y) { g.add(box(0.06, 0.13, 2, 'tabuas', PX, x + 0.32, y, m)); });
+      [-0.97, 0.97].forEach(function (d) { g.add(box(0.07, 1.04, 0.12, 'tabuas', PX, x + 0.32, 0.68, m + d)); });
+      var t = box(0.06, 0.12, 2.1, 'tabuas', PX, x + 0.37, 0.68, m); g.add(t);
+    });
+    return g;
+  }
+
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
   var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
@@ -346,7 +546,7 @@
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {};
-    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [18, 62] };
+    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [26, 100] };
     this.buildStatic(); this.buildDynamic();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
     this.areaRing.visible = false;
@@ -367,10 +567,11 @@
   };
 
   View.prototype.buildStatic = function () {
-    var w = this.w, V = w.vila, R = this.root, self = this;
-    R.add(new Node(planeGeo(240, 240, 3), 0xffffff, { tex: 'grama' }));
+    var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 78) * 2;
+    R.add(new Node(planeGeo(S, S, 3), 0xffffff, { tex: 'grama' }));
     R.add(new Node(planeGeo(V.fence.half * 2, V.fence.half * 2, 3), 0xe6eccc, { tex: 'grama' }).at(0, 0.01, 0));
     var rd = V.road; R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
+    R.add(new Node(chao(V.streets, 3), 0xffffff, { tex: 'terra' }).at(0, 0.015, 0));
     var pl = V.plaza;
     R.add(cyl(pl.r + 0.35, pl.r + 0.35, 0.06, 40, 'pedra', 1.5, 0, 0x9a9a9a).at(pl.x, 0.03, pl.z));
     R.add(cyl(pl.r, pl.r, 0.1, 40, 'pavimento', 2.5).at(pl.x, 0.05, pl.z));
@@ -378,17 +579,40 @@
     var F = V.fence.half - 0.5, g = V.fence.gate;
     function seg(x0, z0, x1, z1) {
       var len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 2));
-      for (var i = 0; i <= n; i++) { var t = i / n; R.add(box(0.18, 1.3, 0.18, 'tabuas', 1, x0 + (x1 - x0) * t, 0.65, z0 + (z1 - z0) * t)); }
+      for (var i = 0; i <= n; i++) { var t = i / n; cerca.add(box(0.18, 1.3, 0.18, 'tabuas', 1, x0 + (x1 - x0) * t, 0.65, z0 + (z1 - z0) * t)); }
       [0.5, 1.0].forEach(function (y) {
-        var b = box(len, 0.1, 0.08, 'tabuas', 1, (x0 + x1) / 2, y, (z0 + z1) / 2); b.rotY = -Math.atan2(z1 - z0, x1 - x0); R.add(b);
+        var b = box(len, 0.1, 0.08, 'tabuas', 1, (x0 + x1) / 2, y, (z0 + z1) / 2); b.rotY = -Math.atan2(z1 - z0, x1 - x0); cerca.add(b);
       });
     }
     seg(-F, -F, F, -F); seg(-F, -F, -F, F); seg(F, -F, F, F); seg(-F, F, g.from, F); seg(g.to, F, F, F);
 
-    V.buildings.forEach(function (b) {
-      var o = b.type === 'igreja' ? church(b) : b.type === 'ferreiro' ? smith(b) : bar(b);
-      o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; R.add(o);
+    // pasto: a cerca fica nas células da borda, como a da cidade; a oeste ela abre na porteira
+    var P = V.pasture, px0 = P.x0 + 0.5, px1 = P.x1 - 0.5, pz0 = P.z0 + 0.5, pz1 = P.z1 - 0.5;
+    R.add(new Node(chao([{ x0: px0, x1: px1, z0: pz0, z1: pz1 }], 3), 0xc8dc9a, { tex: 'grama' }).at(0, 0.012, 0));
+    seg(px0, pz0, px1, pz0); seg(px1, pz0, px1, pz1); seg(px0, pz1, px1, pz1); seg(px0, pz0, px0, P.gate.from - 0.5); seg(px0, P.gate.to + 0.5, px0, pz1);
+    cerca.add(porteira(P)); cerca.add(cocho(P.x1 - 4, P.z0 + 2.2)); cerca.add(fardo(P.x1 - 2.2, P.z0 + 4.5)); cerca.add(fardo(P.x1 - 3.4, P.z0 + 4.8)); cerca.add(fardo(P.x1 - 2.8, P.z0 + 4.6, 0.6));
+    L.funde(cerca);
+
+    // plantações
+    V.fields.forEach(function (f) {
+      var hortas = f.strips || [f];
+      R.add(new Node(chao(hortas.map(function (s) { return { x0: f.x0, x1: f.x1, z0: s.z0, z1: s.z1 }; }), 2), f.kind === 'trigo' ? 0xf0e0b0 : 0xffffff, { tex: 'lavoura' }).at(0, 0.025, 0));
+      if (f.kind === 'trigo') { trigal(L, f); L.funde(espantalho((f.x0 + f.x1) / 2 + 3, (f.z0 + f.z1) / 2)); return; }
+      R.add(new Node(chao([{ x0: f.x0, x1: f.x1, z0: f.z0, z1: f.z1 }], 3), 0xffffff, { tex: 'terra' }).at(0, 0.02, 0));
+      hortas.forEach(function (s) { canteiro(L, s, f.x0, f.x1); });
+      // cercadura baixa de toras em volta da horta; dá para pisar por cima
+      var b = new Node(), w = f.x1 - f.x0, d = f.z1 - f.z0, mx = (f.x0 + f.x1) / 2, mz = (f.z0 + f.z1) / 2;
+      [f.z0, f.z1].forEach(function (z) { b.add(box(w + 0.2, 0.16, 0.2, 'tabuas', 1, mx, 0.08, z)); });
+      [f.x0, f.x1].forEach(function (x) { b.add(box(0.2, 0.16, d, 'tabuas', 1, x, 0.08, mz)); });
+      L.funde(b);
     });
+
+    var PREDIO = { igreja: church, ferreiro: smith, bar: bar, casa_senhor: casaSenhor, padaria: padaria, forno: forno, moradia: moradia };
+    V.buildings.forEach(function (b) {
+      var o = PREDIO[b.type](b);
+      o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; L.funde(o);
+    });
+    L.poe(R);
     w.npcs.forEach(function (n) {
       var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
       p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p);
@@ -566,7 +790,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=7' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=8' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

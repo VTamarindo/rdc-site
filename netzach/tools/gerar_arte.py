@@ -11,7 +11,7 @@ falsa calculada a partir da distância à borda; a luz vem do alto à esquerda e
 final é quantizada numa rampa curta por material (3 a 6 tons), sem contorno: a borda é
 a própria cor do material, levemente escurecida embaixo/à direita. Requer Pillow, numpy e scipy.
 Uso: python3 tools/gerar_arte.py <pasta art do zeitgeist1> <pasta de saída>"""
-import json, random, sys, os
+import json, math, random, sys, os
 import numpy as np
 from scipy import ndimage
 from PIL import Image
@@ -1073,6 +1073,158 @@ def t_placa_ferreiro(px):
             for x in range(x0, x1): px[x, y] = hx('d9b24a')
 
 
+def t_placa_padaria(px):
+    t_tabuas(px); ouro = hx('d9b24a'); fundo = hx('3a2618')
+    for y in range(20, 46):  # pão de forma redonda, com três cortes
+        for x in range(10, 54):
+            if ((x - 32) / 22) ** 2 + ((y - 33) / 13) ** 2 < 1: px[x, y] = ouro
+    for i, x0 in enumerate((20, 30, 40)):
+        for j in range(11):
+            for t in range(2): px[x0 + j // 2 + t, 26 + j] = fundo
+
+
+def t_lavoura(px):
+    """terra arada: dois camalhões por quadro, com a crista em y = 16 e y = 48; a 2 m por repetição dá uma fileira por metro"""
+    noise(px, hx('64503a'), 7, 31); random.seed(32)
+    for y in range(S):
+        d = min(abs(y - 16), abs(y - 48))
+        k = 1.2 if d < 5 else 1.0 if d < 10 else 0.72 if d < 14 else 0.58
+        for x in range(S):
+            c = px[x, y]; px[x, y] = (int(c[0] * k), int(c[1] * k), int(c[2] * k), 255)
+    for _ in range(70):  # torrões na crista, com a sombra embaixo
+        x, y = random.randint(0, 63), random.choice((16, 48)) + random.randint(-6, 6)
+        px[x, y % S] = hx('8d7454'); px[(x + 1) % S, y % S] = hx('7a6448'); px[x, (y + 1) % S] = hx('3e3020')
+
+
+def caules_trigo():
+    random.seed(41); xs = []; x = 2
+    while x < 62: xs.append(x); x += random.choice((3, 4, 4, 5))
+    return xs
+
+
+def t_trigo_caule(px):
+    """metade de baixo do pé de trigo (a 100 px por metro, recortada por alfa): as hastes seguem até a metade de cima"""
+    topo, meio, base, sombra = hx('c9a23e'), hx('a98a34'), hx('7f7530'), hx('565328')
+    for i, x in enumerate(caules_trigo()):
+        random.seed(50 + i)
+        for y in range(S):
+            c = topo if y < 20 else meio if y < 44 else base
+            px[x, y] = c
+            if i % 3 == 0: px[min(63, x + 1), y] = dark(c, .8)
+        for y in range(44, S):  # o pé é mais fechado perto do chão
+            q = x + 2 + (y % 2)
+            if q < 64 and (i + y // 5) % 2: px[q, y] = sombra
+    random.seed(44)
+    for _ in range(15):  # folhas que saem das hastes e caem para os lados
+        x, y, s = random.randint(6, 58), random.randint(12, 46), random.choice((-1, 1)); c = random.choice([hx('a8953a'), hx('8c8a38'), hx('bda548')])
+        for i in range(random.randint(10, 16)):
+            q = x + s * i; p = y - 4 + (i * i) // 9
+            if 0 <= q < 64 and 0 <= p < 64: px[q, p] = c; px[q, min(63, p + 1)] = dark(c, .8)
+
+
+def t_trigo_espiga(px):
+    """metade de cima do pé de trigo: a haste, a espiga de grãos em duas fileiras e as barbas"""
+    claro, ouro, escuro, barba = hx('f2d878'), hx('deb448'), hx('a87c28'), hx('ecd590')
+    for i, x in enumerate(caules_trigo()):
+        random.seed(70 + i); y0 = random.randint(4, 26); lean = random.choice((-1, 0, 0, 1))
+        for y in range(y0 + 14, S): px[x, y] = hx('c9a23e')
+        for j in range(15):  # j = 0 na ponta
+            cx = x + (lean if j < 7 else 0); y = y0 + j
+            if j < 2: px[max(0, min(63, cx)), y] = ouro; continue
+            if j % 2:
+                for dx, c in ((-1, claro), (0, escuro), (1, ouro)):
+                    if 0 <= cx + dx < 64: px[cx + dx, y] = c
+            else:
+                for dx, c in ((-1, ouro), (0, claro), (1, escuro)):
+                    if 0 <= cx + dx < 64: px[cx + dx, y] = c
+            if j % 3 == 2:
+                for s in (-1, 1):
+                    for k in range(1, random.randint(5, 8)):
+                        q, p = cx + s * (1 + k // 2), y - k
+                        if 0 <= q < 64 and p >= 0: px[q, p] = barba
+
+
+def folha(px, x0, y0, x1, y1, curva, largura, cores, ponta=True):
+    """folha em curva de (x0, y0) até (x1, y1), com a borda clara do lado da luz; curva = quanto a ponta cai; ponta=False dá folha larga, de borda ondulada"""
+    n = int(max(abs(x1 - x0), abs(y1 - y0)) * 2) + 2
+    for i in range(n + 1):
+        t = i / n; x = x0 + (x1 - x0) * t; y = y0 + (y1 - y0) * t + curva * t * t
+        w = largura * ((1 - t) ** .6 if ponta else (.72 + .28 * math.sin(t * 17)) * math.sin(math.pi * min(1, t * .96 + .04)) ** .55) + .5
+        for dx in range(-int(w) - 1, int(w) + 2):
+            if abs(dx) > w: continue
+            q, p = int(x + dx), int(y)
+            if 0 <= q < 64 and 0 <= p < 64: px[q, p] = cores[0] if dx > w * .4 else cores[2] if dx < -w * .4 else cores[1]
+
+
+def t_cebola(px):
+    """folhas tubulares da cebola, que nascem do pescoço do bulbo; o bulbo é peça 3D no jogo, pintado com t_bulbos"""
+    verde = [hx('37602a'), hx('5a8a38'), hx('86b254')]
+    for x1, y1, curva, w in ((10, 14, 14, 1.6), (54, 12, 16, 1.6), (22, 4, 5, 1.8), (43, 3, 7, 1.8), (32, 8, 0, 1.8)):
+        folha(px, 32, 44, x1, y1, curva, w, verde)
+    for y in range(40, 50):  # pescoço seco
+        for x in range(29, 36): px[x, y] = hx('b48a48') if x < 34 else hx('8a6430')
+
+
+def t_nabo(px):
+    """folhas largas e onduladas do nabo, que saem do alto da raiz. O centro fica em x = 32"""
+    verde = [hx('2f6026'), hx('4f8e34'), hx('7ab84a')]
+    for x1, y1, curva, w in ((3, 14, 12, 6), (61, 13, 13, 6), (18, 3, 5, 6), (46, 2, 6, 6), (32, 6, 0, 6)):
+        folha(px, 32, 42, x1, y1, curva, w, verde, ponta=False)
+        for i in range(1, 16):  # nervura central
+            t = i / 16; x = 32 + (x1 - 32) * t; y = 42 + (y1 - 42) * t + curva * t * t
+            if 0 <= int(x) < 64 and 0 <= int(y) < 64: px[int(x), int(y)] = hx('bfe08a')
+    for y in range(40, 48):
+        for x in range(28, 37): px[x, y] = hx('4f8e34') if x < 34 else hx('2f6026')
+
+
+def t_alho_poro(px):
+    """leque de folhas chatas e azuladas do alho-poró, que saem de dentro do talo. O centro fica em x = 32"""
+    azul = [hx('2c5a4c'), hx('43806a'), hx('74b296')]
+    for x1, y1, curva, w in ((4, 16, 12, 2.6), (60, 15, 13, 2.6), (13, 4, 7, 3), (51, 3, 8, 3), (24, 0, 2, 3), (41, 0, 2, 3)):
+        folha(px, 32, 34, x1, y1, curva, w, azul)
+    for y in range(26, 44):
+        for x in range(27, 38):
+            px[x, y] = hx('5a9450') if x == 32 else hx('6e9e58') if x < 30 else hx('4a7a48') if x > 35 else hx('8ab866')
+
+
+def t_bulbos(px):
+    """corpos das hortaliças, que dão a volta em peças 3D: três faixas lado a lado, com o topo da peça em y = 0.
+    cebola (x 0-20): casca dourada em gomos; nabo (x 21-41): ombro roxo e raiz branca; alho-poró (x 42-63): talo que esverdeia para cima"""
+    random.seed(90)
+    for y in range(S):
+        for x in range(S):
+            v = random.randint(-7, 7)
+            if x < 21:
+                c = hx('e0ac4c') if (x // 3) % 2 else hx('c98a30')
+                if y > 54: c = hx('a0641f')
+                if (x * 5 + y) % 23 == 0: c = hx('f6d898')
+            elif x < 42:
+                c = hx('9a4a8e') if y + (x % 2) * 3 < 26 else hx('eee7d6')
+                if y < 8: c = hx('74306a')
+            else:
+                c = hx('6ea050') if y < 12 else hx('b8d68c') if y + (x % 2) * 2 < 24 else hx('eeead9')
+            px[x, y] = tuple(max(0, min(255, c[i] + v)) for i in range(3)) + (255,)
+
+def t_brasao(px):
+    """escudo do senhor (recortado por alfa): campo vermelho, faixa dourada e o feixe de trigo que paga a vila"""
+    borda, ouro, sombra = hx('d9b24a'), hx('e8c860'), hx('a07a28')
+    for y in range(2, 62):
+        m = 28 if y < 34 else int(28 * (1 - ((y - 34) / 28) ** 2) ** .5)
+        for x in range(32 - m, 32 + m):
+            b = x - (32 - m) < 3 or (32 + m) - x <= 3 or y < 5 or y > 58
+            px[x, y] = borda if b else hx('8a2a26') if x < 32 else hx('74211f')
+    for y in range(13, 20):
+        for x in range(8, 56): px[x, y] = ouro if y < 18 else sombra
+    for x, y0 in ((24, 26), (32, 24), (40, 26)):  # três espigas atadas
+        for y in range(y0 + 8, 52):
+            q = x + (x - 32) * max(0, y - 43) // 12 - (x - 32) * max(0, 41 - y) // 40
+            px[q, y] = ouro; px[q + 1, y] = sombra
+        for j in range(0, 14):  # a espiga, em grãos alternados
+            px[x - 2 + j % 2, y0 + j] = ouro; px[x, y0 + j] = hx('f2d878'); px[x + 1, y0 + j] = ouro; px[x + 2 - j % 2, y0 + j] = sombra
+    for x in range(22, 43):
+        for y in (40, 41, 42): px[x, y] = ouro if y < 42 else sombra
+
+
 if __name__ == '__main__':
     old, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
@@ -1083,7 +1235,9 @@ if __name__ == '__main__':
     walls = [('pedra', old_wall('pedra')), ('tijolo', old_wall('tijolo')), ('porta', old_wall('porta')),
              ('cal', tex(t_cal)), ('telha', tex(roof(hx('9c4b32'), 3))), ('telha_escura', tex(roof(hx('5b4038'), 14))),
              ('palha', tex(t_palha)), ('tabuas', tex(t_tabuas)), ('enxaimel', tex(t_enxaimel)), ('janela', tex(t_janela)),
-             ('grama', tex(t_grama)), ('terra', tex(t_terra)), ('pavimento', tex(t_pavimento)), ('placa', tex(t_placa)), ('placa_ferreiro', tex(t_placa_ferreiro))]
+             ('grama', tex(t_grama)), ('terra', tex(t_terra)), ('pavimento', tex(t_pavimento)), ('placa', tex(t_placa)), ('placa_ferreiro', tex(t_placa_ferreiro)),
+             ('placa_padaria', tex(t_placa_padaria)), ('lavoura', tex(t_lavoura)), ('trigo_caule', tex(t_trigo_caule)), ('trigo_espiga', tex(t_trigo_espiga)),
+             ('cebola', tex(t_cebola)), ('nabo', tex(t_nabo)), ('alho_poro', tex(t_alho_poro)), ('brasao', tex(t_brasao)), ('bulbos', tex(t_bulbos))]
     # o padre foi aprovado como está: só perde o contorno, sem o escurecimento de borda (pixel a pixel igual por dentro)
     sprites = [(n, fn().render(rim=0 if n == 'padre' else 0.12)) for n, fn in (('coelho', coelho), ('padre', padre), ('ferreiro', ferreiro), ('taberneiro', taberneiro),
                                                  ('anselmo', anselmo), ('arvore', arvore), ('toco', toco), ('veio', veio), ('veio_vazio', veio_vazio),
