@@ -172,7 +172,7 @@
     var st = {
       v: 1, seed: seed | 0, t: 0,
       player: {
-        name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0,
+        name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
         potCd: 0, atkCd: 0, combatT: 99, action: null, goto: null,
         mode: 'manual', mapNav: 'caminhada', // mapNav: o que o clique no mapa faz por padrão ('caminhada' ou 'macro')
@@ -181,7 +181,7 @@
       rules: G.macro.defaultOrder.map(function (id) { return { id: id, on: true, val: G.macro.rules[id].val }; }),
       nodes: {}, mobs: [],
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
-      quests: {}, qkills: {}, flags: {},
+      quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
       log: []
     };
     world.nodes.forEach(function (n) { st.nodes[n.id] = { alive: true, left: 0 }; });
@@ -592,6 +592,7 @@
       p.inv.moeda -= price; p.inv[s.item] = (p.inv[s.item] || 0) + 1; return 'Comprou ' + G.items[s.item].name.toLowerCase() + '.';
     }
     if (s.type === 'sell' && arg && arg.item) { return this.sellItem(st, s, arg.item, arg.n); }
+    if (s.type === 'deliver') { return this.dailyPut(st, arg.item, arg.n); }
     if (s.type === 'sell') {
       var total = 0;
       var self = this, kept = 0;
@@ -618,6 +619,59 @@
     var n = st.player.inv[item] || 0;
     return Math.max(0, n - Math.min(n, this.reserved(st, item)));
   };
+  // ---------- missões diárias (dados em game.json → daily) ----------
+  // estado salvo: st.daily = { day, q: { id: { state: 'active' | 'done', got } } }; sem entrada = disponível
+  // day vem de fora: a simulação não olha o relógio, senão o recálculo do tempo fora mudaria de resultado
+  Sim.prototype.dailyCheck = function (st, day) {
+    if (st.daily.day === day) { return false; }
+    var first = !st.daily.day;
+    st.daily = { day: day, q: {} };
+    if (!first) { this.log(st, 'As missões diárias foram renovadas.'); }
+    return true;
+  };
+  Sim.prototype.dailyState = function (st, id) { var q = st.daily.q[id]; return q ? q.state : 'available'; };
+  Sim.prototype.dailyAccept = function (st, id) {
+    if (this.dailyState(st, id) !== 'available') { return false; }
+    st.daily.q[id] = { state: 'active', got: 0 };
+    this.log(st, 'Nova missão diária: ' + this.w.game.daily.quests[id].title + '.');
+    return true;
+  };
+  Sim.prototype.dailyActive = function (st) {
+    var self = this;
+    return Object.keys(this.w.game.daily.quests).filter(function (id) { return self.dailyState(st, id) === 'active'; });
+  };
+  Sim.prototype.dailyLeft = function (st, id) { var q = st.daily.q[id]; return this.w.game.daily.quests[id].n - (q ? q.got : 0); };
+  // o que o baú aceita agora: só o material das missões diárias em andamento
+  Sim.prototype.dailyItems = function (st) {
+    var Q = this.w.game.daily.quests, out = [];
+    this.dailyActive(st).forEach(function (id) { if (out.indexOf(Q[id].item) < 0) { out.push(Q[id].item); } });
+    return out;
+  };
+  Sim.prototype.dailyNeed = function (st, item) {
+    var Q = this.w.game.daily.quests, self = this, n = 0;
+    this.dailyActive(st).forEach(function (id) { if (Q[id].item === item) { n += self.dailyLeft(st, id); } });
+    return n;
+  };
+  Sim.prototype.dailyMax = function (st, item) { return Math.min(this.sellable(st, item), this.dailyNeed(st, item)); };
+  Sim.prototype.dailyPut = function (st, item, n) {
+    var G = this.w.game, Q = G.daily.quests, W = G.daily.reward, self = this, p = st.player, def = G.items[item], done = [];
+    n = Math.min(n, this.dailyMax(st, item));
+    if (!(n > 0)) { return 'O baú só aceita o material que a vila pediu.'; }
+    p.inv[item] -= n;
+    var left = n;
+    this.dailyActive(st).forEach(function (id) {
+      if (Q[id].item !== item || !left) { return; }
+      var q = st.daily.q[id], put = Math.min(left, self.dailyLeft(st, id));
+      q.got += put; left -= put;
+      if (q.got >= Q[id].n) { q.state = 'done'; p.rep += W.reputacao; done.push(Q[id].title); self.log(st, 'Missão diária concluída: ' + Q[id].title + '.'); self.emit(st, { type: 'quest', id: id }); }
+    });
+    var coins = n * W.moedasPorPeca, xp = n * W.xpPorPeca;
+    p.inv.moeda = (p.inv.moeda || 0) + coins;
+    this.gainXp(st, xp);
+    return 'Colocou ' + n + ' ' + (n === 1 ? def.name : (def.plural || def.name)).toLowerCase() + ' no baú: +' + coins + ' moedas e +' + xp + ' XP.' +
+      (done.length ? ' Missão concluída: ' + done.join(', ') + ' (+' + done.length * W.reputacao + ' de reputação).' : '');
+  };
+
   // vende exatamente n unidades de um item que este serviço compra
   Sim.prototype.sellItem = function (st, s, item, n) {
     var G = this.w.game, p = st.player, def = G.items[item];
@@ -690,6 +744,8 @@
   // saves antigos ganham os campos novos
   NZ.migrate = function (st) {
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
+    st.daily = st.daily || { day: '', q: {} };
+    if (typeof st.player.rep !== 'number') { st.player.rep = 0; }
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
     if (st.player.mapNav !== 'macro') { st.player.mapNav = 'caminhada'; }

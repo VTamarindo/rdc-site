@@ -252,6 +252,13 @@
     return cached('s' + w.toFixed(3) + 'x' + h.toFixed(3), function () { return spriteGeo(w, h); });
   }
 
+  // placa de oficina: poste, braço e a placa pendurada à frente do poste, com as duas faces livres
+  function placaPendurada(g, tex, x, z) {
+    g.add(box(0.12, 3.2, 0.12, 'tabuas', 1, x, 1.6, z));
+    g.add(box(0.08, 0.08, 1.2, 'tabuas', 1, x, 3.1, z + 0.6));
+    [0.3, 0.9].forEach(function (k) { g.add(box(0.02, 0.16, 0.02, null, 1, x, 2.99, z + k, 0x3a3a42)); });
+    g.add(box(0.08, 0.9, 0.9, tex, 'fit', x, 2.47, z + 0.6));
+  }
   function house(b, wall, wallTile, roof) {
     var g = new Node();
     g.add(box(b.w, b.h, b.d, wall, wallTile, 0, b.h / 2, 0));
@@ -266,6 +273,12 @@
     g.add(cyl(0, tw * 0.75, 3, 4, 'telha_escura', 1.5, Math.PI / 4).at(0, th + 1.5, tz));
     g.add(box(0.15, 1.2, 0.15, null, 1, 0, th + 3.5, tz, 0x2b2b2b)); g.add(box(0.7, 0.15, 0.15, null, 1, 0, th + 3.7, tz, 0x2b2b2b));
     win(g, 0, th - 2.2, tz + tw / 2 + 0.05);
+    // lintel de pedra sobre a porta e cruz dourada, a mesma tinta das placas, com borda de madeira
+    var fz = b.d / 2;
+    g.add(box(2, 0.24, 0.14, 'pedra', 1, 0, 2.34, fz + 0.07));
+    g.add(box(0.36, 1.9, 0.06, 'tabuas', 0.64, 0, 3.6, fz + 0.03)); g.add(box(1.2, 0.36, 0.06, 'tabuas', 0.64, 0, 3.95, fz + 0.03));
+    g.add(box(0.2, 1.74, 0.03, null, 1, 0, 3.6, fz + 0.075, 0xd9b24a));
+    g.add(box(1.04, 0.2, 0.03, null, 1, 0, 3.95, fz + 0.075, 0xd9b24a));
     for (var i = -1; i <= 1; i++) { win(g, b.w / 2 + 0.05, 2.8, i * 2.6, true); win(g, -b.w / 2 - 0.05, 2.8, i * 2.6, true); }
     return g;
   }
@@ -276,14 +289,14 @@
     var coal = box(1.2, 0.3, 0.9, null, 1, -2, 1.05, b.d / 2 + 1.2, 0xd8581c); coal.unlit = true; g.add(coal);
     g.add(box(0.9, 0.3, 0.4, null, 1, 2, 0.65, b.d / 2 + 1.3, 0x3a3a42)); g.add(box(0.4, 0.5, 0.4, 'tabuas', 1, 2, 0.25, b.d / 2 + 1.3));
     win(g, 2.2, 1.9, b.d / 2 + 0.05);
+    placaPendurada(g, 'placa_ferreiro', b.w / 2 + 0.6, b.d / 2 + 0.6);
     return g;
   }
   function bar(b) {
     var g = house(b, 'enxaimel', 2.5, 'telha');
     g.add(box(b.w + 0.1, 0.25, b.d + 0.1, 'tabuas', 1, 0, 2.6, 0, 0x8a7a6a));
     win(g, -2.4, 1.6, b.d / 2 + 0.05); win(g, 2.4, 1.6, b.d / 2 + 0.05); win(g, -2.4, 3.8, b.d / 2 + 0.05); win(g, 2.4, 3.8, b.d / 2 + 0.05);
-    g.add(box(0.12, 3.2, 0.12, 'tabuas', 1, b.w / 2 + 0.6, 1.6, b.d / 2 + 0.6));
-    g.add(box(0.08, 0.9, 0.9, 'placa', 'fit', b.w / 2 + 0.6, 2.7, b.d / 2 + 0.6));
+    placaPendurada(g, 'placa', b.w / 2 + 0.6, b.d / 2 + 0.6);
     for (var i = 0; i < 2; i++) { g.add(cyl(0.4, 0.4, 0.9, 8, 'tabuas', 0.8).at(-b.w / 2 + 0.6 + i * 0.9, 0.45, b.d / 2 + 0.7)); }
     return g;
   }
@@ -482,7 +495,8 @@
       o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
       if (f > 0) { self.flash[mb.id] = f - dt; }
     });
-    var a = p.macro.area;
+    // a marca só aparece com a macro trabalhando ou como padrão; ao só caminhar ela some, e a área fica guardada
+    var a = (p.mode === 'macro' && p.macro.on) || p.mapNav === 'macro' ? p.macro.area : null;
     this.areaRing.visible = !!a;
     if (a) { this.areaRing.at(a.x, 0.07, a.z); this.areaRing.scale = [a.r, 1, a.r]; }
 
@@ -552,7 +566,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=6' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=7' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

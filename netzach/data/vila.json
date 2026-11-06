@@ -93,7 +93,7 @@
     {
       "id": "bau_missoes",
       "name": "Baú",
-      "npc": "quadro",
+      "npc": "bau",
       "x": 8.5,
       "z": 12.7,
       "w": 1,

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Netzach · protótipo da vila</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/netzach.css?v=20261106-1">
+<link rel="stylesheet" href="css/netzach.css?v=20261106-6">
 </head>
 <body>
 <div id="app">
@@ -112,6 +112,7 @@
     <header><h2>Inventário</h2><button type="button" class="x" data-close>Fechar</button></header>
     <dl class="sheet">
       <dt>Vida</dt><dd><div class="bar hp"><i id="iv-hp-bar"></i><span id="iv-hp"></span></div></dd>
+      <dt>Reputação</dt><dd id="iv-rep"></dd>
       <dt>Arma</dt><dd><b id="iv-wpn"></b><br><span class="hint" id="iv-atk"></span></dd>
       <dt>Postura <span class="key">T</span></dt>
       <dd>
@@ -175,7 +176,8 @@
         <p><b>Andar:</b> W e S, frente e trás · A e D, para o lado · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
         <p><b>Interagir:</b> clique numa pessoa, árvore, veio ou coelho, ou aperte E para o que estiver à sua frente. O combate é automático quando o alvo está ao alcance.</p>
         <p><b>Mapa:</b> toque no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
-        <p><b>Macro:</b> no mapa, abra Macro (G) e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar. As regras ficam no mesmo menu.</p>
+        <p><b>Macro:</b> aperte G, ou abra Macro no mapa e escolha a área: o próximo clique marca onde ele trabalha sozinho, seguindo as regras, até a bolsa encher ou a vida baixar. Andar com o teclado ou clicar no mapa pausa a macro. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar. As regras ficam no mesmo menu.</p>
+        <p><b>Missões diárias:</b> aceite no quadro de avisos e coloque o material no baú ao lado. Cada peça dá 2 moedas e 1 XP, e cada missão concluída dá 12 de reputação (rp). Reiniciam todo dia às 00:01.</p>
         <p><b>Inventário e bolsa:</b> a espada e o escudo mostram arma, postura e poções; a bolsa mostra o que você coletou.</p>
         <p><b>Fora da aba:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
         <p class="small">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas</p>
@@ -199,8 +201,8 @@
   </section>
 </div>
 
-<script src="js/sim.js?v=20261106-1"></script>
-<script src="js/view.js?v=20261106-1"></script>
-<script src="js/ui.js?v=20261106-1"></script>
+<script src="js/sim.js?v=20261106-6"></script>
+<script src="js/view.js?v=20261106-6"></script>
+<script src="js/ui.js?v=20261106-6"></script>
 </body>
 </html>

@@ -195,8 +195,17 @@
     },
     "quadro": {
       "name": "Missões diárias",
-      "idle": "Nenhuma missão diária por enquanto.",
+      "daily": "quadro",
       "services": []
+    },
+    "bau": {
+      "name": "Baú",
+      "daily": "bau",
+      "services": [
+        {
+          "type": "deliver"
+        }
+      ]
     },
     "anselmo": {
       "name": "Escudeiro Anselmo",
@@ -284,15 +293,15 @@
           "text": "Olá, senhor {nome}. Como está?",
           "options": [
             {
-              "text": "estou bem",
+              "text": "Estou bem",
               "next": "n2"
             },
             {
-              "text": "nada mal",
+              "text": "Nada mal",
               "next": "n2"
             },
             {
-              "text": "vou indo",
+              "text": "Vou indo",
               "next": "n2"
             }
           ]
@@ -306,6 +315,43 @@
             }
           ]
         }
+      }
+    }
+  },
+  "daily": {
+    "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O material fica no baú: dá para entregar aos poucos.",
+    "resetHour": 0,
+    "resetMinute": 1,
+    "reward": {
+      "_nota": "moedas e XP valem por peça, pagos a cada entrega; reputação vale por missão concluída",
+      "moedasPorPeca": 2,
+      "xpPorPeca": 1,
+      "reputacao": 12
+    },
+    "textos": {
+      "quadro": "A vila precisa de ajuda. Veja o que falta hoje.",
+      "verificar": "Você deve verificar que a vila precisa antes de entregar algo no baú",
+      "entrega": "Escolha o que colocar no baú.",
+      "completo": "Você já supriu todas as necessidades da vila"
+    },
+    "quests": {
+      "celeiro_madeira": {
+        "title": "Madeira para o celeiro",
+        "item": "madeira",
+        "n": 45,
+        "text": "Precisamos de 45 peças de madeira para construir o celeiro. As vigas e as tábuas saem daí, e a obra não anda sem elas. Coloque o material no baú, por gentileza."
+      },
+      "celeiro_pedra": {
+        "title": "Pedras para a fundação",
+        "item": "pedra",
+        "n": 20,
+        "text": "Precisamos de 20 pedras para construir a fundação do celeiro. Sem uma base firme, nada fica de pé por muito tempo. Coloque o material no baú, por gentileza."
+      },
+      "celeiro_comida": {
+        "title": "Comida para os construtores",
+        "item": "carne",
+        "n": 30,
+        "text": "Precisamos de 30 coelhos para alimentar os construtores. Quem trabalha o dia inteiro precisa de um prato cheio. Coloque o material no baú, por gentileza."
       }
     }
   },

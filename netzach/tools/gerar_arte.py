@@ -1065,6 +1065,14 @@ def t_placa(px):
             if x > 42 or y in (24, 25, 36, 37): px[x, y] = hx('d9b24a')
 
 
+def t_placa_ferreiro(px):
+    t_tabuas(px)
+    for x0, y0, x1, y1 in ((36, 10, 44, 26), (14, 16, 36, 20),                     # martelo: cabeça e cabo
+                           (16, 32, 50, 38), (11, 33, 16, 36), (26, 38, 40, 44), (20, 44, 46, 50)):  # bigorna: mesa, ponta, cintura, base
+        for y in range(y0, y1):
+            for x in range(x0, x1): px[x, y] = hx('d9b24a')
+
+
 if __name__ == '__main__':
     old, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
@@ -1075,7 +1083,7 @@ if __name__ == '__main__':
     walls = [('pedra', old_wall('pedra')), ('tijolo', old_wall('tijolo')), ('porta', old_wall('porta')),
              ('cal', tex(t_cal)), ('telha', tex(roof(hx('9c4b32'), 3))), ('telha_escura', tex(roof(hx('5b4038'), 14))),
              ('palha', tex(t_palha)), ('tabuas', tex(t_tabuas)), ('enxaimel', tex(t_enxaimel)), ('janela', tex(t_janela)),
-             ('grama', tex(t_grama)), ('terra', tex(t_terra)), ('pavimento', tex(t_pavimento)), ('placa', tex(t_placa))]
+             ('grama', tex(t_grama)), ('terra', tex(t_terra)), ('pavimento', tex(t_pavimento)), ('placa', tex(t_placa)), ('placa_ferreiro', tex(t_placa_ferreiro))]
     # o padre foi aprovado como está: só perde o contorno, sem o escurecimento de borda (pixel a pixel igual por dentro)
     sprites = [(n, fn().render(rim=0 if n == 'padre' else 0.12)) for n, fn in (('coelho', coelho), ('padre', padre), ('ferreiro', ferreiro), ('taberneiro', taberneiro),
                                                  ('anselmo', anselmo), ('arvore', arvore), ('toco', toco), ('veio', veio), ('veio_vazio', veio_vazio),

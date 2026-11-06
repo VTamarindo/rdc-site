@@ -81,6 +81,8 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 #hover { padding: 3px 9px; border-width: 1px; border-style: solid; border-radius: 2px; font-size: 13.5px; pointer-events: none; transform: translate(14px, 10px); white-space: nowrap; }
 #macro-line { left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 16px; border-radius: 3px; font-size: 14px; white-space: nowrap; pointer-events: none; max-width: calc(100% - 520px); overflow: hidden; text-overflow: ellipsis; }
 #macro-line.on { border-color: var(--wax); color: #5a1208; }
+#macro-line { transition: opacity 1.2s; }
+#macro-line.fade { opacity: 0; }
 #toast { left: 50%; top: 58%; transform: translateX(-50%); padding: 7px 16px; border-color: var(--wax); border-radius: 3px; pointer-events: none; text-align: center; max-width: 80%; font-size: 15px; z-index: 7; }
 #hurt { inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(178, 30, 20, 0); transition: box-shadow .35s; }
 #hurt.on { box-shadow: inset 0 0 120px rgba(178, 30, 20, .75); transition: none; }

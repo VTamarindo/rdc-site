@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261106-1', SAVE_VER = '20261105-3';
+  var VERSION = '20261106-6', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   var calc = NZ.calc;
   var G, V, world, sim, st, view;
@@ -11,6 +11,8 @@
   var lastReal = Date.now(), acc = 0, prev = null, away = null;
   var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null;
   var newVersion = false;
+  var dailyNext = 0; // quando as missões diárias reiniciam (ms do relógio real)
+  var LINE_MS = 10000, lineTxt = null, lineEnd = 0, hintSeen = false;
   var openWin = null, npcOpen = null, toastT = 0, baseTitle = document.title;
   var dpr = Math.min(2, window.devicePixelRatio || 1);
   var isTouch = ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
@@ -171,7 +173,7 @@
         floatScreen(0.5, 0.44, '+' + e.n + ' ' + G.items[e.item].name, 'gain');
       } else if (e.type === 'alert') { toast(e.text, 4); if (document.hidden) { document.title = '(!) ' + baseTitle; } }
       else if (e.type === 'level') { toast('Nível ' + st.player.lv + '!'); }
-      else if (e.type === 'quest') { toast('Missão concluída: ' + G.quests[e.id].title + '.', 3); }
+      else if (e.type === 'quest') { toast('Missão concluída: ' + (G.quests[e.id] || G.daily.quests[e.id]).title + '.', 3); }
     });
     if (newLog) { renderLog(); }
   }
@@ -207,18 +209,25 @@
 
     var now = performance.now(); if (now - hudT < 150) { return; } hudT = now;
     $('pname').textContent = p.name || '';
-    $('lv').textContent = 'Nível ' + p.lv;
+    $('lv').textContent = 'Nível ' + p.lv + ' · ' + p.rep + ' rp';
     $('pots').textContent = 'Poções ' + (p.inv.pocao || 0);
     $('coins').textContent = 'Moedas ' + (p.inv.moeda || 0);
     $('bag').textContent = 'Bolsa ' + calc.bagCount(world, p) + '/' + G.settings.bagCapacity;
     if (openWin === 'w-inv') { renderInv(); }
     if (openWin === 'w-bag') { renderBag(); }
+    dailyTick();
     if (openWin === 'w-npc') { sellTick(); }
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
-    line.classList.toggle('on', on);
-    line.textContent = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || (isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho'));
-    line.classList.toggle('on', on || !!p.goto);
+    var busy = on || !!p.goto, now = performance.now();
+    var hint = isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
+    var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
+    // o que está acontecendo fica na tela; dica e aviso de parada somem depois de LINE_MS, e a dica só aparece uma vez
+    if (txt !== lineTxt) { lineTxt = txt; line.textContent = txt; lineEnd = txt === hint && hintSeen ? 0 : now + LINE_MS; }
+    if (!p.name) { lineEnd = now + LINE_MS; } // a contagem só começa depois de criar o personagem
+    if (txt === hint && now >= lineEnd) { hintSeen = true; }
+    line.classList.toggle('on', busy);
+    line.classList.toggle('fade', !busy && now >= lineEnd);
     renderQuests();
     drawMap($('mini'), 150, false);
     if (openWin === 'w-map') { drawMap($('bigmap'), 560, true); mapUi(); }
@@ -290,10 +299,10 @@
     trigger.focus(); // a opção some com o menu: o foco do teclado volta ao botão
     mapTip(b, 4);
   }
-  function openMap(menu) { mapArmed = false; mapMenu = menu ? 'macro' : false; mapHover = null; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
+  function openMap() { mapArmed = false; mapMenu = false; mapHover = null; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); drawMap($('bigmap'), 560, true); }
   function pauseMacro() {
     if (!macroOn()) { return false; }
-    sim.takeControl(st); st.player.macro.stop = 'Macro pausada · Macro (G) para retomar';
+    sim.takeControl(st); st.player.macro.stop = 'Macro pausada · G para marcar a área';
     return true;
   }
 
@@ -414,6 +423,13 @@
       c.fillStyle = '#2c4a7a'; c.strokeStyle = '#f1e2bb'; c.lineWidth = 1;
       c.beginPath(); c.arc(X(n.x), Z(n.z), Math.max(2, k * 0.5), 0, 7); c.fill(); c.stroke();
     });
+    // missões diárias disponíveis: o mesmo ! dos NPCs, sobre o quadro de avisos
+    if (dailyOpen()) {
+      var qd = dailyBoard();
+      c.save(); c.font = 'bold ' + (big ? 22 : 15) + 'px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = 3; c.strokeStyle = '#f1e2bb'; c.fillStyle = '#a8730f';
+      c.strokeText('!', X(qd.x), Z(qd.z)); c.fillText('!', X(qd.x), Z(qd.z)); c.restore();
+    }
     if (big) {
       V.buildings.forEach(function (b) { label(c, { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar' }[b.type], X(b.x), Z(b.z), Math.round(14 * u), false); });
       label(c, 'Praça', X(V.plaza.x), Z(V.plaza.z), Math.round(12 * u), true);
@@ -424,7 +440,7 @@
       c.lineWidth = 0.7; c.strokeRect(9.5, 9.5, S - 19, S - 19);
     }
     // área da macro
-    var a = st.player.macro.area;
+    var a = macroOn() || st.player.mapNav === 'macro' ? st.player.macro.area : null; // a marca some ao só caminhar
     if (a) {
       c.fillStyle = 'rgba(200,150,40,.12)'; c.beginPath(); c.arc(X(a.x), Z(a.z), a.r * k, 0, 7); c.fill();
       c.strokeStyle = macroOn() ? GOLD : 'rgba(168,115,15,.6)'; c.lineWidth = big ? 2.2 : 1.2; c.stroke();
@@ -498,6 +514,7 @@
     var p = st.player, mh = calc.maxHp(world, p), w = G.weapon[p.weapon], S = G.stances[p.stance];
     $('iv-hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
     $('iv-hp').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh;
+    $('iv-rep').textContent = p.rep + ' rp';
     $('iv-wpn').textContent = w.name;
     $('iv-atk').textContent = 'Ataque ' + calc.atk(world, p) + (w.atk ? ' (+' + w.atk + ' da arma)' : ' (a arma não soma ataque)');
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) {
@@ -564,8 +581,49 @@
       b.onclick = o.fn; box.appendChild(b);
     });
   }
+  // ---------- missões diárias: reinício, quadro de avisos e baú ----------
+  function dailyOffset() { return (G.daily.resetHour * 60 + G.daily.resetMinute) * 60000; }
+  function dailyKey() { var d = new Date(Date.now() - dailyOffset()); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function nextReset() {
+    var n = new Date(Date.now()); n.setHours(G.daily.resetHour, G.daily.resetMinute, 0, 0);
+    if (n.getTime() <= Date.now()) { n.setDate(n.getDate() + 1); }
+    return n.getTime();
+  }
+  function dailyTick() {
+    if (Date.now() < dailyNext) { return; }
+    dailyNext = nextReset();
+    if (sim.dailyCheck(st, dailyKey())) { handleEvents(); save(); if (npcOpen && G.npcs[npcOpen].daily) { talk(npcOpen); } }
+  }
+  function dailyLeftText() {
+    var m = Math.ceil((dailyNext - Date.now()) / 60000), h = Math.floor(m / 60);
+    return 'Novas missões em ' + (h ? h + ' h ' : '') + (m % 60) + ' min.';
+  }
+  function dailyBoard() { return world.props.filter(function (o) { return o.npc === 'quadro'; })[0]; }
+  function dailyOpen() { return Object.keys(G.daily.quests).some(function (q) { return sim.dailyState(st, q) === 'available'; }); }
+  function dailyProg(id) { var Q = G.daily.quests[id]; return G.items[Q.item].name.toLowerCase() + ' ' + (Q.n - sim.dailyLeft(st, id)) + '/' + Q.n; }
+  function dailyTalk(id) {
+    var D = G.daily, ids = Object.keys(D.quests), act = sim.dailyActive(st);
+    var state = function (q) { return sim.dailyState(st, q); };
+    if (G.npcs[id].daily === 'bau') {
+      if (ids.every(function (q) { return state(q) === 'done'; })) { setTalk(D.textos.completo); }
+      else if (!act.length) { setTalk(D.textos.verificar); }
+      else { setTalk(D.textos.entrega, [], act.map(dailyProg).join(' · ')); }
+      return;
+    }
+    setTalk(D.textos.quadro, ids.map(function (q) {
+      var s = state(q), tag = s === 'active' ? ' · ' + dailyProg(q) : s === 'done' ? ' · concluída' : '';
+      return { text: D.quests[q].title + tag, fn: function () { dailyShow(id, q); } };
+    }), dailyLeftText());
+  }
+  function dailyShow(id, q) {
+    var Q = G.daily.quests[q], W = G.daily.reward, s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
+    setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); dailyTalk(id); } }, back] : [back],
+      s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' :
+      'Recompensa: ' + W.moedasPorPeca + ' moedas e ' + W.xpPorPeca + ' XP por peça, ' + W.reputacao + ' de reputação ao concluir.');
+  }
   function talk(id, said) {
     var def = G.npcs[id], dlg = def.dialogue && G.dialogues[def.dialogue];
+    if (def.daily) { dailyTalk(id); renderNpcActs(id); return; }
     if (dlg && !st.flags[dlg.flag]) { $('npc-acts').innerHTML = ''; dialogueNode(id, dlg, dlg.start); return; }
     var q = sim.npcQuest(st, id);
     if (said) { setTalk(said); }
@@ -610,6 +668,9 @@
   }
   function renderQuests() {
     var html = [];
+    sim.dailyActive(st).forEach(function (id) {
+      html.push('<li class="active">' + esc(G.daily.quests[id].title) + '<br><small>' + esc(dailyProg(id)) + '</small></li>');
+    });
     Object.keys(st.quests).forEach(function (id) {
       var s = sim.questState(st, id); if (s !== 'active' && s !== 'ready') { return; }
       var Q = G.quests[id];
@@ -620,24 +681,30 @@
   }
   // ! = tem algo a dizer ou missão a oferecer · ? = missão pronta para entregar
   var markEls = {};
+  function mark(id, sym, x, y, z) {
+    var el = markEls[id];
+    if (!el) { el = markEls[id] = document.createElement('span'); $('marks').appendChild(el); }
+    var pos = sym && calc.dist(st.player.x, st.player.z, x, z) < 40 ? view.project(x, y, z) : null;
+    if (!pos || pos.x < 0 || pos.x > 1 || pos.y < 0 || pos.y > 1) { el.hidden = true; return; }
+    el.hidden = false; el.textContent = sym; el.className = sym === '?' ? 'q' : '';
+    el.style.left = (pos.x * 100) + '%'; el.style.top = (pos.y * 100) + '%';
+  }
   function marks() {
+    var qd = dailyBoard();
+    mark(qd.id, dailyOpen() ? '!' : '', qd.x, 2.75, qd.z);
     world.npcs.forEach(function (n) {
-      var el = markEls[n.id];
-      if (!el) { el = markEls[n.id] = document.createElement('span'); $('marks').appendChild(el); }
       var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
       if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
       else if (q && q.state === 'available') { sym = '!'; }
       else if (q && q.state === 'ready') { sym = '?'; }
-      var pos = sym && calc.dist(st.player.x, st.player.z, n.x, n.z) < 40 ? view.project(n.x, 2.25, n.z) : null;
-      if (!pos || pos.x < 0 || pos.x > 1 || pos.y < 0 || pos.y > 1) { el.hidden = true; return; }
-      el.hidden = false; el.textContent = sym; el.className = sym === '?' ? 'q' : '';
-      el.style.left = (pos.x * 100) + '%'; el.style.top = (pos.y * 100) + '%';
+      mark(n.id, sym, n.x, 2.25, n.z);
     });
   }
   function renderNpcActs(id) {
     var def = G.npcs[id], box = $('npc-acts'), p = st.player; box.innerHTML = ''; sellShown = null;
     def.services.forEach(function (s) {
       if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
+      if (s.type === 'deliver') { if (sim.dailyActive(st).length) { box.appendChild(sellBox(id, s)); } return; }
       var b = document.createElement('button'); b.type = 'button';
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
       if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + G.items[s.item].price + ' moedas)'; }
@@ -652,7 +719,8 @@
   }
   function npcDone(id, msg) {
     $('npc-res').textContent = msg; renderNpcActs(id); save();
-    if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); }
+    if (G.npcs[id].daily) { dailyTalk(id); renderNpcActs(id); }
+    else if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); }
   }
   // ---------- venda: tabuleiro de itens e submenu de quantidade ----------
   // a Bolsa e o Inventário só têm texto, então estes são os primeiros ícones de item:
@@ -672,18 +740,21 @@
 
   var SELL_COLS = 5, SELL_ROWS = 2; // tamanho mínimo do tabuleiro; cresce de linha em linha se precisar
   var sellShown = null, sellPop = null;
-  // só os itens que o jogador tem e este NPC compra; as outras casas ficam vazias
+  // o mesmo tabuleiro serve para vender (s.type 'sell') e para colocar material no baú (s.type 'deliver')
+  function boardItems(s) { return s.type === 'deliver' ? sim.dailyItems(st) : s.items; }
+  function boardMax(s, k) { return s.type === 'deliver' ? sim.dailyMax(st, k) : sim.sellable(st, k); }
+  // só os itens que o jogador tem e este NPC aceita; as outras casas ficam vazias
   function sellBox(id, s) {
-    var p = st.player, wrap = document.createElement('div'), board = document.createElement('div');
-    var owned = s.items.filter(function (k) { return (p.inv[k] || 0) > 0; });
+    var p = st.player, wrap = document.createElement('div'), board = document.createElement('div'), deliver = s.type === 'deliver';
+    var items = boardItems(s), owned = items.filter(function (k) { return (p.inv[k] || 0) > 0; });
     wrap.className = 'sell'; board.className = 'sell-board';
-    wrap.innerHTML = '<div class="sell-top"><h3>Vender</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
+    wrap.innerHTML = deliver ? '<div class="sell-top"><h3>Colocar no baú</h3></div>' : '<div class="sell-top"><h3>Vender</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
     owned.forEach(function (k) {
-      var it = G.items[k], have = p.inv[k], can = sim.sellable(st, k), b = document.createElement('button');
+      var it = G.items[k], have = p.inv[k], can = boardMax(s, k), free = sim.sellable(st, k), b = document.createElement('button');
       b.type = 'button'; b.className = 'sell-cell' + (can ? '' : ' off'); b.dataset.item = k;
-      b.title = it.name + (have > can ? ' (parte para missão)' : '');
-      b.setAttribute('aria-label', it.name + ': ' + have + (have > can ? ', ' + (have - can) + ' para missão' : ''));
-      b.innerHTML = itemIcon(k) + '<span class="n">' + have + '</span>' + (have > can ? '<i class="res" aria-hidden="true"></i>' : '');
+      b.title = it.name + (have > free ? ' (parte para missão)' : '');
+      b.setAttribute('aria-label', it.name + ': ' + have + (have > free ? ', ' + (have - free) + ' para missão' : ''));
+      b.innerHTML = itemIcon(k) + '<span class="n">' + have + '</span>' + (have > free ? '<i class="res" aria-hidden="true"></i>' : '');
       b.onclick = function () { openSell(id, s, k); };
       board.appendChild(b);
     });
@@ -694,7 +765,7 @@
     wrap.appendChild(board);
     if (!owned.length) {
       var h = document.createElement('p'); h.className = 'hint';
-      h.textContent = 'Você não tem nada que se venda aqui. Compra: ' + s.items.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') + '.';
+      h.textContent = (deliver ? 'Você não tem o material pedido. Falta: ' : 'Você não tem nada que se venda aqui. Compra: ') + items.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') + '.';
       wrap.appendChild(h);
     }
     sellShown = sellSig(id);
@@ -704,7 +775,7 @@
   function sellSig(id) {
     var o = [st.player.inv.moeda || 0];
     G.npcs[id].services.forEach(function (s) {
-      if (s.type === 'sell') { s.items.forEach(function (k) { o.push(st.player.inv[k] || 0, sim.sellable(st, k)); }); }
+      if (s.type === 'sell' || s.type === 'deliver') { boardItems(s).forEach(function (k) { o.push(k, st.player.inv[k] || 0, boardMax(s, k)); }); }
     });
     return o.join(',');
   }
@@ -716,15 +787,15 @@
   // submenu: fica fora da janela (que tem rolagem) e por cima de tudo; o fundo apanha o clique fora
   function openSell(id, s, k) {
     closeSell(true);
-    var it = G.items[k], back = document.createElement('div'), downOut = false;
+    var it = G.items[k], back = document.createElement('div'), downOut = false, deliver = s.type === 'deliver';
     back.className = 'sell-back';
-    back.innerHTML = '<div class="sell-pop" role="dialog" tabindex="-1" aria-label="Vender ' + esc(it.name.toLowerCase()) + '">' +
-      '<div class="sell-id"><span class="ic">' + itemIcon(k) + '</span><span class="nm"><b>' + esc(it.name) + '</b><small>' + coins(it.price) + ' cada</small></span>' +
+    back.innerHTML = '<div class="sell-pop" role="dialog" tabindex="-1" aria-label="' + (deliver ? 'Colocar ' : 'Vender ') + esc(it.name.toLowerCase()) + '">' +
+      '<div class="sell-id"><span class="ic">' + itemIcon(k) + '</span><span class="nm"><b>' + esc(it.name) + '</b><small>' + (deliver ? 'Faltam ' + sim.dailyNeed(st, k) : coins(it.price) + ' cada') + '</small></span>' +
       '<button type="button" class="x" data-x>Fechar</button></div>' +
       '<p class="sell-note" hidden></p>' +
       '<div class="sell-qty"><input type="range" min="1" step="1" value="1" aria-label="Quantidade">' +
-      '<input type="text" class="num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Quantidade a vender"><small></small></div>' +
-      '<button type="button" class="main" data-ok></button><button type="button" data-all>Vender tudo</button></div>';
+      '<input type="text" class="num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Quantidade"><small></small></div>' +
+      '<button type="button" class="main" data-ok></button><button type="button" data-all>' + (deliver ? 'Colocar tudo' : 'Vender tudo') + '</button></div>';
     var q = function (sel) { return back.querySelector(sel); };
     var P = sellPop = { id: id, s: s, k: k, n: 1, blank: false, back: back, pop: q('.sell-pop'), note: q('.sell-note'), qty: q('.sell-qty'),
       range: q('[type=range]'), num: q('.num'), max: q('.sell-qty small'), ok: q('[data-ok]'), all: q('[data-all]') };
@@ -744,22 +815,22 @@
       if (e.key === 'Enter') { e.preventDefault(); if (P.blank) { P.num.blur(); } else { P.ok.focus(); } }
     };
     P.ok.onclick = function () { doSell(P.n); };
-    P.all.onclick = function () { doSell(sim.sellable(st, k)); };
+    P.all.onclick = function () { doSell(boardMax(s, k)); };
     $('w-npc').parentNode.appendChild(back);
     sellRefresh();
     if (sellPop && !isTouch && !P.num.disabled) { P.num.focus(); } else if (sellPop) { P.pop.focus(); } // no toque, o teclado só abre se tocar no número
   }
   function sellSet(n) {
     var P = sellPop;
-    P.n = Math.max(1, Math.min(sim.sellable(st, P.k) || 1, n)); P.blank = false; sellPaint();
+    P.n = Math.max(1, Math.min(boardMax(P.s, P.k) || 1, n)); P.blank = false; sellPaint();
   }
   // recalcula o máximo e o aviso de reserva a partir do estado atual do jogo
   function sellRefresh() {
-    var P = sellPop, have = st.player.inv[P.k] || 0, can = sim.sellable(st, P.k), res = have - can;
-    if (!have) { closeSell(); return; }
+    var P = sellPop, have = st.player.inv[P.k] || 0, can = boardMax(P.s, P.k), res = have - sim.sellable(st, P.k), verbo = P.s.type === 'deliver' ? 'colocar' : 'vender';
+    if (!have || boardItems(P.s).indexOf(P.k) < 0) { closeSell(); return; }
     P.note.hidden = !res;
-    if (can && res) { P.note.textContent = (res === 1 ? '1 unidade fica guardada' : res + ' unidades ficam guardadas') + ' para a missão: dá para vender ' + can + ' de ' + have + '.'; }
-    else if (res) { P.note.textContent = (res === 1 ? 'A unidade que você tem está guardada' : 'As ' + res + ' unidades que você tem estão guardadas') + ' para a missão: não dá para vender.'; }
+    if (can && res) { P.note.textContent = (res === 1 ? '1 unidade fica guardada' : res + ' unidades ficam guardadas') + ' para a missão: dá para ' + verbo + ' ' + can + ' de ' + have + '.'; }
+    else if (res) { P.note.textContent = (res === 1 ? 'A unidade que você tem está guardada' : 'As ' + res + ' unidades que você tem estão guardadas') + ' para a missão: não dá para ' + verbo + '.'; }
     P.qty.hidden = P.ok.hidden = !can; P.all.disabled = !can;
     P.range.max = Math.max(1, can); P.num.disabled = !can;
     P.range.disabled = can < 2; // com uma só unidade não há o que puxar
@@ -769,13 +840,13 @@
   }
   // número, barra e botão sempre mostram o mesmo valor
   function sellPaint() {
-    var P = sellPop, can = sim.sellable(st, P.k), price = G.items[P.k].price;
+    var P = sellPop, can = boardMax(P.s, P.k), price = G.items[P.k].price;
     var v = P.blank ? '' : String(P.n);
     if (P.num.value !== v) { P.num.value = v; }
     P.range.value = P.n;
     P.range.style.setProperty('--p', (can > 1 ? (P.n - 1) / (can - 1) * 100 : 100) + '%');
     P.ok.disabled = P.blank;
-    P.ok.textContent = P.blank ? 'Escolha a quantidade' : 'Vender ' + P.n + ' por ' + P.n * price;
+    P.ok.textContent = P.blank ? 'Escolha a quantidade' : P.s.type === 'deliver' ? 'Colocar ' + P.n + ' no baú' : 'Vender ' + P.n + ' por ' + P.n * price;
   }
   function doSell(n) {
     var P = sellPop; closeSell(true);
@@ -850,7 +921,7 @@
 
   function cmd(c) {
     var p = st.player;
-    if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(false); } }
+    if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(); } }
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
     else if (c === 'fullscreen') { toggleFull(); }
@@ -860,8 +931,13 @@
     else if (c === 'potion') { drinkPotion(); }
     else if (c === 'macro') {
       if (pauseMacro()) { toast('Macro pausada.'); if (openWin === 'w-map') { mapMenu = false; mapUi(); } }
-      else if (openWin === 'w-map') { mapArmed = false; mapMenu = mapMenu === 'macro' ? false : 'macro'; mapUi(); }
-      else { openMap(true); }
+      else {
+        // G leva direto ao clique: com caminhada padrão, arma a macro por um clique; com macro padrão, o clique normal já é a macro
+        var want = st.player.mapNav === 'macro' ? false : 'macro';
+        if (openWin !== 'w-map') { openMap(); mapArmed = want; mapUi(); }
+        else if (mapArmed === want && !mapMenu) { hide(); }
+        else { mapArmed = want; mapMenu = false; mapUi(); }
+      }
     }
   }
 
@@ -883,7 +959,7 @@
   function debug(c) {
     if (c === 'reset') {
       try { localStorage.removeItem(G.settings.saveKey); } catch (e) { /* nada */ }
-      st = NZ.newState(world, (Date.now() % 2147483647) | 0); view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
+      st = NZ.newState(world, (Date.now() % 2147483647) | 0); dailyNext = 0; view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
     }
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
