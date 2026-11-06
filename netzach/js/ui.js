@@ -211,6 +211,7 @@
     $('bag').textContent = 'Bolsa ' + calc.bagCount(world, p) + '/' + G.settings.bagCapacity;
     if (openWin === 'w-inv') { renderInv(); }
     if (openWin === 'w-bag') { renderBag(); }
+    if (openWin === 'w-npc') { sellTick(); }
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     line.classList.toggle('on', on);
@@ -424,6 +425,7 @@
   function hide() {
     if (openWin === 'w-new' && !st.player.name) { return; } // sem nome não se joga
     if (openWin) { $(openWin).hidden = true; }
+    closeSell(true); sellShown = null;
     openWin = null; npcOpen = null;
   }
   function toggle(id, fn) { if (openWin === id) { hide(); } else { if (fn) { fn(); } show(id); } }
@@ -589,7 +591,7 @@
     });
   }
   function renderNpcActs(id) {
-    var def = G.npcs[id], box = $('npc-acts'), p = st.player; box.innerHTML = '';
+    var def = G.npcs[id], box = $('npc-acts'), p = st.player; box.innerHTML = ''; sellShown = null;
     def.services.forEach(function (s) {
       if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
       var b = document.createElement('button'); b.type = 'button';
@@ -608,32 +610,138 @@
     $('npc-res').textContent = msg; renderNpcActs(id); save();
     if (!$('npc-opts').children.length) { talk(id, $('npc-text').textContent); }
   }
-  // uma linha por item que o NPC compra: nome, disponível, preço, quantidade e Vender
-  var sellQty = {};
+  // ---------- venda: tabuleiro de itens e submenu de quantidade ----------
+  // a Bolsa e o Inventário só têm texto, então estes são os primeiros ícones de item:
+  // SVG embutido, no mesmo traço dos botões da barra; item sem desenho mostra a inicial
+  var ITEM_ICONS = {
+    madeira: '<path d="M8 33 L33 12 L40 20 L15 41 Z" fill="#9a6232" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M14 31 L30 18 M18 36 L34 22" stroke="#5a341a" stroke-width="1.2"/><ellipse cx="36.5" cy="16" rx="4.2" ry="5.8" transform="rotate(40 36.5 16)" fill="#dcb67a" stroke="#2b1709" stroke-width="2"/><ellipse cx="36.5" cy="16" rx="1.8" ry="2.7" transform="rotate(40 36.5 16)" fill="none" stroke="#8a5428" stroke-width="1"/>',
+    pedra: '<path d="M7 35 L12 19 L23 10 L36 14 L42 29 L36 40 L14 41 Z" fill="#8f8a80" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 19 L24 22 L36 14 M24 22 L27 40" fill="none" stroke="#5e5a52" stroke-width="1.3"/><path d="M16 19 L23 14 L30 15" fill="none" stroke="#c9c4b8" stroke-width="1.6" stroke-linecap="round"/>',
+    ferro: '<path d="M7 34 L11 20 L22 11 L35 13 L42 27 L37 39 L15 41 Z" fill="#5f5148" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M15 25 L22 20 L25 27 L18 31 Z M29 19 L35 22 L32 28 L27 25 Z M24 32 L31 31 L30 37 L24 37 Z" fill="#b5602e" stroke="#2b1709" stroke-width="1.1" stroke-linejoin="round"/><path d="M17 25 L21 22 M30 20 L33 22 M25 33 L29 33" stroke="#e8b078" stroke-width="1.2" stroke-linecap="round"/>',
+    carne: '<path d="M30 8 C40 8 43 19 37 26 C33 31 25 32 21 29 C16 25 17 13 30 8 Z" fill="#a8362a" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M28 13 C34 12 37 18 33 23" fill="none" stroke="#e39a84" stroke-width="1.8" stroke-linecap="round"/><path d="M22 29 L12 38" stroke="#2b1709" stroke-width="7" stroke-linecap="round"/><path d="M22 29 L12 38" stroke="#efe5cf" stroke-width="3.6" stroke-linecap="round"/><circle cx="8.5" cy="36.5" r="3.2" fill="#efe5cf" stroke="#2b1709" stroke-width="1.6"/><circle cx="13.5" cy="41.5" r="3.2" fill="#efe5cf" stroke="#2b1709" stroke-width="1.6"/>',
+    pele: '<path d="M16 7 L20 13 H28 L32 7 L35 15 C35 20 37 23 41 25 L36 29 C36 34 37 37 40 41 L31 39 L24 43 L17 39 L8 41 C11 37 12 34 12 29 L7 25 C11 23 13 20 13 15 Z" fill="#b08a5c" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M24 16 V37" stroke="#7a5a34" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M18 21 L21 24 M30 21 L27 24 M18 30 L21 28 M30 30 L27 28" stroke="#e0c49a" stroke-width="1.5" stroke-linecap="round"/>'
+  };
+  function itemIcon(k) {
+    if (ITEM_ICONS[k]) { return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + ITEM_ICONS[k] + '</svg>'; }
+    return '<b class="sell-ini" aria-hidden="true">' + esc(G.items[k].name.charAt(0)) + '</b>';
+  }
+  function coins(n) { return n + ' moeda' + (n === 1 ? '' : 's'); }
+
+  var SELL_COLS = 5, SELL_ROWS = 2; // tamanho mínimo do tabuleiro; cresce de linha em linha se precisar
+  var sellShown = null, sellPop = null;
+  // só os itens que o jogador tem e este NPC compra; as outras casas ficam vazias
   function sellBox(id, s) {
-    var p = st.player, wrap = document.createElement('div');
-    wrap.className = 'sell';
-    wrap.innerHTML = '<h3>Vender</h3><div class="sell-head"><span>Item</span><span>Tem</span><span>Preço</span><span>Quantos</span><span></span></div>';
-    s.items.forEach(function (k) {
-      var it = G.items[k], have = p.inv[k] || 0, can = sim.sellable(st, k), key = id + ':' + k;
-      var n = Math.max(1, Math.min(can || 1, sellQty[key] || 1));
-      var row = document.createElement('div'); row.className = 'sell-row' + (can ? '' : ' off');
-      row.innerHTML = '<span class="nm">' + esc(it.name) + (have > can ? '<small>' + (can ? (have - can) + ' fica' + (have - can === 1 ? '' : 'm') + ' para a missão' : 'reservado para a missão') + '</small>' : '') + '</span>' +
-        '<span class="av">' + can + '</span><span class="pr">' + it.price + ' <small>cada</small></span>' +
-        '<span class="qt"><button type="button" data-d="-1" aria-label="Menos">−</button><output aria-live="polite">' + (can ? n : 0) + '</output><button type="button" data-d="1" aria-label="Mais">+</button></span>' +
-        '<button type="button" class="go">Vender</button>';
-      var out = row.querySelector('output'), minus = row.querySelector('[data-d="-1"]'), plus = row.querySelector('[data-d="1"]'), go = row.querySelector('.go');
-      function sync() {
-        out.textContent = can ? n : 0; minus.disabled = !can || n <= 1; plus.disabled = !can || n >= can; go.disabled = !can;
-        go.textContent = can ? 'Vender por ' + n * it.price : 'Vender';
-        go.setAttribute('aria-label', 'Vender ' + (can ? qty(n, k) : it.name.toLowerCase()));
-      }
-      minus.onclick = function () { n = Math.max(1, n - 1); sellQty[key] = n; sync(); };
-      plus.onclick = function () { n = Math.min(can, n + 1); sellQty[key] = n; sync(); };
-      go.onclick = function () { var msg = sim.service(st, id, s, { item: k, n: n }); delete sellQty[key]; npcDone(id, msg); };
-      sync(); wrap.appendChild(row);
+    var p = st.player, wrap = document.createElement('div'), board = document.createElement('div');
+    var owned = s.items.filter(function (k) { return (p.inv[k] || 0) > 0; });
+    wrap.className = 'sell'; board.className = 'sell-board';
+    wrap.innerHTML = '<div class="sell-top"><h3>Vender</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
+    owned.forEach(function (k) {
+      var it = G.items[k], have = p.inv[k], can = sim.sellable(st, k), b = document.createElement('button');
+      b.type = 'button'; b.className = 'sell-cell' + (can ? '' : ' off'); b.dataset.item = k;
+      b.title = it.name + (have > can ? ' (parte para missão)' : '');
+      b.setAttribute('aria-label', it.name + ': ' + have + (have > can ? ', ' + (have - can) + ' para missão' : ''));
+      b.innerHTML = itemIcon(k) + '<span class="n">' + have + '</span>' + (have > can ? '<i class="res" aria-hidden="true"></i>' : '');
+      b.onclick = function () { openSell(id, s, k); };
+      board.appendChild(b);
     });
+    var cells = Math.max(SELL_ROWS, Math.ceil(owned.length / SELL_COLS)) * SELL_COLS;
+    for (var i = owned.length; i < cells; i++) {
+      var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e);
+    }
+    wrap.appendChild(board);
+    if (!owned.length) {
+      var h = document.createElement('p'); h.className = 'hint';
+      h.textContent = 'Você não tem nada que se venda aqui. Compra: ' + s.items.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') + '.';
+      wrap.appendChild(h);
+    }
+    sellShown = sellSig(id);
     return wrap;
+  }
+  // o jogo segue rodando com a janela aberta: se algo mudou, refaz o tabuleiro e o submenu
+  function sellSig(id) {
+    var o = [st.player.inv.moeda || 0];
+    G.npcs[id].services.forEach(function (s) {
+      if (s.type === 'sell') { s.items.forEach(function (k) { o.push(st.player.inv[k] || 0, sim.sellable(st, k)); }); }
+    });
+    return o.join(',');
+  }
+  function sellTick() {
+    if (sellShown === null || !npcOpen || sellSig(npcOpen) === sellShown) { return; }
+    renderNpcActs(npcOpen);
+    if (sellPop) { sellRefresh(); }
+  }
+  // submenu: fica fora da janela (que tem rolagem) e por cima de tudo; o fundo apanha o clique fora
+  function openSell(id, s, k) {
+    closeSell(true);
+    var it = G.items[k], back = document.createElement('div'), downOut = false;
+    back.className = 'sell-back';
+    back.innerHTML = '<div class="sell-pop" role="dialog" tabindex="-1" aria-label="Vender ' + esc(it.name.toLowerCase()) + '">' +
+      '<div class="sell-id"><span class="ic">' + itemIcon(k) + '</span><span class="nm"><b>' + esc(it.name) + '</b><small>' + coins(it.price) + ' cada</small></span>' +
+      '<button type="button" class="x" data-x>Fechar</button></div>' +
+      '<p class="sell-note" hidden></p>' +
+      '<div class="sell-qty"><input type="range" min="1" step="1" value="1" aria-label="Quantidade">' +
+      '<input type="text" class="num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Quantidade a vender"><small></small></div>' +
+      '<button type="button" class="main" data-ok></button><button type="button" data-all>Vender tudo</button></div>';
+    var q = function (sel) { return back.querySelector(sel); };
+    var P = sellPop = { id: id, s: s, k: k, n: 1, blank: false, back: back, pop: q('.sell-pop'), note: q('.sell-note'), qty: q('.sell-qty'),
+      range: q('[type=range]'), num: q('.num'), max: q('.sell-qty small'), ok: q('[data-ok]'), all: q('[data-all]') };
+    // conta só o toque que começa no fundo: soltar a barra fora do submenu também gera clique aqui
+    back.onpointerdown = function (e) { downOut = e.target === back; };
+    back.onclick = function (e) { if (e.target === back && downOut) { closeSell(); } };
+    q('[data-x]').onclick = function () { closeSell(); };
+    P.range.oninput = function () { sellSet(+P.range.value); };
+    P.num.oninput = function () {
+      var d = P.num.value.replace(/\D/g, '');
+      if (d) { sellSet(parseInt(d, 10)); return; }
+      P.blank = true; sellPaint(); // campo vazio enquanto digita; ao sair dele volta o último valor
+    };
+    P.num.onfocus = function () { P.num.select(); };
+    P.num.onblur = function () { if (P.blank) { P.blank = false; sellPaint(); } };
+    P.num.onkeydown = function (e) { // Enter só confirma o número; quem vende é o botão
+      if (e.key === 'Enter') { e.preventDefault(); if (P.blank) { P.num.blur(); } else { P.ok.focus(); } }
+    };
+    P.ok.onclick = function () { doSell(P.n); };
+    P.all.onclick = function () { doSell(sim.sellable(st, k)); };
+    $('w-npc').parentNode.appendChild(back);
+    sellRefresh();
+    if (sellPop && !isTouch && !P.num.disabled) { P.num.focus(); } else if (sellPop) { P.pop.focus(); } // no toque, o teclado só abre se tocar no número
+  }
+  function sellSet(n) {
+    var P = sellPop;
+    P.n = Math.max(1, Math.min(sim.sellable(st, P.k) || 1, n)); P.blank = false; sellPaint();
+  }
+  // recalcula o máximo e o aviso de reserva a partir do estado atual do jogo
+  function sellRefresh() {
+    var P = sellPop, have = st.player.inv[P.k] || 0, can = sim.sellable(st, P.k), res = have - can;
+    if (!have) { closeSell(); return; }
+    P.note.hidden = !res;
+    if (can && res) { P.note.textContent = (res === 1 ? '1 unidade fica guardada' : res + ' unidades ficam guardadas') + ' para a missão: dá para vender ' + can + ' de ' + have + '.'; }
+    else if (res) { P.note.textContent = (res === 1 ? 'A unidade que você tem está guardada' : 'As ' + res + ' unidades que você tem estão guardadas') + ' para a missão: não dá para vender.'; }
+    P.qty.hidden = P.ok.hidden = !can; P.all.disabled = !can;
+    P.range.max = Math.max(1, can); P.num.disabled = !can;
+    P.range.disabled = can < 2; // com uma só unidade não há o que puxar
+    P.max.textContent = 'de ' + can;
+    P.n = Math.max(1, Math.min(can || 1, P.n));
+    sellPaint();
+  }
+  // número, barra e botão sempre mostram o mesmo valor
+  function sellPaint() {
+    var P = sellPop, can = sim.sellable(st, P.k), price = G.items[P.k].price;
+    var v = P.blank ? '' : String(P.n);
+    if (P.num.value !== v) { P.num.value = v; }
+    P.range.value = P.n;
+    P.range.style.setProperty('--p', (can > 1 ? (P.n - 1) / (can - 1) * 100 : 100) + '%');
+    P.ok.disabled = P.blank;
+    P.ok.textContent = P.blank ? 'Escolha a quantidade' : 'Vender ' + P.n + ' por ' + P.n * price;
+  }
+  function doSell(n) {
+    var P = sellPop; closeSell(true);
+    npcDone(P.id, sim.service(st, P.id, P.s, { item: P.k, n: n }));
+  }
+  function closeSell(noFocus) {
+    var P = sellPop; if (!P) { return; }
+    sellPop = null; P.back.parentNode.removeChild(P.back);
+    var cell = !noFocus && $('npc-acts').querySelector('[data-item="' + P.k + '"]');
+    if (cell) { cell.focus(); }
   }
 
   // ---------- interação ----------
@@ -718,6 +826,8 @@
   function bindInput() {
     var cv = $('view');
     window.addEventListener('keydown', function (e) {
+      // submenu de venda aberto: Esc fecha só ele e os atalhos do jogo ficam desligados
+      if (sellPop) { if (e.code === 'Escape') { closeSell(); e.preventDefault(); } return; }
       if (e.target.tagName === 'INPUT') { return; }
       if (e.code === 'Escape') { if (openWin) { hide(); } else { cmd('menu'); } e.preventDefault(); return; }
       if (openWin === 'w-report' && (e.code === 'Enter' || e.code === 'Space')) { hide(); e.preventDefault(); return; }
