@@ -1,14 +1,13 @@
 # Netzach · o que falta (registro de 8/11/2026)
 
-Pedido grande de 8/11, dividido em duas ondas de agentes. A onda 1 foi feita e juntada no ramo `integracao-grande`.
+Pedido grande de 8/11, dividido em duas ondas de agentes. A onda 1 foi feita e está na `main`, menos a arte.
 A onda 2 não começou. Este arquivo lista tudo o que falta, o que ficou provisório e o que ainda não foi testado.
 
 ## Onde está o trabalho
-- Ramo `integracao-grande` (pasta `.claude/worktrees/integracao`): mundo novo, menu inicial com saves, controle no celular,
-  sistemas de personagem e arte (ver "Arte" abaixo). **Ainda não está na `main` nem publicado.**
-- Ao levar para a `main`: trocar `VERSION` em `js/ui.js` e todos os `?v=` do `index.html`, e o `?a=` em `view.js` (a arte mudou).
-  `SAVE_VER` não muda: os saves são convertidos (espaços de save, equipamentos, mapa versão 3).
-- Os ramos `worktree-agent-*` e as pastas em `.claude/worktrees/` são apagados depois de juntar na `main`.
+- A onda 1 (mundo novo, menu inicial com saves, controle no celular e sistemas de personagem) foi para a `main` na
+  versão `20261108-1`, sem a arte nova. `SAVE_VER` não mudou: os saves são convertidos (espaços de save, equipamentos,
+  mapa versão 3).
+- A arte interrompida continua só no ramo `worktree-agent-a281f0c200b3e28a0` (ver "Arte" abaixo).
 
 ## Feito na onda 1 (para referência)
 - **Mundo:** layout da imagem do usuário; mundo de 240 × 240 m (`bounds` 120); igreja à direita da rua, alfaiate do outro lado;
@@ -40,14 +39,14 @@ A onda 2 não começou. Este arquivo lista tudo o que falta, o que ficou provis�
 
 ## Arte (interrompida, NÃO está na integração)
 - O agente de arte foi parado antes de terminar. O trabalho dele está guardado no ramo `worktree-agent-a281f0c200b3e28a0`
-  (pasta `.claude/worktrees/agent-a281f0c200b3e28a0`), commit `95e70ac`: só `tools/gerar_arte.py` (+640 linhas) e o
+  commit `95e70ac` (a pasta temporária foi apagada; para retomar, crie uma cópia de trabalho a partir desse ramo): só `tools/gerar_arte.py` (+640 linhas) e o
   `SIZE` em `view.js`. As imagens (`art/sprites.png`, `walls.png`, `atlas.json`) **não foram geradas nem conferidas**.
 - Já existem no gerador, sem revisão: `alfaiate`, `lobo`, `veado`, `ovelha`, `ovelha_tosquiada`, `arbusto`, `arbusto_seco`,
   `escorpiao`, `serpente`, `arvore` (nova), `arvore_2`, `arvore_3`.
 - Não se sabe quanto da revisão das roupas para o século 12 foi feita: conferir personagem por personagem, mantendo
   reconhecíveis a senhora (`mulher_velha`) e a padeira.
 - Para terminar: gerar a arte (Python do Blender, com `PYTHONPATH` na pasta de shims do scratchpad, como antes), conferir
-  cada sprite, trocar o `?a=` em `view.js` e juntar à integração. Sem isso, o alfaiate aparece com a figura do taberneiro.
+  cada sprite, trocar o `?a=` em `view.js` e o `VERSION`/`?v=`, e juntar à `main`. Sem isso, o alfaiate aparece com a figura do taberneiro.
 
 ## Provisório ou incompleto
 - **Armas na mão:** machados e arcos ainda aparecem como espada em primeira pessoa; faltam os desenhos (nomes em `items.*.sprite`).
