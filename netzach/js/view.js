@@ -591,7 +591,9 @@
 
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4,
+    arvore_2: 5.9, toco_2: 5.9, arvore_3: 5.9, toco_3: 5.9, alfaiate: 1.92,
+    lobo: 0.96, veado: 2.16, ovelha: 1.04, ovelha_tosquiada: 1.04, arbusto: 1.28, arbusto_seco: 1.28, escorpiao: 0.16, serpente: 0.24 };
 
   // ---------- moradores e vacas: ambiente, só na tela ----------
   // a posição sai do relógio, nunca de tiques: nada disto entra na simulação, nas colisões ou no save
