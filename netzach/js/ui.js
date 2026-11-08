@@ -229,7 +229,7 @@
     if (!st) { // tela inicial: a vila gira devagar atrás dos saves, e o controle só navega
       ctrl.tick(fdt);
       view.yaw += fdt * 0.06; view.pitch = -0.04;
-      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow() });
+      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow(), semArma: true });
       return;
     }
     var now = clockNow(), gap = (now - lastReal) / 1000;

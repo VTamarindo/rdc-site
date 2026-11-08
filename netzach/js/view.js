@@ -1004,7 +1004,7 @@
     this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
     this.ambient(opts.now === undefined ? Date.now() : opts.now);
     this.r.draw(this.root, this.cam, this.env);
-    this.r.overlay(this.swordNodes(st, dt, opts.moving));
+    if (!opts.semArma) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };
 
   // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga).
