@@ -30,7 +30,7 @@
   function digitavel(el) { return el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')); }
 
   NZ.controle = function (api) {
-    var antes = [], ativo = false, avisou = false, foco = null, indice = 0, dir = null, espera = 0, rolar = 0, zoom = 0;
+    var antes = [], ativo = false, avisou = false, foco = null, indice = 0, raizAntes = null, dir = null, espera = 0, rolar = 0, zoom = 0;
     var cx = 0.5, cy = 0.5, cursor = document.getElementById('map-cur'), mapa = document.getElementById('bigmap'), usaCursor = true;
 
     function liga(v) {
@@ -62,13 +62,16 @@
       if (indice > 0 && l.length) { return l[Math.min(indice, l.length - 1)]; }
       return l.filter(function (el) { return !el.classList.contains('x'); })[0] || l[0] || null;
     }
-    // o alvo mais perto naquela direção, pesando mais o desvio para o lado
+    // o alvo mais perto naquela direção, pesando mais o desvio para o lado. O desvio conta da borda,
+    // não do centro: abaixo de um botão largo, a casa da esquerda fica logo abaixo dele, sem desvio
     function vizinho(l, d) {
       var a = foco.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2, melhor = null, nota = 1e9;
+      function vao(a0, a1, b0, b1) { return Math.max(0, b0 - a1, a0 - b1); }
       l.forEach(function (el) {
         if (el === foco) { return; }
         var b = el.getBoundingClientRect(), dx = b.left + b.width / 2 - ax, dy = b.top + b.height / 2 - ay;
-        var vai = d === 'c' ? -dy : d === 'b' ? dy : d === 'e' ? -dx : dx, lado = d === 'c' || d === 'b' ? Math.abs(dx) : Math.abs(dy);
+        var vai = d === 'c' ? -dy : d === 'b' ? dy : d === 'e' ? -dx : dx;
+        var lado = d === 'c' || d === 'b' ? vao(a.left, a.right, b.left, b.right) : vao(a.top, a.bottom, b.top, b.bottom);
         if (vai < 4) { return; }
         var n = vai + lado * 2.5;
         if (n < nota) { nota = n; melhor = el; }
@@ -77,9 +80,10 @@
     }
     function ajusta(el, sinal) {
       var passo = +el.step || 1, v = Math.max(+el.min, Math.min(+el.max, +el.value + sinal * (el.id === 'map-zoom' ? 5 : passo)));
-      if (v === +el.value) { return; }
+      if (v === +el.value) { return false; }
       el.value = v;
       el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
     }
     function aperta(el) {
       if (digitavel(el)) { el.focus(); return; } // aí sim abre o teclado do console
@@ -94,7 +98,8 @@
       espera = REPETE; return d;
     }
     function anda(lista, d) {
-      if (foco && ajustavel(foco) && (d === 'e' || d === 'd')) { ajusta(foco, d === 'e' ? -1 : 1); return; }
+      // nas barras e números, esquerda e direita mudam o valor; no limite, o foco segue para o lado
+      if (foco && ajustavel(foco) && (d === 'e' || d === 'd') && ajusta(foco, d === 'e' ? -1 : 1)) { return; }
       if (!foco) { poe(escolhe(lista)); return; }
       var v = vizinho(lista, d); if (v) { poe(v); }
     }
@@ -132,6 +137,7 @@
         if (sell) { api.closeSell(); } else if (box) { api.mapBoxClose(); } else { api.hide(); }
         return;
       }
+      if (raiz !== raizAntes) { raizAntes = raiz; indice = 0; } // outra janela ou submenu: a posição da lista anterior não vale aqui
       var lista = alvos(raiz);
       if (foco && lista.indexOf(foco) < 0) { foco.classList.remove('pad-foco'); foco = null; }
       if (!foco && !(soMapa && usaCursor)) { poe(escolhe(lista)); }
@@ -148,7 +154,7 @@
       }
     }
     function noJogo(press, l, r, dt) {
-      poe(null); cursorNoMapa(false); indice = 0; usaCursor = true; cx = cy = 0.5;
+      poe(null); cursorNoMapa(false); indice = 0; raizAntes = null; usaCursor = true; cx = cy = 0.5;
       api.move(-l[1], l[0]);
       if (r[0] || r[1]) { api.look(r[0] * OLHAR_X * dt, r[1] * OLHAR_Y * dt); }
       if (press(A)) { api.interact(); }
@@ -172,7 +178,7 @@
           if (!avisou) { avisou = true; api.toast('Controle conectado.'); }
         }
         if (!ativo) { api.move(0, 0); antes = b; return; } // controle parado não disputa com mouse e teclado
-        var press = function (i) { return b[i] && !antes[i]; }, win = api.win();
+        var velho = antes, press = function (i) { return b[i] && !velho[i]; }, win = api.win();
         antes = b;
         if (press(MENU)) { api.cmd('menu'); return; }
         if (press(VIEW)) { api.cmd('map'); return; }

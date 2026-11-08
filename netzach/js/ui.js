@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261107-7', SAVE_VER = '20261105-3';
+  var VERSION = '20261107-8', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1198,7 +1198,7 @@
       sell: function () { return sellPop ? sellPop.pop : null; },
       closeSell: function () { closeSell(); },
       mapBox: function () { return mapMenu === 'macro' ? $('map-menu') : mapMenu === 'caminhada' ? $('map-walk-menu') : null; },
-      mapBoxClose: function () { mapMenu = false; mapUi(); },
+      mapBoxClose: function () { var b = $(mapMenu === 'macro' ? 'map-macro' : 'map-walk'); mapMenu = false; mapUi(); b.focus(); }, // o foco volta a quem abriu o menu
       mapPan: function (fx, fz) { // fx e fz em frações da janela do mapa
         if (!fx && !fz) { return; }
         var q = world.B * 2 / mapZ; mapCx += fx * q; mapCz += fz * q; mapLimit();
