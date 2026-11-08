@@ -233,6 +233,10 @@ body.touch .only-pc { display: none; }
 .only-pad { display: none; }
 body.pad .only-pad { display: block; }
 body.pad .only-pc, body.pad .only-touch { display: none; }
+.only-xbox { display: none; }
+body.xbox .only-xbox { display: block; }
+#menu-pad { margin-top: 8px; }
+#menu-pad .col { margin-top: 4px; }
 .pad-foco { outline: 3px solid #e8a820 !important; outline-offset: 2px; }
 #map-cur { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; z-index: 1; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px #7a1a12, inset 0 0 0 2px #7a1a12; }
 #map-cur::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #7a1a12; }

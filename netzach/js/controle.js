@@ -38,6 +38,24 @@
       ativo = v; document.body.classList.toggle('pad', v);
       api.modo();
     }
+    // câmera invertida por eixo: escolha de quem joga, guardada no navegador, fora do save
+    var CAM_KEY = 'zg-vila-camera', inv = { x: false, y: false }, info = document.getElementById('pad-info'), infoId = null;
+    try { var salvo = JSON.parse(localStorage.getItem(CAM_KEY)); if (salvo) { inv.x = !!salvo.x; inv.y = !!salvo.y; } } catch (e) { /* começa no padrão */ }
+    function pinta() {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-inv]'), function (b) { b.setAttribute('aria-pressed', inv[b.dataset.inv] ? 'true' : 'false'); });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-inv]'), function (b) {
+      b.addEventListener('click', function () {
+        inv[b.dataset.inv] = !inv[b.dataset.inv]; pinta();
+        try { localStorage.setItem(CAM_KEY, JSON.stringify(inv)); } catch (e) { /* vale até fechar */ }
+      });
+    });
+    pinta();
+    // no Edge do Xbox o controle começa movendo um cursor, e a página não consegue mudar isso: só quem joga, pelo menu do navegador
+    var xbox = /Xbox/i.test(navigator.userAgent);
+    document.body.classList.toggle('xbox', xbox);
+    if (xbox) { setTimeout(function () { api.toast('No Xbox, segure o botão Menu e escolha a opção de controles de jogo do navegador.', 8); }, 1500); }
+
     // mouse, toque ou teclado devolvem a tela ao jeito normal
     function solta() { liga(false); }
     window.addEventListener('pointerdown', solta, true);
@@ -156,7 +174,7 @@
     function noJogo(press, l, r, dt) {
       poe(null); cursorNoMapa(false); indice = 0; raizAntes = null; usaCursor = true; cx = cy = 0.5;
       api.move(-l[1], l[0]);
-      if (r[0] || r[1]) { api.look(r[0] * OLHAR_X * dt, r[1] * OLHAR_Y * dt); }
+      if (r[0] || r[1]) { api.look((inv.x ? -1 : 1) * r[0] * OLHAR_X * dt, (inv.y ? -1 : 1) * r[1] * OLHAR_Y * dt); }
       if (press(A)) { api.interact(); }
       if (press(X)) { api.cmd('potion'); }
       if (press(Y)) { api.cmd('bag'); }
@@ -171,6 +189,10 @@
       tick: function (dt) {
         var g = primeiro();
         if (!g) { api.move(0, 0); antes = []; return; }
+        if (info && g.id !== infoId) { // como o navegador vê o controle: ajuda a entender eixos trocados num aparelho que não dá para testar daqui
+          infoId = g.id;
+          info.textContent = 'Controle: ' + g.id + ' · ' + (g.mapping === 'standard' ? 'mapeamento padrão' : 'mapeamento não padrão') + ' · ' + g.axes.length + ' eixos';
+        }
         var b = g.buttons.map(function (x) { return x.pressed || x.value > 0.5; });
         var ax = g.axes, l = analogico(ax[0] || 0, ax[1] || 0), r = analogico(ax[2] || 0, ax[3] || 0);
         if (b.indexOf(true) >= 0 || l[0] || l[1] || r[0] || r[1]) {

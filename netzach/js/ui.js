@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261107-8', SAVE_VER = '20261105-3';
+  var VERSION = '20261107-9', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1205,7 +1205,7 @@
         drawMap($('bigmap'), 560, true);
       },
       mapZoom: function (n) { mapZoomTo(+$('map-zoom').value + n); },
-      hide: hide, cmd: cmd, interact: interactFront, quests: toggleQuests, toast: function (t) { toast(t, 3); },
+      hide: hide, cmd: cmd, interact: interactFront, quests: toggleQuests, toast: function (t, sec) { toast(t, sec || 3); },
       move: function (f, s) { pad.gf = f; pad.gs = s; },
       look: function (x, y) { view.yaw -= x; view.pitch = Math.max(-1.1, Math.min(0.9, view.pitch - y)); lookHold = 2.5; },
       modo: function () { if (openWin === 'w-map') { mapUi(); } } // o texto do mapa muda entre clique e botão A

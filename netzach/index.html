@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261107-8">
+<link rel="stylesheet" href="css/netzach.css?v=20261107-9">
 </head>
 <body>
 <div id="app">
@@ -213,6 +213,7 @@
           <p><b>Regras:</b> ficam no botão Macro do mapa. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
           <p><b>Inventário e bolsa:</b> os botões ficam na parte de baixo da tela. A espada e o escudo mostram arma, postura e poções: lá você troca a postura e bebe uma poção. A bolsa mostra o que você coletou.</p>
         </div>
+        <p class="only-xbox"><b>No Xbox:</b> se o controle mover um cursor em vez do jogo, segure o botão Menu até abrir o menu do navegador e escolha a opção de controles de jogo. Com ela ligada, o ícone de controle na barra de endereço fica azul, sem o X vermelho.</p>
         <p><b>Missões diárias:</b> aceite no quadro de avisos e coloque o material no baú ao lado. Dá para entregar aos poucos: a recompensa do quadro sai ao completar a missão, e à meia-noite a missão incompleta paga só o que foi entregue. Reiniciam todo dia às 00:01.</p>
         <p><b>Tempo fora:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
         <p class="small only-pc">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
@@ -226,6 +227,14 @@
             <button type="button" data-ctrl="analogico" aria-pressed="true">Analógico</button>
             <button type="button" data-ctrl="botoes" aria-pressed="false">Botões</button>
           </div>
+        </div>
+        <div id="menu-pad" class="only-pad">
+          <span id="cam-t">Câmera do controle</span>
+          <div class="col" role="group" aria-labelledby="cam-t">
+            <button type="button" data-inv="x" aria-pressed="false">Inverter horizontal</button>
+            <button type="button" data-inv="y" aria-pressed="false">Inverter vertical</button>
+          </div>
+          <p id="pad-info" class="hint"></p>
         </div>
         <div id="dev-opts" hidden>
           <h3>Testes</h3>
@@ -245,10 +254,10 @@
   </section>
 </div>
 
-<script src="js/sim.js?v=20261107-8"></script>
-<script src="js/ceu.js?v=20261107-8"></script>
-<script src="js/view.js?v=20261107-8"></script>
-<script src="js/controle.js?v=20261107-8"></script>
-<script src="js/ui.js?v=20261107-8"></script>
+<script src="js/sim.js?v=20261107-9"></script>
+<script src="js/ceu.js?v=20261107-9"></script>
+<script src="js/view.js?v=20261107-9"></script>
+<script src="js/controle.js?v=20261107-9"></script>
+<script src="js/ui.js?v=20261107-9"></script>
 </body>
 </html>
