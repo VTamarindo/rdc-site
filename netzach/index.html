@@ -97,7 +97,6 @@
     <header><h2>Mapa da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
     <div class="mapbox">
       <canvas id="bigmap" width="560" height="560"></canvas>
-      <div id="map-cur" hidden></div>
       <div id="map-menu" class="popmenu" role="menu" aria-label="Macro" hidden>
         <button type="button" role="menuitem" id="mm-pick">Escolher área</button>
         <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
@@ -122,6 +121,7 @@
       <button type="button" id="map-walk" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Caminhada">Caminhada ▴</button>
       <p id="map-hint" class="hint" aria-live="polite"></p>
     </div>
+    <div id="map-cur" hidden></div><!-- cursor do controle: anda pela janela inteira, por cima de tudo -->
   </section>
 
   <section id="w-inv" class="win small" hidden aria-label="Inventário">
@@ -166,15 +166,36 @@
     <p id="npc-res" class="hint"></p>
   </section>
 
-  <section id="w-new" class="win small" hidden aria-label="Novo personagem">
-    <header><h2>Netzach</h2></header>
-    <form id="new-form">
-      <label for="new-name">Nome do personagem</label>
-      <input id="new-name" type="text" maxlength="20" autocomplete="off" spellcheck="false" required>
-      <p id="new-err" class="hint" hidden>Escolha um nome de 2 a 20 letras.</p>
-      <button type="submit" class="main">Começar</button>
-    </form>
-  </section>
+  <!-- tela inicial: cobre tudo até escolher um save. Para o controle e o Esc é uma janela (foco nos botões, B volta) -->
+  <div id="w-title" hidden>
+    <section class="win small" aria-label="Netzach">
+      <h1 class="t-logo">Netzach</h1>
+      <p class="t-sub">protótipo da vila</p>
+      <div id="t-list">
+        <button type="button" id="t-cont" class="main" hidden>Continuar</button>
+        <button type="button" id="t-new" class="main">Novo jogo</button>
+        <h3>Saves</h3>
+        <ul id="t-slots"></ul>
+        <p id="t-msg" class="hint" hidden></p>
+      </div>
+      <form id="new-form" hidden>
+        <h3>Novo jogo</h3>
+        <label for="new-name">Nome do personagem</label>
+        <input id="new-name" type="text" maxlength="20" autocomplete="off" spellcheck="false" required>
+        <p id="new-err" class="hint" hidden>Escolha um nome de 2 a 20 letras.</p>
+        <button type="submit" class="main">Começar</button>
+        <button type="button" data-t-back>Voltar</button>
+      </form>
+      <div id="t-del" hidden>
+        <h3>Apagar save</h3>
+        <p id="t-del-txt"></p>
+        <div class="col">
+          <button type="button" data-t-back>Cancelar</button>
+          <button type="button" id="t-del-ok" class="danger">Apagar para sempre</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <section id="w-report" class="win small" hidden aria-label="Enquanto você estava fora">
     <header><h2>Enquanto você estava fora</h2></header>
@@ -200,10 +221,10 @@
         <div class="only-pad">
           <p><b>Andar e olhar:</b> analógico esquerdo anda, inclusive para os lados, e analógico direito olha.</p>
           <p><b>Interagir:</b> A usa o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
-          <p><b>Janelas:</b> direcional ou analógico esquerdo mudam de botão, A confirma, B volta, e o analógico direito rola o texto. Nas barras, esquerda e direita mudam o valor.</p>
-          <p><b>Mapa:</b> View abre. O analógico esquerdo move o cursor, e A marca o ponto. LT e RT mudam o zoom, e o analógico direito move o mapa. O direcional leva aos botões Macro e Caminhada.</p>
+          <p><b>Janelas:</b> direcional ou analógico esquerdo mudam de botão, A confirma, B volta, e o analógico direito rola o texto. Nas barras, esquerda e direita mudam o valor. Num campo de texto, A abre o teclado.</p>
+          <p><b>Mapa:</b> View abre. O analógico esquerdo leva o cursor por toda a janela do mapa, e A usa o que estiver embaixo dele: marca o ponto no mapa ou aperta o botão. Na barra de zoom, segure A e mova o cursor; LT e RT também mudam o zoom, e o analógico direito move o mapa.</p>
           <p><b>Macro:</b> RB abre o mapa pronto para marcar a área e, com a macro trabalhando, pausa. As Regras ficam no botão Macro do mapa.</p>
-          <p><b>Atalhos:</b> Menu abre este menu · X poção · Y bolsa · LB inventário · clique no analógico esquerdo recolhe as missões · clique no direito troca a postura.</p>
+          <p><b>Atalhos:</b> Menu abre este menu · Y personagem · X poção · direcional para cima recolhe ou mostra as missões · clique no analógico direito troca a postura.</p>
         </div>
         <div class="only-touch">
           <p><b>Andar:</b> o padrão é o analógico virtual: empurre para andar para frente, para trás e para os lados. Arraste na tela para olhar. Se preferir botões em cruz, troque no menu, em Controles.</p>
@@ -220,6 +241,8 @@
       <div class="menu-side">
         <h3>Tela</h3>
         <div class="col"><button type="button" id="btn-full" data-cmd="fullscreen">Tela cheia</button></div>
+        <h3>Jogo</h3>
+        <div class="col"><button type="button" data-cmd="title">Voltar ao menu inicial</button></div>
         <div id="menu-ctrl" hidden>
           <span id="ctrl-t">Controles</span>
           <div class="seg" role="group" aria-labelledby="ctrl-t">

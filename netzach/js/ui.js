@@ -38,45 +38,143 @@
     G = game; V = vila;
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
     world = new NZ.World(G, V); sim = new NZ.Sim(world);
-    var saved = load();
-    if (saved) { st = NZ.settle(world, NZ.migrate(saved.state)); lastReal = saved.lastReal || clockNow(); }
-    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); lastReal = clockNow(); }
+    slotsMigrate();
 
     view = new NZ.View($('view'), world, art);
-    view.yaw = st.player.yaw;
-    $('loading').hidden = true; $('hud').hidden = false; $('ver').textContent = VERSION;
+    vitrine = NZ.newState(world, 1); // a vila que aparece atrás da tela inicial; não é de nenhum save
+    $('loading').hidden = true; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
-    bindInput(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
+    bindInput(); bindTitle(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
-    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; } }; // para testes
-    renderLog();
+    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; }, slot: function () { return slot; } }; // para testes
 
-    if (saved) { beginAway(lastReal); endAway(clockNow()); }
-    if (!st.player.name) { showNew(); if (newVersion) { $('new-err').hidden = false; $('new-err').textContent = 'Versão nova do protótipo (' + VERSION + '): o jogo recomeçou do zero.'; } }
+    showTitle();
 
+    // na tela inicial não há jogo rodando: nada a salvar nem tempo fora a contar (cada save conta o seu ao ser aberto)
     document.addEventListener('visibilitychange', function () {
+      if (!st) { return; }
       if (document.hidden) { beginAway(clockNow()); save(); }
       else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); }
     });
     window.addEventListener('pagehide', save);
-    setInterval(function () { if (away) { catchUp(clockNow()); } save(); }, 5000);
+    setInterval(function () { if (!st) { return; } if (away) { catchUp(clockNow()); } save(); }, 5000);
     requestAnimationFrame(frame);
   }
 
-  // ---------- save ----------
-  function save() {
-    try { localStorage.setItem(G.settings.saveKey, JSON.stringify({ v: 1, ver: SAVE_VER, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
-  }
-  function load() {
+  // ---------- save: SLOTS espaços, cada um na sua chave (saveKey-1, -2, -3), no mesmo formato do save único de antes ----------
+  var SLOTS = 3, slot = 0, vitrine = null;
+  function slotKey(n) { return G.settings.saveKey + '-' + n; }
+  // o save único de antes (saveKey sem número) vira o espaço 1. A chave velha só sai depois de a cópia estar gravada e lida de volta
+  function slotsMigrate() {
     try {
-      var s = JSON.parse(localStorage.getItem(G.settings.saveKey));
-      if (!(s && s.v === 1 && s.state)) { return null; }
+      var old = localStorage.getItem(G.settings.saveKey);
+      if (old === null) { return; }
+      if (localStorage.getItem(slotKey(1)) === null) {
+        localStorage.setItem(slotKey(1), old);
+        if (localStorage.getItem(slotKey(1)) !== old) { return; }
+      } else if (localStorage.getItem(slotKey(1)) !== old) { return; } // espaço 1 já ocupado por outro: a chave velha fica, intocada
+      localStorage.removeItem(G.settings.saveKey);
+    } catch (e) { /* sem armazenamento: nada a migrar */ }
+  }
+  function save() {
+    if (!st || !slot) { return; }
+    try { localStorage.setItem(slotKey(slot), JSON.stringify({ v: 1, ver: SAVE_VER, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
+  }
+  function load(n) {
+    try {
+      var s = JSON.parse(localStorage.getItem(slotKey(n)));
+      if (!(s && s.v === 1 && s.state && s.state.player)) { return null; }
       // protótipo: SAVE_VER novo = jogo recomeça do zero (sem precisar limpar o cache)
-      if (G.settings.resetSaveOnNewVersion && s.ver !== SAVE_VER) { localStorage.removeItem(G.settings.saveKey); newVersion = true; return null; }
+      if (G.settings.resetSaveOnNewVersion && s.ver !== SAVE_VER) { localStorage.removeItem(slotKey(n)); newVersion = true; return null; }
       return s;
     } catch (e) { return null; }
+  }
+  // abre um save (ou começa um novo, com nome) no espaço n; o tempo fora de cada save conta desde a última vez que ele rodou
+  function play(n, name) {
+    var saved = name ? null : load(n);
+    if (!name && !saved) { showTitle(); return; }
+    slot = n; away = null; acc = 0; prev = null; dailyNext = 0; keys = {}; pad = {}; lineTxt = null;
+    if (saved) { st = NZ.settle(world, NZ.migrate(saved.state)); lastReal = saved.lastReal || clockNow(); }
+    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); st.player.name = name; lastReal = clockNow(); }
+    titleOn = false; hide(); $('w-title').hidden = true; $('hud').hidden = false;
+    view.yaw = st.player.yaw; view.pitch = 0; sim.events = [];
+    renderLog(); hudT = 0;
+    if (saved) { beginAway(lastReal); endAway(clockNow()); } else { toast('Bem-vindo à vila, ' + name + '.', 3); }
+    save();
+  }
+  function toTitle() {
+    save(); hide(); closeAllMarks();
+    st = null; slot = 0; away = null; document.title = baseTitle;
+    showTitle();
+  }
+  function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('hover').hidden = true; $('toast').hidden = true; }
+
+  // ---------- tela inicial ----------
+  var titleOn = false, titleDel = 0, titleNew = 0;
+  function slotInfo(n) { var s = load(n); return s ? { n: n, name: s.state.player.name || 'Sem nome', lv: s.state.player.lv || 1, when: s.lastReal || 0 } : { n: n }; }
+  function ago(ms) {
+    var s = (clockNow() - ms) / 1000;
+    if (!ms) { return ''; }
+    if (s < 60) { return 'agora há pouco'; }
+    if (s < 3600) { return 'há ' + Math.floor(s / 60) + ' min'; }
+    if (s < 86400) { return 'há ' + Math.floor(s / 3600) + ' h'; }
+    var d = new Date(ms); return 'em ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  function showTitle() {
+    titleOn = false; hide(); titleOn = true; openWin = 'w-title'; titleDel = titleNew = 0;
+    $('hud').hidden = true; $('w-title').hidden = false; guardClicks();
+    $('t-list').hidden = false; $('new-form').hidden = true; $('t-del').hidden = true;
+    var all = [], last = null;
+    for (var i = 1; i <= SLOTS; i++) { all.push(slotInfo(i)); }
+    $('t-slots').innerHTML = all.map(function (s) {
+      if (!s.name) { return '<li><button type="button" class="t-slot vazio" data-t-new="' + s.n + '"><b>Espaço ' + s.n + ' · vazio</b><small>Começar um jogo novo aqui</small></button><i class="t-vaga"></i></li>'; } // a vaga alinha as linhas: no controle, direita vai ao Apagar, não à linha de baixo
+      if (!last || s.when > last.when) { last = s; }
+      return '<li><button type="button" class="t-slot" data-t-play="' + s.n + '"><b>' + esc(s.name) + '</b><span>Nível ' + s.lv + ' · espaço ' + s.n + '</span><small>Jogado ' + ago(s.when) + '</small></button>' +
+        '<button type="button" class="t-apaga" data-t-del="' + s.n + '" aria-label="Apagar o save de ' + esc(s.name) + '" title="Apagar">Apagar</button></li>';
+    }).join('');
+    var free = all.filter(function (s) { return !s.name; })[0];
+    $('t-cont').hidden = !last;
+    if (last) { $('t-cont').dataset.n = last.n; $('t-cont').textContent = 'Continuar · ' + last.name + ', nível ' + last.lv; }
+    $('t-new').disabled = !free;
+    var msg = !free ? 'Os ' + SLOTS + ' espaços estão ocupados: apague um save para começar outro jogo.' : '';
+    if (newVersion) { msg = 'Versão nova do protótipo (' + VERSION + '): os saves antigos recomeçaram do zero.' + (msg ? ' ' + msg : ''); }
+    $('t-msg').textContent = msg; $('t-msg').hidden = !msg;
+  }
+  function titleNewGame(n) {
+    titleNew = n; $('t-list').hidden = true; $('new-form').hidden = false;
+    $('new-name').value = ''; $('new-err').hidden = true;
+    // com o controle, focar o campo abriria o teclado do console sem pedir: ele abre quando o jogador aperta A no campo
+    if (!(ctrl && ctrl.active())) { setTimeout(function () { try { $('new-name').focus(); } catch (e) { /* nada */ } }, 50); }
+  }
+  function titleAskDel(n) {
+    var s = slotInfo(n); if (!s.name) { return; }
+    titleDel = n; $('t-list').hidden = true; $('t-del').hidden = false;
+    $('t-del-txt').textContent = 'Apagar ' + s.name + ' (nível ' + s.lv + ', espaço ' + n + ')? Não dá para desfazer.';
+  }
+  // Esc, B ou Voltar: do nome ou da confirmação volta à lista; na lista não há para onde voltar
+  function titleBack() { if (titleNew || titleDel) { showTitle(); } }
+  function bindTitle() {
+    $('t-slots').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) { return; }
+      if (b.dataset.tPlay) { play(+b.dataset.tPlay); } else if (b.dataset.tNew) { titleNewGame(+b.dataset.tNew); } else if (b.dataset.tDel) { titleAskDel(+b.dataset.tDel); }
+    });
+    $('t-cont').addEventListener('click', function () { play(+this.dataset.n); });
+    $('t-new').addEventListener('click', function () {
+      for (var i = 1; i <= SLOTS; i++) { if (!load(i)) { titleNewGame(i); return; } }
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t-back]'), function (b) { b.addEventListener('click', titleBack); });
+    $('t-del-ok').addEventListener('click', function () {
+      try { localStorage.removeItem(slotKey(titleDel)); } catch (e) { /* nada */ }
+      showTitle();
+    });
+    $('new-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var n = $('new-name').value.replace(/\s+/g, ' ').trim();
+      if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
+      $('new-name').blur(); play(titleNew, n);
+    });
   }
 
   // ---------- tempo fora ----------
@@ -128,12 +226,19 @@
   function frame(t) {
     requestAnimationFrame(frame);
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
+    if (!st) { // tela inicial: a vila gira devagar atrás dos saves, e o controle só navega
+      ctrl.tick(fdt);
+      view.yaw += fdt * 0.06; view.pitch = -0.04;
+      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow() });
+      return;
+    }
     var now = clockNow(), gap = (now - lastReal) / 1000;
     if (away) { return; }
     if (gap > THRESH) { beginAway(lastReal); endAway(now); return; }
     lastReal = now;
 
     ctrl.tick(fdt);
+    if (!st) { return; } // o controle acabou de voltar à tela inicial
     var moving = manualMove(fdt);
     acc += gap;
     var guard = 0;
@@ -537,7 +642,7 @@
 
   // ---------- janelas ----------
   function show(id) {
-    if (openWin === 'w-new' && !st.player.name && id !== 'w-new') { return; }
+    if (titleOn) { return; } // na tela inicial não se abre janela do jogo
     hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {}; guardClicks();
   }
   // o toque que abre uma janela gera, logo depois, um clique fantasma no mesmo ponto;
@@ -546,7 +651,7 @@
   window.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; }, true);
   function guardClicks() { if (lastPointer === 'touch') { guardUntil = performance.now() + 500; } }
   function hide() {
-    if (openWin === 'w-new' && !st.player.name) { return; } // sem nome não se joga
+    if (titleOn) { titleBack(); return; } // a tela inicial só sai escolhendo um save
     if (openWin) { $(openWin).hidden = true; }
     closeSell(true); sellShown = null;
     openWin = null; npcOpen = null;
@@ -620,11 +725,6 @@
     else { toast('Postura ' + G.stances[p.stance].name.toLowerCase() + '.'); }
   }
 
-  // ---------- criação do personagem ----------
-  function showNew() {
-    show('w-new'); $('new-name').value = ''; $('new-err').hidden = true;
-    setTimeout(function () { try { $('new-name').focus(); } catch (e) { /* nada */ } }, 50);
-  }
   function qty(n, k) { var it = G.items[k]; return n + ' ' + (n === 1 ? it.name : (it.plural || it.name)).toLowerCase(); }
   function fill(t) { return String(t).replace(/\{nome\}/g, st.player.name); }
 
@@ -1000,7 +1100,8 @@
   }
 
   function cmd(c) {
-    var p = st.player;
+    if (!st) { return; } // tela inicial: atalhos do jogo desligados
+    if (c === 'title') { toTitle(); return; }
     if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(); } }
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
@@ -1038,8 +1139,10 @@
 
   function debug(c) {
     if (c === 'reset') {
-      try { localStorage.removeItem(G.settings.saveKey); } catch (e) { /* nada */ }
-      st = NZ.newState(world, (Date.now() % 2147483647) | 0); dailyNext = 0; view.yaw = st.player.yaw; renderLog(); hide(); showNew(); return;
+      // apaga só o save aberto e pede o nome de novo no mesmo espaço
+      var n = slot; hide(); st = null; slot = 0;
+      try { localStorage.removeItem(slotKey(n)); } catch (e) { /* nada */ }
+      showTitle(); titleNewGame(n); return;
     }
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
@@ -1105,12 +1208,6 @@
 
     Array.prototype.forEach.call(document.querySelectorAll('.win'), function (w) {
       w.addEventListener('click', function (e) { if (performance.now() < guardUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
-    });
-    $('new-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var n = $('new-name').value.replace(/\s+/g, ' ').trim();
-      if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
-      st.player.name = n; save(); hide(); toast('Bem-vindo à vila, ' + n + '.', 3);
     });
     $('mini').addEventListener('click', function () { cmd('map'); });
     var big = $('bigmap');
@@ -1195,6 +1292,8 @@
   function ctrlApi() {
     return {
       win: function () { return openWin; },
+      // a parte visível da tela inicial: trocar de parte (lista, nome, apagar) recomeça o foco do controle nela
+      painel: function () { return !titleOn ? null : titleNew ? $('new-form') : titleDel ? $('t-del') : $('t-list'); },
       sell: function () { return sellPop ? sellPop.pop : null; },
       closeSell: function () { closeSell(); },
       mapBox: function () { return mapMenu === 'macro' ? $('map-menu') : mapMenu === 'caminhada' ? $('map-walk-menu') : null; },
