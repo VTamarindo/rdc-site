@@ -44,29 +44,14 @@
     <div id="marks"></div>
 
     <nav id="bar" aria-label="Ações">
-      <button type="button" class="icon" data-cmd="inv" aria-label="Inventário" title="Inventário (I)">
+      <button type="button" class="icon" data-cmd="char" aria-label="Personagem" title="Personagem (I equipamento · B bolsa)">
         <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-          <path d="M9 7 H39 V21 C39 31.5 32 38.5 24 43 C16 38.5 9 31.5 9 21 Z" fill="#7d1e16" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/>
-          <path d="M12.5 10.5 H35.5 V21 C35.5 29.5 30 35.5 24 39 C18 35.5 12.5 29.5 12.5 21 Z" fill="none" stroke="#d9b45a" stroke-width="1.3"/>
-          <path d="M24 10.5 V39 M12.5 20 H35.5" stroke="#d9b45a" stroke-width="1.3"/>
-          <g transform="rotate(-42 24 24)">
-            <path d="M22.4 2.5 L24 0.5 L25.6 2.5 V31 H22.4 Z" fill="#e7e2d4" stroke="#2b1709" stroke-width="1.4" stroke-linejoin="round"/>
-            <path d="M24 3.5 V30" stroke="#9c958a" stroke-width="0.8"/>
-            <rect x="15.5" y="30.5" width="17" height="3.4" rx="1.4" fill="#c99a3b" stroke="#2b1709" stroke-width="1.3"/>
-            <rect x="22.3" y="34" width="3.4" height="8.5" fill="#5a341a" stroke="#2b1709" stroke-width="1.2"/>
-            <circle cx="24" cy="44.6" r="2.6" fill="#c99a3b" stroke="#2b1709" stroke-width="1.3"/>
-          </g>
-        </svg>
-      </button>
-      <button type="button" class="icon" data-cmd="bag" aria-label="Bolsa" title="Bolsa (B)">
-        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-          <path d="M16.5 17 C9 23 7.5 34 12 39.5 C15.5 43.5 32.5 43.5 36 39.5 C40.5 34 39 23 31.5 17 Z" fill="#8a5428" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/>
-          <path d="M14 24 C11.5 30 12.5 36 15.5 38.5 C19.5 41 28.5 41 32.5 38.5" fill="none" stroke="#c78d4e" stroke-width="1.2" stroke-dasharray="2 2"/>
-          <path d="M16.5 17 L13 9 C16 7.5 18 10 20 8.5 C22 7 26 7 28 8.5 C30 10 32 7.5 35 9 L31.5 17 Z" fill="#a8693a" stroke="#2b1709" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M19 9.5 L20 16.5 M24 8 V16.5 M29 9.5 L28 16.5" stroke="#5a341a" stroke-width="1"/>
-          <path d="M14.5 17.5 C20 19.5 28 19.5 33.5 17.5" fill="none" stroke="#e1c27a" stroke-width="2.4" stroke-linecap="round"/>
-          <path d="M24 19 C22 23 19.5 25 18 28.5 M24 19 C26 23 28.5 25 30 28" fill="none" stroke="#e1c27a" stroke-width="1.8" stroke-linecap="round"/>
-          <circle cx="24" cy="19" r="2.1" fill="#e1c27a" stroke="#2b1709" stroke-width="1"/>
+          <path d="M7 44 C7 32 13.5 26.5 24 26.5 C34.5 26.5 41 32 41 44 Z" fill="#7d1e16" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M24 27.5 V44 M15.5 30 C19.5 33.5 28.5 33.5 32.5 30" fill="none" stroke="#d9b45a" stroke-width="1.4"/>
+          <path d="M17.5 21.5 L19.5 28 C22.5 29.5 25.5 29.5 28.5 28 L30.5 21.5 Z" fill="#c9965e" stroke="#2b1709" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="24" cy="15.5" r="8" fill="#e2b98c" stroke="#2b1709" stroke-width="2.2"/>
+          <path d="M15.8 15 C15.5 7.5 20 5.5 24 5.5 C28 5.5 32.5 7.5 32.2 15 C30 12 27 11 24 11.5 C21 11 18 12 15.8 15 Z" fill="#5a341a" stroke="#2b1709" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M21 17 V18.6 M27 17 V18.6" stroke="#2b1709" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
       </button>
       <button type="button" class="icon" data-cmd="menu" aria-label="Menu" title="Menu (Esc)">
@@ -124,31 +109,48 @@
     <div id="map-cur" hidden></div><!-- cursor do controle: anda pela janela inteira, por cima de tudo -->
   </section>
 
-  <section id="w-inv" class="win small" hidden aria-label="Inventário">
-    <header><h2>Inventário</h2><button type="button" class="x" data-close>Fechar</button></header>
-    <dl class="sheet">
-      <dt>Vida</dt><dd><div class="bar hp"><i id="iv-hp-bar"></i><span id="iv-hp"></span></div></dd>
-      <dt>Reputação</dt><dd id="iv-rep"></dd>
-      <dt>Arma</dt><dd><b id="iv-wpn"></b><br><span class="hint" id="iv-atk"></span></dd>
-      <dt>Postura <span class="key">T</span></dt>
-      <dd>
-        <div class="seg" role="group" aria-label="Postura">
-          <button type="button" data-stance="ofensiva" aria-pressed="false"></button>
-          <button type="button" data-stance="defensiva" aria-pressed="false"></button>
-        </div>
-        <span class="hint" id="iv-stance"></span>
-      </dd>
-      <dt>Poções <span class="key">F</span></dt>
-      <dd><span id="iv-pots"></span> <button type="button" id="iv-drink">Beber poção</button><br><span class="hint" id="iv-res"></span></dd>
-    </dl>
-  </section>
-
-  <section id="w-bag" class="win small" hidden aria-label="Bolsa">
-    <header><h2>Bolsa</h2><button type="button" class="x" data-close>Fechar</button></header>
-    <p class="row"><span id="bg-cap"></span><span id="bg-coins"></span></p>
-    <div class="bar cap"><i id="bg-bar"></i></div>
-    <ul id="bg-list" class="ledger"></ul>
-    <p id="bg-empty" class="hint" hidden>A bolsa está vazia. Corte árvores, minere veios e cace coelhos para enchê-la.</p>
+  <!-- personagem: equipamento, bolsa e atributos numa janela só (I abre no equipamento, B na bolsa) -->
+  <section id="w-char" class="win" hidden aria-label="Personagem">
+    <header><h2 id="ch-name">Personagem</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <div class="ch-top">
+      <div class="bar hp"><i id="ch-hp-bar"></i><span id="ch-hp"></span></div>
+      <span id="ch-lv" class="hint"></span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Personagem">
+      <button type="button" role="tab" id="tab-equip" data-tab="equip" aria-controls="pn-equip" aria-selected="true">Equipamento <span class="key only-pc">I</span></button>
+      <button type="button" role="tab" id="tab-bag" data-tab="bag" aria-controls="pn-bag" aria-selected="false">Bolsa <span class="key only-pc">B</span></button>
+      <button type="button" role="tab" id="tab-attr" data-tab="attr" aria-controls="pn-attr" aria-selected="false">Atributos <b id="tab-pts" hidden></b></button>
+    </div>
+    <div id="pn-equip" role="tabpanel" aria-labelledby="tab-equip">
+      <div class="ch-equip">
+        <div id="eq-grid" class="eq-grid"></div>
+        <dl id="eq-stats" class="sheet stats"></dl>
+      </div>
+      <dl class="sheet">
+        <dt>Postura <span class="key only-pc">T</span></dt>
+        <dd>
+          <div class="seg" role="group" aria-label="Postura">
+            <button type="button" data-stance="ofensiva" aria-pressed="false"></button>
+            <button type="button" data-stance="defensiva" aria-pressed="false"></button>
+          </div>
+          <span class="hint" id="iv-stance"></span>
+        </dd>
+        <dt>Poções <span class="key only-pc">F</span></dt>
+        <dd><span id="iv-pots"></span> <button type="button" id="iv-drink">Beber poção</button><br><span class="hint" id="iv-res"></span></dd>
+      </dl>
+    </div>
+    <div id="pn-bag" role="tabpanel" aria-labelledby="tab-bag" hidden>
+      <p class="row"><span id="bg-cap"></span><span id="bg-coins"></span></p>
+      <div class="bar cap"><i id="bg-bar"></i></div>
+      <div id="bg-board" class="sell-board"></div>
+      <p id="bg-extra" class="hint"></p>
+      <p id="bg-empty" class="hint" hidden>A bolsa está vazia. Corte árvores, minere veios e cace coelhos para enchê-la.</p>
+    </div>
+    <div id="pn-attr" role="tabpanel" aria-labelledby="tab-attr" hidden>
+      <p id="at-pts" class="at-pts"></p>
+      <ul id="at-list" class="at-list"></ul>
+      <div class="at-ok"><button type="button" id="at-undo">Desfazer</button><button type="button" id="at-confirm" class="main">Confirmar</button></div>
+    </div>
   </section>
 
   <section id="w-rules" class="win" hidden aria-label="Regras da macro">
@@ -216,7 +218,7 @@
           <p><b>Mapa:</b> clique no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A barra de zoom aproxima e afasta o mapa grande, e arrastar com o mouse move o mapa. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
           <p><b>Macro:</b> aperte G: o mapa abre pronto, e o próximo clique marca a área onde ele trabalha sozinho. Com a macro trabalhando, G pausa, assim como andar com o teclado ou clicar numa árvore, veio ou coelho. No botão Macro do mapa ficam Escolher área, Usar a área anterior e Regras. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
           <p><b>Regras:</b> aperte R. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
-          <p><b>Inventário e bolsa:</b> I mostra arma, postura e poções; T troca a postura e F bebe uma poção. B mostra o que você coletou. Os botões ficam na parte de baixo da tela.</p>
+          <p><b>Personagem:</b> I abre no equipamento e B na bolsa; o botão fica na parte de baixo da tela. No Equipamento você veste e tira armas e roupas, troca a postura (T) e bebe poção (F). Em Atributos, cada nível dá pontos para distribuir.</p>
         </div>
         <div class="only-pad">
           <p><b>Andar e olhar:</b> analógico esquerdo anda, inclusive para os lados, e analógico direito olha.</p>
@@ -232,12 +234,12 @@
           <p><b>Mapa:</b> toque no mapa pequeno, no canto, para abrir o mapa grande. Use a barra de zoom para aproximar e afastar, e arraste com o dedo para mover o mapa. Toque num ponto: o personagem anda até lá sozinho. Andar por conta própria interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o toque no mapa faz.</p>
           <p><b>Macro:</b> no mapa grande, toque em Macro e depois em Escolher área: o próximo toque marca onde ele trabalha sozinho. Usar a área anterior retoma o último lugar, e Pausar macro para o trabalho, assim como andar por conta própria ou tocar numa árvore, veio ou coelho. Com a macro como padrão, o toque no mapa já marca a área, e um toque com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
           <p><b>Regras:</b> ficam no botão Macro do mapa. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
-          <p><b>Inventário e bolsa:</b> os botões ficam na parte de baixo da tela. A espada e o escudo mostram arma, postura e poções: lá você troca a postura e bebe uma poção. A bolsa mostra o que você coletou.</p>
+          <p><b>Personagem:</b> o botão com o rosto, na parte de baixo da tela, abre o equipamento, a bolsa e os atributos. Lá você veste e tira armas e roupas, troca a postura, bebe poção e distribui os pontos de cada nível.</p>
         </div>
         <p class="only-xbox"><b>No Xbox:</b> se o controle mover um cursor em vez do jogo, segure o botão Menu até abrir o menu do navegador e escolha a opção de controles de jogo. Com ela ligada, o ícone de controle na barra de endereço fica azul, sem o X vermelho.</p>
         <p><b>Missões diárias:</b> aceite no quadro de avisos e coloque o material no baú ao lado. Dá para entregar aos poucos: a recompensa do quadro sai ao completar a missão, e à meia-noite a missão incompleta paga só o que foi entregue. Reiniciam todo dia às 00:01.</p>
         <p><b>Tempo fora:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
-        <p class="small only-pc">M mapa · G macro · R regras · I inventário · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
+        <p class="small only-pc">M mapa · G macro · R regras · I equipamento · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
       </div>
       <div class="menu-side">
         <h3>Tela</h3>

@@ -931,9 +931,10 @@
     }
     return [0, 0, 0];
   }
-  var BLADE = ['espada', 'espada_afiada', 'espada_temperada'];
   View.prototype.swordNodes = function (st, dt, moving) {
-    if (!this.art.dims.espada) { return []; }
+    // a figura vem do item na mão (items.*.sprite); arma sem figura no atlas ainda usa a espada, e mãos nuas não mostram nada
+    var eq = st && st.player && st.player.equip, it = eq && eq.arma && this.w.game.items[eq.arma];
+    if (!this.art.dims.espada || !it) { return []; }
     if (!this.sword) {
       var d = this.art.dims.espada;
       // pivô na mão (no quadro 160x160 o punho fechado fica em ~ (120, 124) a partir do topo)
@@ -948,7 +949,7 @@
     var hx = 1 - 0.22 * size / asp - (asp < 1 ? 0.12 : 0), hy = -1 + 0.23 * size + (asp < 1 ? 0.3 : 0);
     var bx = 0, by = 0;
     if (moving && !(this.swing >= 0)) { bx = Math.cos(this.bob * 0.5) * 0.012 * size; by = -Math.abs(Math.sin(this.bob)) * 0.02 * size; }
-    var w = (st && st.player && st.player.weapon) || 0, tex = 's:' + BLADE[Math.max(0, Math.min(2, w))];
+    var tex = 's:' + (it.sprite && this.art.dims[it.sprite] ? it.sprite : 'espada');
     var out = [], self = this, t = this.swing;
     function place(n, pose) {
       var c = Math.cos(pose[2]), s = Math.sin(pose[2]), sx = size / asp, sy = size;

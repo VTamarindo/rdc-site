@@ -15,11 +15,20 @@
   "player": {
     "hpBase": 30,
     "hpPerLv": 8,
-    "atkBase": 5,
-    "atkPerLv": 1,
-    "defBase": 1,
-    "atkInterval": 0.9,
-    "reach": 1.7,
+    "defBase": 0,
+    "critBase": 0.03,
+    "critMult": 1.5,
+    "pointsPerLevel": 5,
+    "gatherReach": 2.3,
+    "unarmed": {
+      "name": "Mãos nuas",
+      "dmg": [1, 2],
+      "interval": 1,
+      "reach": 1.4
+    },
+    "startEquip": {
+      "arma": "espada_ferro"
+    },
     "potionHeal": 20,
     "potionCooldown": 1.5,
     "regenPerSec": 0.25,
@@ -76,6 +85,7 @@
     "pocao": {
       "name": "Poção",
       "price": 10,
+      "buy": 10,
       "noBag": true,
       "plural": "poções"
     },
@@ -83,13 +93,66 @@
       "name": "Moedas",
       "noBag": true,
       "plural": "moedas"
-    }
+    },
+    "_equip": "Equipamento: price = o que o mercador paga, buy = o que ele cobra (os dois antes do carisma). slot = tipo de casa (equipSlots). Armas: class (weaponClasses), dmg [mín, máx], interval em s, reach em m, sprite = figura em primeira pessoa. def = armadura. bonus soma aos mesmos efeitos dos atributos (hp, crit, move, haste, melee, ranged, gather...); gather por recurso em 'gather'.",
+    "espada_ferro": { "name": "Espada de ferro", "plural": "espadas de ferro", "slot": "arma", "class": "espada", "dmg": [4, 6], "interval": 0.9, "reach": 1.7, "price": 8, "buy": 20, "sprite": "espada" },
+    "espada_aco": { "name": "Espada de aço", "plural": "espadas de aço", "slot": "arma", "class": "espada", "dmg": [6, 8], "interval": 0.9, "reach": 1.7, "price": 16, "buy": 40, "sprite": "espada_afiada" },
+    "espada_ostanita": { "name": "Espada de ostanita", "plural": "espadas de ostanita", "slot": "arma", "class": "espada", "dmg": [8, 11], "interval": 0.85, "reach": 1.8, "price": 44, "buy": 110, "bonus": { "crit": 0.03 }, "sprite": "espada_temperada" },
+    "machado_trabalho": { "name": "Machado de trabalho", "plural": "machados de trabalho", "slot": "arma", "class": "machado", "dmg": [5, 8], "interval": 1.25, "reach": 1.6, "price": 10, "buy": 25, "gather": { "arvore": 0.5 }, "sprite": "machado_trabalho" },
+    "machado_guerra": { "name": "Machado de guerra", "plural": "machados de guerra", "slot": "arma", "class": "machado", "dmg": [8, 12], "interval": 1.25, "reach": 1.7, "price": 28, "buy": 70, "sprite": "machado_guerra" },
+    "machado_duas_faces": { "name": "Machado de duas faces", "plural": "machados de duas faces", "slot": "arma", "class": "machado", "dmg": [11, 16], "interval": 1.35, "reach": 1.7, "price": 56, "buy": 140, "bonus": { "critMult": 0.25 }, "sprite": "machado_duas_faces" },
+    "arco_curto": { "name": "Arco curto", "plural": "arcos curtos", "slot": "arma", "class": "arco", "dmg": [3, 5], "interval": 1, "reach": 7, "price": 12, "buy": 30, "sprite": "arco_curto" },
+    "arco_longo": { "name": "Arco longo", "plural": "arcos longos", "slot": "arma", "class": "arco", "dmg": [7, 11], "interval": 1.5, "reach": 11, "price": 36, "buy": 90, "sprite": "arco_longo" },
+    "flecha": { "name": "Flecha", "plural": "flechas", "slot": "municao", "stack": true, "noBag": true, "price": 0, "buy": 0.6 },
+    "capuz_la": { "name": "Capuz de lã", "plural": "capuzes de lã", "slot": "cabeca", "def": 1, "price": 4, "buy": 10 },
+    "coifa_couro": { "name": "Coifa de couro", "plural": "coifas de couro", "slot": "cabeca", "def": 2, "price": 11, "buy": 28 },
+    "gambeson": { "name": "Gambeson", "plural": "gambesons", "slot": "peito", "def": 3, "bonus": { "hp": 6 }, "price": 14, "buy": 35 },
+    "tunica_couro": { "name": "Túnica de couro", "plural": "túnicas de couro", "slot": "peito", "def": 4, "price": 24, "buy": 60 },
+    "sapatos_couro": { "name": "Sapatos de couro", "plural": "sapatos de couro", "slot": "botas", "def": 1, "price": 4, "buy": 10 },
+    "botas_cano_alto": { "name": "Botas de cano alto", "plural": "botas de cano alto", "slot": "botas", "def": 1, "bonus": { "move": 0.06 }, "price": 12, "buy": 30 },
+    "calcas_la": { "name": "Calças de lã", "plural": "calças de lã", "slot": "calcas", "def": 1, "price": 4, "buy": 10 },
+    "perneiras_couro": { "name": "Perneiras de couro", "plural": "perneiras de couro", "slot": "calcas", "def": 2, "price": 10, "buy": 26 },
+    "luvas_la": { "name": "Luvas de lã", "plural": "luvas de lã", "slot": "luvas", "def": 1, "price": 3, "buy": 8 },
+    "luvas_couro": { "name": "Luvas de couro", "plural": "luvas de couro", "slot": "luvas", "def": 1, "bonus": { "crit": 0.03 }, "price": 9, "buy": 22 }
   },
+  "weaponClasses": {
+    "espada": { "name": "Espada", "scale": "melee", "about": "Equilibrada: golpe médio, ritmo constante." },
+    "machado": { "name": "Machado", "scale": "melee", "about": "Lento e pesado: cada golpe tira mais." },
+    "arco": { "name": "Arco", "scale": "ranged", "ranged": true, "ammo": "flecha", "about": "Atira de longe e gasta uma flecha por tiro. Sem flechas, você luta de mãos nuas." }
+  },
+  "equipSlots": {
+    "_nota": "Ordem da tela de equipamento. type = o slot que o item declara; only = a casa só vale com essa classe de arma.",
+    "arma": { "name": "Arma", "type": "arma" },
+    "municao": { "name": "Munição", "type": "municao", "only": "arco" },
+    "cabeca": { "name": "Cabeça", "type": "cabeca" },
+    "peito": { "name": "Peito", "type": "peito" },
+    "luvas": { "name": "Luvas", "type": "luvas" },
+    "calcas": { "name": "Calças", "type": "calcas" },
+    "botas": { "name": "Botas", "type": "botas" },
+    "colar": { "name": "Colar", "type": "colar" },
+    "anel1": { "name": "Anel", "type": "anel" },
+    "anel2": { "name": "Anel", "type": "anel" },
+    "anel3": { "name": "Anel", "type": "anel" }
+  },
+  "attributes": {
+    "_nota": "Cada ponto soma 'per' ao efeito; 'cap' limita o efeito somado (atributo + itens). Pontos por nível em player.pointsPerLevel. Efeitos: melee/ranged = dano (fração), crit = chance, hp = vida, regen = recuperação, move = passo, haste = ritmo de ataque (o intervalo divide por 1 + haste), xp, potion = cura da poção, gather = ritmo de coleta, bag = casas da bolsa, discount/markup = preço ao comprar/vender, rep = reputação.",
+    "forca": { "name": "Força", "desc": "Golpes de espada, machado e de mãos nuas tiram mais vida, e a bolsa carrega mais.", "per": { "melee": 0.04, "bag": 0.5 } },
+    "destreza": { "name": "Destreza", "desc": "Flechas tiram mais vida, e qualquer arma acerta mais golpes críticos.", "per": { "ranged": 0.05, "crit": 0.005 }, "cap": { "crit": 0.5 } },
+    "constituicao": { "name": "Constituição", "desc": "Mais vida máxima, e a vida volta mais depressa fora de combate.", "per": { "hp": 3, "regen": 0.04 } },
+    "velocidade": { "name": "Velocidade", "desc": "Anda mais depressa e ataca com menos tempo entre um golpe e outro.", "per": { "move": 0.015, "haste": 0.015 }, "cap": { "move": 0.6 } },
+    "inteligencia": { "name": "Inteligência", "desc": "Aprende mais com cada luta e missão, tira mais proveito das poções e coleta mais depressa, também com a macro.", "per": { "xp": 0.02, "potion": 0.03, "gather": 0.015 } },
+    "carisma": { "name": "Carisma", "desc": "Os mercadores cobram menos e pagam mais, e a vila reconhece mais a sua ajuda (reputação).", "per": { "discount": 0.01, "markup": 0.01, "rep": 0.03 }, "cap": { "discount": 0.3, "markup": 0.3 } }
+  },
+  "combat": {
+    "_nota": "Todo combatente (jogador, bicho e, depois, aldeão hostil) usa o mesmo golpe: dano sorteado entre dmg[0] e dmg[1], vezes a postura de quem bate e a de quem apanha, vezes critMult se for crítico, e a armadura tira a fração def / (def + armorK). Mínimo de 1.",
+    "armorK": 20
+  },
+  "legacyWeapons": ["espada_ferro", "espada_aco", "espada_ostanita"],
   "monsters": {
     "coelho": {
       "name": "Coelho",
       "hp": 12,
-      "atk": 3,
+      "dmg": [1.7, 2.3],
       "def": 0,
       "speed": 2.4,
       "wanderSpeed": 0.9,
@@ -165,18 +228,31 @@
     },
     "ferreiro": {
       "name": "Ferreiro",
-      "idle": "Madeira e pedra sempre têm uso aqui.",
+      "idle": "Madeira e pedra sempre têm uso aqui. E, se precisar de arma, a bigorna não para.",
       "services": [
         {
-          "type": "sell",
-          "items": [
-            "madeira",
-            "pedra",
-            "ferro"
-          ]
+          "type": "shop",
+          "_nota": "lots: o item sai em feixes desse tamanho (o preço de buy é por unidade)",
+          "items": ["espada_ferro", "espada_aco", "espada_ostanita", "machado_trabalho", "machado_guerra", "machado_duas_faces", "arco_curto", "arco_longo", "flecha"],
+          "lots": { "flecha": 10 }
         },
         {
-          "type": "upgrade"
+          "type": "sell",
+          "items": ["madeira", "pedra", "ferro", "espada_ferro", "espada_aco", "espada_ostanita", "machado_trabalho", "machado_guerra", "machado_duas_faces", "arco_curto", "arco_longo"]
+        }
+      ]
+    },
+    "alfaiate": {
+      "name": "Godwin, o alfaiate",
+      "idle": "Lã para o frio, couro para os espinhos. O que vai ser?",
+      "services": [
+        {
+          "type": "shop",
+          "items": ["capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto"]
+        },
+        {
+          "type": "sell",
+          "items": ["pele", "capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto"]
         }
       ]
     },
@@ -214,28 +290,6 @@
       "services": []
     }
   },
-  "weapon": [
-    {
-      "name": "Espada simples",
-      "atk": 0
-    },
-    {
-      "name": "Espada afiada",
-      "atk": 2,
-      "cost": {
-        "moeda": 20,
-        "ferro": 2
-      }
-    },
-    {
-      "name": "Espada temperada",
-      "atk": 4,
-      "cost": {
-        "moeda": 45,
-        "ferro": 4
-      }
-    }
-  ],
   "macro": {
     "_nota": "Modelos de regra. O jogador liga, desliga e reordena; a primeira regra verdadeira manda.",
     "rules": {

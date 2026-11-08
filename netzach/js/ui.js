@@ -273,7 +273,7 @@
     view.yaw += turn * G.player.turnSpeed * dt;
     if (!f && !s) { return false; }
     var y = view.yaw, fx = Math.sin(y), fz = Math.cos(y), rx = -Math.cos(y), rz = Math.sin(y);
-    var vx = fx * f + rx * s, vz = fz * f + rz * s, l = Math.hypot(vx, vz), spd = G.player.walkSpeed * dt * Math.min(1, l); // teclas dão l >= 1; o analógico, a intensidade
+    var vx = fx * f + rx * s, vz = fz * f + rz * s, l = Math.hypot(vx, vz), spd = G.player.walkSpeed * calc.stats(world, st.player).move * dt * Math.min(1, l); // teclas dão l >= 1; o analógico, a intensidade
     return sim.walk(st, vx / l * spd, vz / l * spd);
   }
 
@@ -285,10 +285,10 @@
       if (e.type === 'log') { newLog = true; }
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
-        var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n, ''); }
+        var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : ''); }
       } else if (e.type === 'hit' && e.who === 'player') {
         var h = $('hurt'); h.classList.add('on'); setTimeout(function () { h.classList.remove('on'); }, 60);
-        floatScreen(0.5, 0.62, '-' + e.n, 'me'); view.shake = 0.12;
+        floatScreen(0.5, 0.62, '-' + e.n + (e.crit ? '!' : ''), 'me'); view.shake = 0.12;
       } else if (e.type === 'gain') {
         floatScreen(0.5, 0.44, '+' + e.n + ' ' + G.items[e.item].name, 'gain');
       } else if (e.type === 'alert') { toast(e.text, 4); if (document.hidden) { document.title = '(!) ' + baseTitle; } }
@@ -332,9 +332,8 @@
     $('lv').textContent = 'Nível ' + p.lv + ' · ' + p.rep + ' rp';
     $('pots').textContent = 'Poções ' + (p.inv.pocao || 0);
     $('coins').textContent = 'Moedas ' + (p.inv.moeda || 0);
-    $('bag').textContent = 'Bolsa ' + calc.bagCount(world, p) + '/' + G.settings.bagCapacity;
-    if (openWin === 'w-inv') { renderInv(); }
-    if (openWin === 'w-bag') { renderBag(); }
+    $('bag').textContent = 'Bolsa ' + calc.bagCount(world, p) + '/' + calc.bagCap(world, p);
+    if (openWin === 'w-char') { renderChar(); }
     dailyTick();
     if (openWin === 'w-npc') { sellTick(); }
 
@@ -726,7 +725,7 @@
   function hide() {
     if (titleOn) { titleBack(); return; } // a tela inicial só sai escolhendo um save
     if (openWin) { $(openWin).hidden = true; }
-    closeSell(true); sellShown = null;
+    closeSell(true); closePop(true); sellShown = null;
     openWin = null; npcOpen = null;
   }
   function toggle(id, fn) { if (openWin === id) { hide(); } else { if (fn) { fn(); } show(id); } }
@@ -749,52 +748,299 @@
     });
   }
 
-  // ---------- inventário e bolsa ----------
+  // ---------- personagem: equipamento, bolsa e atributos ----------
   function mult(v) { return '×' + String(v).replace('.', ','); }
-  function renderInv() {
-    var p = st.player, mh = calc.maxHp(world, p), w = G.weapon[p.weapon], S = G.stances[p.stance];
-    $('iv-hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
-    $('iv-hp').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh;
-    $('iv-rep').textContent = p.rep + ' rp';
-    $('iv-wpn').textContent = w.name;
-    $('iv-atk').textContent = 'Ataque ' + calc.atk(world, p) + (w.atk ? ' (+' + w.atk + ' da arma)' : ' (a arma não soma ataque)');
+  function num(v, d) { var k = Math.pow(10, d === undefined ? 1 : d); return String(Math.round(v * k) / k).replace('.', ','); }
+  function pct(v) { return num(v * 100) + '%'; }
+  // texto de cada efeito: as mesmas chaves servem aos atributos (attributes.*.per) e aos bônus dos itens (items.*.bonus)
+  var EFFECT = {
+    melee: function (v) { return '+' + pct(v) + ' de dano corpo a corpo'; },
+    ranged: function (v) { return '+' + pct(v) + ' de dano com arco'; },
+    crit: function (v) { return '+' + pct(v) + ' de chance de crítico'; },
+    critMult: function (v) { return '+' + num(v, 2) + ' no multiplicador do crítico'; },
+    hp: function (v) { return '+' + Math.round(v) + ' de vida máxima'; },
+    regen: function (v) { return '+' + pct(v) + ' na recuperação de vida'; },
+    move: function (v) { return '+' + pct(v) + ' no passo'; },
+    haste: function (v) { return '+' + pct(v) + ' no ritmo de ataque'; },
+    xp: function (v) { return '+' + pct(v) + ' de experiência'; },
+    potion: function (v) { return '+' + pct(v) + ' na cura das poções'; },
+    gather: function (v) { return '+' + pct(v) + ' no ritmo de coleta'; },
+    bag: function (v) { var n = Math.floor(v + 1e-9); return '+' + n + ' casa' + (n === 1 ? '' : 's') + ' na bolsa'; },
+    discount: function (v) { return '−' + pct(v) + ' no preço das compras'; },
+    markup: function (v) { return '+' + pct(v) + ' no que os mercadores pagam'; },
+    rep: function (v) { return '+' + pct(v) + ' de reputação'; }
+  };
+  function effText(key, v) { return EFFECT[key] ? EFFECT[key](v) : key + ' ' + v; }
+  // o que n pontos num atributo dão, com o limite de game.json
+  function attrText(id, n) {
+    var A = G.attributes[id], out = [];
+    for (var k in A.per) {
+      var v = n * A.per[k], cap = A.cap && A.cap[k], top = cap !== undefined && v >= cap;
+      out.push(effText(k, top ? cap : v) + (top ? ' (máximo)' : ''));
+    }
+    return out.join(' · ');
+  }
+  // linhas de descrição de um item: números da arma, armadura, bônus
+  function itemLines(k) {
+    var it = G.items[k], L = [], c = it.class && G.weaponClasses[it.class];
+    if (it.dmg) {
+      L.push((c ? c.name + ' · ' : '') + 'dano ' + it.dmg[0] + '–' + it.dmg[1] + ' · um golpe a cada ' + num(it.interval, 2) + ' s · alcance ' + num(it.reach) + ' m');
+      if (c && c.about) { L.push(c.about); }
+    }
+    if (it.def) { L.push('Defesa +' + it.def); }
+    for (var b in (it.bonus || {})) { L.push(effText(b, it.bonus[b])); }
+    for (var g in (it.gather || {})) { L.push(G.nodes[g].name + ': coleta ' + pct(it.gather[g]) + ' mais rápida'); }
+    if (it.stack) { L.push('Munição do arco: fica na aljava, fora da bolsa, e cada tiro gasta uma.'); }
+    return L;
+  }
+  function linesHtml(L) { return L.length ? '<ul class="pop-lines">' + L.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : ''; }
+  function itemName(k, n) { var it = G.items[k]; return n === undefined || n === 1 ? it.name : (it.plural || it.name); }
+  // quem na vila vende ou compra o item (para as dicas)
+  function npcsWith(type, test) {
+    return Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === type && s.items.some(test); }); })
+      .map(function (id) { return G.npcs[id].name; });
+  }
+
+  var charTab = 'equip', charSig = '', attrAdd = {};
+  function openChar(tab) {
+    if (openWin === 'w-char' && (!tab || tab === charTab)) { hide(); return; }
+    if (openWin !== 'w-char') { attrAdd = {}; show('w-char'); $('iv-res').textContent = ''; }
+    setTab(tab || charTab);
+  }
+  function setTab(tab) {
+    charTab = tab; charSig = '';
+    ['equip', 'bag', 'attr'].forEach(function (t) {
+      $('pn-' + t).hidden = t !== tab; $('tab-' + t).setAttribute('aria-selected', t === tab ? 'true' : 'false');
+    });
+    renderChar();
+  }
+  function attrSpent() { var n = 0; for (var k in attrAdd) { n += attrAdd[k]; } return n; }
+  // o jogo segue rodando com a janela aberta: as barras andam sempre, e o resto só se refaz quando algo muda,
+  // senão o foco do teclado e do controle se perderia a cada 150 ms
+  function renderChar() {
+    var p = st.player, s = calc.stats(world, p), need = p.lv * G.player.xpPerLevel;
+    $('ch-name').textContent = p.name || 'Personagem';
+    $('ch-hp-bar').style.width = Math.max(0, p.hp / s.hp * 100) + '%';
+    $('ch-hp').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + s.hp;
+    $('ch-lv').textContent = 'Nível ' + p.lv + ' · ' + p.xp + '/' + need + ' XP · ' + p.rep + ' rp';
+    $('tab-pts').hidden = !p.pts; $('tab-pts').textContent = p.pts;
+    var sig = JSON.stringify([charTab, p.equip, p.inv, p.attr, p.pts, p.stance, p.lv, attrAdd, st.quests]);
+    if (sig === charSig) { return; }
+    charSig = sig;
+    var w = $('w-char'), at = document.activeElement, key = at && w.contains(at) && at.dataset.k; // devolve o foco a quem estava nele
+    if (charTab === 'equip') { renderEquip(s); } else if (charTab === 'bag') { renderBagTab(s); } else { renderAttr(); }
+    if (key && !w.contains(document.activeElement)) { var el = w.querySelector('[data-k="' + key + '"]'); if (el && !el.disabled) { el.focus(); } }
+  }
+  function slotIcon(sl) {
+    var t = G.equipSlots[sl].type, k = Object.keys(G.items).filter(function (x) { return G.items[x].slot === t; })[0];
+    return ITEM_ICONS['_' + t] ? svgIcon(ITEM_ICONS['_' + t]) : k ? itemIcon(k) : '';
+  }
+  function renderEquip(s) {
+    var p = st.player, wc = p.equip.arma && G.items[p.equip.arma].class, S = G.stances[p.stance], sd = S.dmg;
+    $('eq-grid').innerHTML = calc.keys(G.equipSlots).map(function (sl) {
+      var D = G.equipSlots[sl], k = p.equip[sl], it = k && G.items[k], off = D.only && wc !== D.only;
+      return '<button type="button" class="eq-cell' + (it ? '' : ' empty') + (off ? ' off' : '') + '" data-slot="' + sl + '" data-k="slot:' + sl + '" style="grid-area:' + sl + '"' +
+        ' aria-label="' + esc(D.name + ': ' + (it ? it.name + (it.stack ? ', ' + (p.inv[k] || 0) : '') : 'vazio')) + '">' +
+        '<span class="ic">' + (it ? itemIcon(k) : slotIcon(sl)) + (it && it.stack ? '<span class="n">' + (p.inv[k] || 0) + '</span>' : '') + '</span>' +
+        '<span class="eq-t"><small>' + esc(D.name) + '</small><b>' + esc(it ? it.name : off ? 'só com arco' : 'vazio') + '</b></span></button>';
+    }).join('');
+    var avg = (s.min + s.max) / 2 * sd * (1 + s.crit * (s.critMult - 1)), cut = calc.armorCut(world, s.def);
+    var arma = s.weapon ? G.items[s.weapon].name : G.player.unarmed.name + (s.noAmmo ? ' (o arco está sem flechas)' : '');
+    var rows = [
+      ['Arma', arma],
+      ['Dano', Math.round(s.min * sd) + '–' + Math.round(s.max * sd) + ' por golpe' + (s.ranged ? ', de longe' : '') + ' (postura ' + S.name.toLowerCase() + ' ' + mult(sd) + ')'],
+      ['Ritmo', 'um golpe a cada ' + num(s.interval, 2) + ' s · cerca de ' + num(avg / s.interval) + ' de dano por segundo'],
+      ['Alcance', num(s.reach) + ' m'],
+      ['Crítico', pct(s.crit) + ' de chance, dano ' + mult(num(s.critMult, 2))],
+      ['Defesa', s.def + ' · a armadura tira ' + pct(cut) + ' do dano, e a postura deixa passar ' + mult(S.taken)],
+      ['Passo', pct(s.move) + ' do normal'],
+      ['Coleta', calc.keys(G.nodes).map(function (n) { return G.nodes[n].name + ' ' + num(calc.gatherSec(world, p, n)) + ' s'; }).join(' · ')],
+      ['Bolsa', s.bag + ' casas']
+    ];
+    $('eq-stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) {
-      var id = b.dataset.stance, on = id === p.stance;
+      var id = b.dataset.stance;
       if (!b.textContent) { b.textContent = G.stances[id].name; }
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-pressed', id === p.stance ? 'true' : 'false');
     });
     $('iv-stance').textContent = 'Dano causado ' + mult(S.dmg) + ' · dano recebido ' + mult(S.taken);
     var n = p.inv.pocao || 0;
-    $('iv-pots').textContent = n + ' ' + (n === 1 ? 'poção' : 'poções');
+    $('iv-pots').textContent = n + ' ' + (n === 1 ? 'poção' : 'poções') + ' · cada uma cura ' + calc.potionHeal(world, p);
     $('iv-drink').disabled = !n;
   }
-  function renderBag() {
-    var p = st.player, cap = G.settings.bagCapacity, used = calc.bagCount(world, p), html = [];
+  function renderBagTab(s) {
+    var p = st.player, cap = s.bag, used = calc.bagCount(world, p), cells = [], n = 0;
     for (var k in p.inv) {
-      if (!(p.inv[k] > 0) || !G.items[k] || G.items[k].noBag) { continue; }
-      var res = Math.min(p.inv[k], sim.reserved(st, k));
-      html.push('<li><span>' + esc(G.items[k].name) + (res ? ' <small>(' + res + ' para missão)</small>' : '') + '</span><b>' + p.inv[k] + '</b></li>');
+      var it = G.items[k]; if (!(p.inv[k] > 0) || !it || it.noBag) { continue; }
+      var res = Math.min(p.inv[k], sim.reserved(st, k)); n++;
+      cells.push('<button type="button" class="sell-cell" data-item="' + k + '" data-k="bag:' + k + '" title="' + esc(it.name) + '" aria-label="' + esc(it.name + ': ' + p.inv[k] + (res ? ', ' + res + ' para missão' : '')) + '">' +
+        itemIcon(k) + '<span class="n">' + p.inv[k] + '</span>' + (res ? '<i class="res" aria-hidden="true"></i>' : '') + '</button>');
     }
-    var h = html.join('');
-    if ($('bg-list').innerHTML !== h) { $('bg-list').innerHTML = h; }
-    $('bg-empty').hidden = !!html.length;
+    var all = Math.max(SELL_ROWS, Math.ceil(n / SELL_COLS)) * SELL_COLS;
+    for (var i = n; i < all; i++) { cells.push('<span class="sell-cell empty"></span>'); }
+    $('bg-board').innerHTML = cells.join('');
+    $('bg-empty').hidden = !!n;
     $('bg-cap').textContent = 'Ocupado: ' + used + ' de ' + cap;
     $('bg-coins').textContent = 'Moedas: ' + (p.inv.moeda || 0);
     $('bg-bar').style.width = Math.min(100, used / cap * 100) + '%';
     $('bg-bar').parentNode.classList.toggle('full', used >= cap);
+    var ex = ['Poções: ' + (p.inv.pocao || 0)];
+    calc.keys(G.items).forEach(function (x) { if (G.items[x].stack && p.inv[x] > 0) { ex.push('Na aljava: ' + p.inv[x] + ' ' + itemName(x, p.inv[x]).toLowerCase()); } });
+    $('bg-extra').textContent = ex.join(' · ') + '. Toque ou clique num item para ver e equipar.'.replace('Toque ou clique', isTouch ? 'Toque' : 'Clique');
   }
+  function renderAttr() {
+    var p = st.player, spent = attrSpent(), left = p.pts - spent, ppl = G.player.pointsPerLevel;
+    $('at-pts').innerHTML = left ? '<b>' + left + '</b> ponto' + (left === 1 ? '' : 's') + ' para distribuir. Escolha com + e −, e confirme.'
+      : p.pts ? 'Todos os pontos escolhidos: confirme para valer.' : 'Sem pontos para distribuir. Cada nível dá ' + ppl + '.';
+    $('at-list').innerHTML = calc.keys(G.attributes).map(function (id) {
+      var A = G.attributes[id], v = p.attr[id] || 0, add = attrAdd[id] || 0;
+      return '<li><div class="at-head"><b>' + esc(A.name) + '</b><span class="at-v">' + v + (add ? ' <i>+' + add + '</i>' : '') + '</span>' +
+        '<button type="button" data-sub="' + id + '" data-k="sub:' + id + '" aria-label="Tirar um ponto de ' + esc(A.name) + '"' + (add ? '' : ' disabled') + '>−</button>' +
+        '<button type="button" data-add="' + id + '" data-k="add:' + id + '" aria-label="Pôr um ponto em ' + esc(A.name) + '"' + (left ? '' : ' disabled') + '>+</button></div>' +
+        '<p class="hint">' + esc(A.desc) + '</p>' +
+        '<p class="at-eff">' + (v ? 'Agora: ' + esc(attrText(id, v)) : 'Agora: nenhum efeito') + (add ? '<br>Depois: ' + esc(attrText(id, v + add)) : '') + '</p></li>';
+    }).join('');
+    $('at-undo').disabled = $('at-confirm').disabled = !spent;
+    $('at-undo').parentNode.hidden = !p.pts;
+  }
+  function attrStep(id, d) {
+    var p = st.player, cur = attrAdd[id] || 0;
+    if (d > 0 && attrSpent() >= p.pts) { return; }
+    cur = Math.max(0, cur + d); if (cur) { attrAdd[id] = cur; } else { delete attrAdd[id]; }
+    renderChar();
+  }
+  function attrConfirm() {
+    var n = attrSpent();
+    if (n && sim.spend(st, attrAdd)) { attrAdd = {}; save(); handleEvents(); toast(n + ' ponto' + (n === 1 ? '' : 's') + ' distribuído' + (n === 1 ? '' : 's') + '.'); }
+    renderChar();
+    if (document.activeElement === document.body || !document.activeElement || document.activeElement.disabled) { $('tab-attr').focus(); }
+  }
+
+  // ---------- janela por cima (casa do equipamento, item da bolsa, compra) ----------
+  // a mesma moldura do submenu de venda; o controle a enxerga pela mesma porta (ctrlApi.sell)
+  var pop = null;
+  function svgIcon(body) { return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + body + '</svg>'; }
+  function popHead(icon, title, sub) {
+    return '<div class="sell-id"><span class="ic">' + icon + '</span><span class="nm"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span>' +
+      '<button type="button" class="x" data-x>Fechar</button></div>';
+  }
+  function openPop(label, inner) {
+    closePop(true);
+    var back = document.createElement('div'), downOut = false, from = document.activeElement;
+    back.className = 'sell-back';
+    back.innerHTML = '<div class="sell-pop" role="dialog" tabindex="-1" aria-label="' + esc(label) + '">' + inner + '<p class="sell-note" data-msg hidden></p></div>';
+    back.onpointerdown = function (e) { downOut = e.target === back; };
+    back.onclick = function (e) { if (e.target === back && downOut) { closePop(); } };
+    $('app').appendChild(back);
+    pop = { back: back, pop: back.firstChild, key: from && from.dataset ? from.dataset.k : null };
+    back.querySelector('[data-x]').onclick = function () { closePop(); };
+    pop.pop.focus();
+    return pop;
+  }
+  function popMsg(t) { var m = pop && pop.pop.querySelector('[data-msg]'); if (m) { m.textContent = t; m.hidden = !t; } }
+  function closePop(noFocus) {
+    var P = pop; if (!P) { return; }
+    pop = null; P.back.parentNode.removeChild(P.back);
+    var el = !noFocus && P.key && document.querySelector('[data-k="' + P.key + '"]');
+    if (el && !el.disabled) { el.focus(); }
+  }
+  function gearDone(msg) { save(); handleEvents(); charSig = ''; closePop(); renderChar(); if (msg) { toast(msg, 3); } }
+  // casa do equipamento: o que está nela e o que da bolsa serve
+  function openSlot(sl) {
+    var p = st.player, D = G.equipSlots[sl], k = p.equip[sl], it = k && G.items[k], wc = p.equip.arma && G.items[p.equip.arma].class;
+    var fits = Object.keys(p.inv).filter(function (x) { var d = G.items[x]; return d && d.slot === D.type && p.inv[x] > 0 && x !== k; });
+    var sellers = npcsWith('shop', function (x) { return G.items[x].slot === D.type; });
+    var html = popHead(it ? itemIcon(k) : slotIcon(sl), it ? it.name : D.name, it ? D.name + (it.stack ? ' · ' + (p.inv[k] || 0) + ' na aljava' : '') : 'Casa vazia');
+    if (it) { html += linesHtml(itemLines(k)) + '<button type="button" data-un>Tirar</button>'; }
+    if (D.only && wc !== D.only) { html += '<p class="sell-note">Esta casa só vale com ' + esc(G.weaponClasses[D.only].name.toLowerCase()) + ' na mão.</p>'; }
+    if (fits.length) {
+      html += '<h3>Da bolsa</h3>' + fits.map(function (x) {
+        return '<button type="button" class="pop-item" data-eq="' + x + '">' + itemIcon(x) + '<span><b>' + esc(G.items[x].name) + (G.items[x].stack ? ' · ' + p.inv[x] : '') + '</b><small>' + esc(itemLines(x)[0] || '') + '</small></span></button>';
+      }).join('');
+    } else {
+      html += '<p class="hint">' + (sellers.length ? 'Nada na bolsa serve aqui. Quem vende: ' + esc(sellers.join(', ')) + '.' : 'Ainda não existe nada para esta casa.') + '</p>';
+    }
+    var P = openPop(D.name, html);
+    var un = P.pop.querySelector('[data-un]');
+    if (un) { un.onclick = function () { var m = sim.unequip(st, sl); if (p.equip[sl]) { popMsg(m); } else { gearDone(m); } }; }
+    Array.prototype.forEach.call(P.pop.querySelectorAll('[data-eq]'), function (b) { b.onclick = function () { gearDone(sim.equip(st, b.dataset.eq, sl)); }; });
+  }
+  // item da bolsa: o que é, para que serve, quem compra; equipar se for de vestir
+  function openBagItem(k) {
+    var p = st.player, it = G.items[k], res = Math.min(p.inv[k] || 0, sim.reserved(st, k)), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
+    var buyers = Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === 'sell' && s.items.indexOf(k) >= 0; }); });
+    var html = popHead(itemIcon(k), it.name, (p.inv[k] || 0) + ' na bolsa' + (res ? ' · ' + res + ' para missão' : '')) + linesHtml(itemLines(k));
+    if (buyers.length) { html += '<p class="hint">Quem compra: ' + esc(buyers.map(function (id) { return G.npcs[id].name; }).join(', ')) + ' (' + coins(calc.sellPrice(world, p, k, 1)) + ' cada).</p>'; }
+    if (slot) {
+      var cur = p.equip[slot];
+      html += '<button type="button" class="main" data-eq>Equipar' + (cur ? ' no lugar de ' + esc(G.items[cur].name.toLowerCase()) : '') + '</button>';
+    }
+    var P = openPop(it.name, html), b = P.pop.querySelector('[data-eq]');
+    if (b) { b.onclick = function () { gearDone(sim.equip(st, k, slot)); }; }
+  }
+  // loja: comprar um item (feixe de flechas com quantidade) e, se for de vestir, já equipar
+  function lotOf(s, k) { return (s.lots && s.lots[k]) || 1; }
+  function openBuy(id, s, k) {
+    var p = st.player, it = G.items[k], lot = lotOf(s, k), unit = calc.buyPrice(world, p, k, lot), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
+    var max = Math.max(1, Math.min(20, Math.floor((p.inv.moeda || 0) / unit))), cur = slot && p.equip[slot];
+    var html = popHead(itemIcon(k), it.name, coins(unit) + (lot > 1 ? ' o feixe de ' + lot : '')) + linesHtml(itemLines(k));
+    if (cur) { html += '<p class="hint">Hoje em ' + esc(G.equipSlots[slot].name.toLowerCase()) + ': ' + esc(G.items[cur].name) + (itemLines(cur)[0] ? ' (' + esc(itemLines(cur)[0]) + ')' : '') + '.</p>'; }
+    if (lot > 1) {
+      html += '<div class="sell-qty"><input type="range" min="1" max="' + max + '" step="1" value="1" aria-label="Feixes"' + (max < 2 ? ' disabled' : '') + '>' +
+        '<input type="text" class="num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Feixes" value="1"><small>de ' + max + '</small></div>';
+    }
+    html += '<button type="button" class="main" data-buy></button>' + (slot ? '<button type="button" data-buyeq>Comprar e equipar</button>' : '');
+    var P = openPop('Comprar ' + it.name.toLowerCase(), html), n = 1, q = function (sel) { return P.pop.querySelector(sel); };
+    var range = q('[type=range]'), box = q('.num'), ok = q('[data-buy]'), eq = q('[data-buyeq]');
+    function paint() {
+      var cost = calc.buyPrice(world, p, k, lot * n), poor = (p.inv.moeda || 0) < cost;
+      ok.textContent = 'Comprar' + (lot > 1 ? ' ' + n * lot + ' ' + itemName(k, 2).toLowerCase() : '') + ' por ' + cost;
+      ok.disabled = poor; if (eq) { eq.disabled = poor; }
+      popMsg(poor ? 'Moedas insuficientes: você tem ' + (p.inv.moeda || 0) + '.' : '');
+      if (range) { range.value = n; range.style.setProperty('--p', (max > 1 ? (n - 1) / (max - 1) * 100 : 100) + '%'); if (box.value !== String(n) && document.activeElement !== box) { box.value = n; } }
+    }
+    function set(v) { n = Math.max(1, Math.min(max, v || 1)); paint(); }
+    if (range) {
+      range.oninput = function () { set(+range.value); };
+      box.oninput = function () { var d = box.value.replace(/\D/g, ''); if (d) { set(parseInt(d, 10)); } };
+      box.onblur = function () { box.value = n; };
+      box.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); ok.focus(); } };
+    }
+    function buy(equip) { var m = sim.service(st, id, s, { item: k, n: n, equip: equip }); save(); handleEvents(); npcDone(id, m); closePop(); }
+    ok.onclick = function () { buy(false); };
+    if (eq) { eq.onclick = function () { buy(true); }; }
+    paint();
+  }
+  function shopBox(id, s) {
+    var p = st.player, wrap = document.createElement('div'), board = document.createElement('div');
+    wrap.className = 'sell'; board.className = 'sell-board';
+    wrap.innerHTML = '<div class="sell-top"><h3>Comprar</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
+    s.items.forEach(function (k) {
+      var it = G.items[k], lot = lotOf(s, k), price = calc.buyPrice(world, p, k, lot), b = document.createElement('button');
+      b.type = 'button'; b.className = 'sell-cell' + ((p.inv.moeda || 0) >= price ? '' : ' off'); b.dataset.k = 'buy:' + k;
+      b.title = it.name + ' · ' + coins(price);
+      b.setAttribute('aria-label', 'Comprar ' + it.name + (lot > 1 ? ', feixe de ' + lot : '') + ': ' + coins(price));
+      b.innerHTML = itemIcon(k) + '<span class="n price">' + price + '</span>' + (lot > 1 ? '<span class="lot">×' + lot + '</span>' : '');
+      b.onclick = function () { openBuy(id, s, k); };
+      board.appendChild(b);
+    });
+    for (var i = s.items.length; i < Math.ceil(s.items.length / SELL_COLS) * SELL_COLS; i++) { var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e); }
+    wrap.appendChild(board);
+    return wrap;
+  }
+
   function drinkPotion() {
     var p = st.player, msg;
-    if (sim.drink(st)) { msg = 'Bebeu uma poção (+' + G.player.potionHeal + ' de vida).'; }
+    if (sim.drink(st)) { msg = 'Bebeu uma poção (+' + calc.potionHeal(world, p) + ' de vida).'; }
     else if (!(p.inv.pocao > 0)) { msg = 'Sem poções. O Padre vende.'; }
     else if (p.hp >= calc.maxHp(world, p)) { msg = 'A vida já está cheia.'; }
     else { msg = 'Agora não: espere um instante.'; }
     handleEvents();
-    if (openWin === 'w-inv') { $('iv-res').textContent = msg; renderInv(); } else { toast(msg); }
+    if (openWin === 'w-char') { $('iv-res').textContent = msg; renderChar(); } else { toast(msg); }
   }
   function setStance(id) {
     var p = st.player; p.stance = id || (p.stance === 'ofensiva' ? 'defensiva' : 'ofensiva');
-    if (openWin === 'w-inv') { renderInv(); $('iv-res').textContent = ''; }
+    if (openWin === 'w-char') { renderChar(); $('iv-res').textContent = ''; }
     else { toast('Postura ' + G.stances[p.stance].name.toLowerCase() + '.'); }
   }
 
@@ -855,7 +1101,7 @@
     }), dailyLeftText());
   }
   function dailyShow(id, q) {
-    var Q = G.daily.quests[q], r = sim.dailyReward(q), s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
+    var Q = G.daily.quests[q], r = sim.dailyReward(q, 0, st), s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
     setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); dailyTalk(id); } }, back] : [back],
       s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' : s === 'closed' ? 'Encerrada até o reinício.' :
       'Recompensa: ' + r.moedas + ' moedas, ' + r.xp + ' XP e ' + r.rp + ' rp.');
@@ -902,7 +1148,7 @@
   function rewardText(Q) {
     var r = Q.reward || {}, parts = [];
     for (var k in (r.items || {})) { parts.push(qty(r.items[k], k)); }
-    if (r.xp) { parts.push(r.xp + ' de experiência'); }
+    if (r.xp) { parts.push(Math.round(r.xp * calc.stats(world, st.player).xp) + ' de experiência'); }
     return parts.length ? ' (Recebeu ' + parts.join(', ') + '.)' : '';
   }
   // a escolha de recolher a lista vale para este navegador, como os controles; fora do save
@@ -956,14 +1202,10 @@
     def.services.forEach(function (s) {
       if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
       if (s.type === 'deliver') { if (sim.dailyActive(st).length) { box.appendChild(sellBox(id, s)); } return; }
+      if (s.type === 'shop') { box.appendChild(shopBox(id, s)); return; }
       var b = document.createElement('button'); b.type = 'button';
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
-      if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + G.items[s.item].price + ' moedas)'; }
-      if (s.type === 'upgrade') {
-        var nx = G.weapon[p.weapon + 1];
-        b.textContent = nx ? 'Melhorar para ' + nx.name + ' (' + Object.keys(nx.cost).map(function (k) { return qty(nx.cost[k], k); }).join(' + ') + ')' : 'Espada já está no máximo';
-        b.disabled = !nx;
-      }
+      if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + coins(calc.buyPrice(world, p, s.item)) + ')'; }
       b.onclick = function () { npcDone(id, sim.service(st, id, s)); };
       box.appendChild(b);
     });
@@ -983,6 +1225,77 @@
     carne: '<path d="M30 8 C40 8 43 19 37 26 C33 31 25 32 21 29 C16 25 17 13 30 8 Z" fill="#a8362a" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M28 13 C34 12 37 18 33 23" fill="none" stroke="#e39a84" stroke-width="1.8" stroke-linecap="round"/><path d="M22 29 L12 38" stroke="#2b1709" stroke-width="7" stroke-linecap="round"/><path d="M22 29 L12 38" stroke="#efe5cf" stroke-width="3.6" stroke-linecap="round"/><circle cx="8.5" cy="36.5" r="3.2" fill="#efe5cf" stroke="#2b1709" stroke-width="1.6"/><circle cx="13.5" cy="41.5" r="3.2" fill="#efe5cf" stroke="#2b1709" stroke-width="1.6"/>',
     pele: '<path d="M16 7 L20 13 H28 L32 7 L35 15 C35 20 37 23 41 25 L36 29 C36 34 37 37 40 41 L31 39 L24 43 L17 39 L8 41 C11 37 12 34 12 29 L7 25 C11 23 13 20 13 15 Z" fill="#b08a5c" stroke="#2b1709" stroke-width="2.2" stroke-linejoin="round"/><path d="M24 16 V37" stroke="#7a5a34" stroke-width="1.4" stroke-dasharray="3 2"/><path d="M18 21 L21 24 M30 21 L27 24 M18 30 L21 28 M30 30 L27 28" stroke="#e0c49a" stroke-width="1.5" stroke-linecap="round"/>'
   };
+  // armas e roupas: o mesmo traço, montado por função para as variações de metal e couro não repetirem o desenho
+  var K = 'stroke="#2b1709"';
+  function iSword(blade, edge, guard, glint) {
+    return '<g transform="rotate(45 24 24)"><path d="M22.2 3.5 L24 0.8 L25.8 3.5 V30.5 H22.2 Z" fill="' + blade + '" ' + K + ' stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<path d="M24 4.5 V29.5" stroke="' + edge + '" stroke-width="0.9"/>' + (glint ? '<path d="M23 7 V14 M25 18 V24" stroke="' + glint + '" stroke-width="0.9" stroke-linecap="round"/>' : '') +
+      '<rect x="15" y="30.5" width="18" height="3.6" rx="1.4" fill="' + guard + '" ' + K + ' stroke-width="1.3"/>' +
+      '<rect x="22.2" y="34.1" width="3.6" height="8.4" fill="#5a341a" ' + K + ' stroke-width="1.2"/><circle cx="24" cy="44.6" r="2.6" fill="' + guard + '" ' + K + ' stroke-width="1.3"/></g>';
+  }
+  function iAxe(head, two, big) {
+    var h = big ? 'M25.6 6 C32 5 40 9 41 22 C36 19 30 18.5 25.6 20.5 Z' : 'M25.6 8 H30.5 C35.5 9 37.5 14 37 20.5 C33 18.5 29 18.5 25.6 19.5 Z';
+    var m = big ? 'M22.4 6 C16 5 8 9 7 22 C12 19 18 18.5 22.4 20.5 Z' : 'M22.4 8 H17.5 C12.5 9 10.5 14 11 20.5 C15 18.5 19 18.5 22.4 19.5 Z';
+    return '<g transform="rotate(35 24 24)"><rect x="22.4" y="4" width="3.2" height="41" rx="1.3" fill="#8a5428" ' + K + ' stroke-width="1.6"/>' +
+      '<path d="M23.2 30 V43" stroke="#c78d4e" stroke-width="0.9"/>' +
+      '<path d="' + h + '" fill="' + head + '" ' + K + ' stroke-width="1.8" stroke-linejoin="round"/>' + (two ? '<path d="' + m + '" fill="' + head + '" ' + K + ' stroke-width="1.8" stroke-linejoin="round"/>' : '') +
+      '<rect x="21.4" y="7" width="5.2" height="12" rx="1" fill="#6d655c" ' + K + ' stroke-width="1.4"/>' + (big ? '<path d="M24 7 L24 1.5" ' + K + ' stroke-width="3" stroke-linecap="round"/><path d="M24 6.5 L24 2" stroke="#b9b4aa" stroke-width="1.3" stroke-linecap="round"/>' : '') + '</g>';
+  }
+  function iBow(long) {
+    var arc = long ? 'M15 3 C33 13 33 35 15 45' : 'M16 9 C29 13 31 21 27 24 C31 27 29 35 16 39';
+    var top = long ? [15, 3] : [16, 9], bot = long ? [15, 45] : [16, 39];
+    return '<path d="' + arc + '" fill="none" ' + K + ' stroke-width="5.4" stroke-linecap="round"/><path d="' + arc + '" fill="none" stroke="' + (long ? '#b07a3e' : '#8a5428') + '" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M' + top[0] + ' ' + top[1] + ' L' + bot[0] + ' ' + bot[1] + '" stroke="#efe5cf" stroke-width="1.2"/>' +
+      '<rect x="' + (long ? 26.4 : 26) + '" y="20.5" width="4" height="7" rx="1" fill="#5a341a" ' + K + ' stroke-width="1.2"/>';
+  }
+  function iTorso(cloth, line, belt) {
+    return '<path d="M14 8 L20 5.5 C22 8.5 26 8.5 28 5.5 L34 8 L42.5 18.5 L37 23 L34 19.5 V42.5 H14 V19.5 L11 23 L5.5 18.5 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+      (belt ? '<rect x="14" y="30" width="20" height="4" fill="#5a341a" ' + K + ' stroke-width="1.3"/><rect x="22" y="29.5" width="4.4" height="5" fill="none" stroke="#d9b45a" stroke-width="1.3"/>'
+        : '<path d="M19 12 V41 M24 10 V41 M29 12 V41 M14 22 H34 M14 31 H34" stroke="' + line + '" stroke-width="1.1"/>') +
+      '<path d="M20 5.5 C22 8.5 26 8.5 28 5.5" fill="none" stroke="' + line + '" stroke-width="1.4"/>';
+  }
+  function iLegs(cloth, line, laced) {
+    return '<path d="M13.5 6 H34.5 L37 42.5 H27.5 L24 17 L20.5 42.5 H11 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+      '<path d="M13.6 10 H34.4" stroke="' + line + '" stroke-width="1.6"/>' +
+      (laced ? '<path d="M14.5 22 L19 26 M19 22 L14.5 26 M14 31 L18.5 35 M18.5 31 L14 35 M29.5 22 L34 26 M34 22 L29.5 26 M30 31 L34.5 35 M34.5 31 L30 35" stroke="#e0c49a" stroke-width="1.1"/>'
+        : '<path d="M17 14 L15.5 40 M31 14 L32.5 40" stroke="' + line + '" stroke-width="1" stroke-dasharray="2 2"/>');
+  }
+  function iGlove(cloth, line, fingers) {
+    return '<path d="M15 43 V36 L13.5 21 C13 17 17 16.5 17.5 20 L18 13 C18 9.5 22 9.5 22 13 L22.4 11 C22.5 7.5 26.5 7.5 26.6 11 L27 13 C27.2 9.8 31 10 31 13.5 V25 L35.5 20.5 C37.8 18.4 41 21 39 23.6 L33 33 V43 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.1" stroke-linejoin="round"/>' +
+      '<rect x="14.2" y="36" width="19.6" height="7" fill="' + line + '" ' + K + ' stroke-width="1.6"/>' +
+      (fingers ? '<path d="M17.8 20 V27 M22.2 13 V26 M26.8 13 V26" stroke="#5a341a" stroke-width="1.1"/>' : '<path d="M16 39.5 H32" stroke="#efe5cf" stroke-width="1" stroke-dasharray="1.6 1.6"/>');
+  }
+  var WOOL = '#a99a7a', WOOL2 = '#6e6250', LEATHER = '#8a5428', LEATHER2 = '#5a341a';
+  ITEM_ICONS.espada_ferro = iSword('#b9b4aa', '#77726a', '#6d655c');
+  ITEM_ICONS.espada_aco = iSword('#e7e2d4', '#9c958a', '#c99a3b', '#ffffff');
+  ITEM_ICONS.espada_ostanita = iSword('#8fb8d6', '#3f6f95', '#d9b45a', '#e6f4ff');
+  ITEM_ICONS.machado_trabalho = iAxe('#9a948a', false, false);
+  ITEM_ICONS.machado_guerra = iAxe('#d6d1c4', false, true);
+  ITEM_ICONS.machado_duas_faces = iAxe('#d6d1c4', true, true);
+  ITEM_ICONS.arco_curto = iBow(false);
+  ITEM_ICONS.arco_longo = iBow(true);
+  ITEM_ICONS.flecha = [[-6, 0], [0, 0], [6, 0]].map(function (o) {
+    return '<g transform="translate(' + o[0] + ' ' + o[1] + ') rotate(40 24 24)"><path d="M24 9 V42" ' + K + ' stroke-width="3"/><path d="M24 9 V42" stroke="#c78d4e" stroke-width="1.4"/>' +
+      '<path d="M24 3 L27 10 H21 Z" fill="#b9b4aa" ' + K + ' stroke-width="1.2" stroke-linejoin="round"/><path d="M24 35 L20.5 41 V45 L24 41.5 L27.5 45 V41 Z" fill="#efe5cf" ' + K + ' stroke-width="1.1" stroke-linejoin="round"/></g>';
+  }).join('');
+  ITEM_ICONS.capuz_la = '<path d="M9 43 C8 25 13 7 24 7 C35 7 40 25 39 43 Z" fill="' + WOOL + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M16.5 31 C16 20 19 14.5 24 14.5 C29 14.5 32 20 31.5 31 C27.5 34 20.5 34 16.5 31 Z" fill="#3b2414" opacity=".8"/><path d="M12 38 C18 41 30 41 36 38" fill="none" stroke="' + WOOL2 + '" stroke-width="1.3" stroke-dasharray="2 2"/>';
+  ITEM_ICONS.coifa_couro = '<path d="M11 30 C10.5 15 16.5 8 24 8 C31.5 8 37.5 15 37 30 L35 40 H29.5 V28 H18.5 V40 H13 Z" fill="' + LEATHER + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M24 8.5 V27.5 M12 20 C18 17 30 17 36 20" fill="none" stroke="#c78d4e" stroke-width="1.2" stroke-dasharray="2 2"/><path d="M18.5 28 H29.5" stroke="' + LEATHER2 + '" stroke-width="1.4"/>';
+  ITEM_ICONS.gambeson = iTorso('#d8c9a0', '#9c8a64', false);
+  ITEM_ICONS.tunica_couro = iTorso(LEATHER, '#c78d4e', true);
+  ITEM_ICONS.sapatos_couro = '<path d="M7 35 C7 30.5 11 28.5 15.5 28.5 L22 26 C26 30 32 32 38 33 C43 34 43 41 38.5 41 H10 C7.5 41 7 38 7 35 Z" fill="' + LEATHER + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M7.5 37.5 H42" stroke="' + LEATHER2 + '" stroke-width="1.6"/><path d="M17 29 L20 32 M20 28 L23 31" stroke="#e0c49a" stroke-width="1.1"/>';
+  ITEM_ICONS.botas_cano_alto = '<path d="M15 5 H29 V30 C33 31 39 32 41 36 C42.5 40 40 42.5 37 42.5 H15 Z" fill="#6e4424" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M14.5 5 H29.5 V11 H14.5 Z" fill="' + LEATHER + '" ' + K + ' stroke-width="1.6"/><path d="M15.2 39 H41.5" stroke="' + LEATHER2 + '" stroke-width="1.6"/><path d="M19 14 V28 M25 14 V29" stroke="#c78d4e" stroke-width="1" stroke-dasharray="2 2"/>';
+  ITEM_ICONS.calcas_la = iLegs(WOOL, WOOL2, false);
+  ITEM_ICONS.perneiras_couro = iLegs(LEATHER, LEATHER2, true);
+  ITEM_ICONS.luvas_la = iGlove(WOOL, WOOL2, false);
+  ITEM_ICONS.luvas_couro = iGlove(LEATHER, LEATHER2, true);
+  // casas vazias sem item no jogo ainda (anel e colar): o contorno, para a casa não parecer quebrada
+  ITEM_ICONS._anel = '<ellipse cx="24" cy="28" rx="12" ry="11" fill="none" ' + K + ' stroke-width="5"/><ellipse cx="24" cy="28" rx="12" ry="11" fill="none" stroke="#c99a3b" stroke-width="2.6"/><path d="M19 15 L24 8 L29 15 L24 19 Z" fill="#8fb8d6" ' + K + ' stroke-width="1.5" stroke-linejoin="round"/>';
+  ITEM_ICONS._colar = '<path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" ' + K + ' stroke-width="3.6"/><path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" stroke="#c99a3b" stroke-width="1.6" stroke-dasharray="2.4 1.6"/>' +
+    '<path d="M24 30 L30 37 L24 45 L18 37 Z" fill="#7d1e16" ' + K + ' stroke-width="1.8" stroke-linejoin="round"/><path d="M24 33 L27 37 L24 41" fill="none" stroke="#e39a84" stroke-width="1"/>';
   function itemIcon(k) {
     if (ITEM_ICONS[k]) { return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + ITEM_ICONS[k] + '</svg>'; }
     return '<b class="sell-ini" aria-hidden="true">' + esc(G.items[k].name.charAt(0)) + '</b>';
@@ -1016,7 +1329,10 @@
     wrap.appendChild(board);
     if (!owned.length) {
       var h = document.createElement('p'); h.className = 'hint';
-      h.textContent = (deliver ? 'Você não tem o material pedido. Falta: ' : 'Você não tem nada que se venda aqui. Compra: ') + items.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') + '.';
+      // armas e roupas que ele recompra entram numa palavra só, senão a lista não acaba
+      var raw = items.filter(function (k) { return !G.items[k].slot; }), gear = raw.length < items.length;
+      h.textContent = (deliver ? 'Você não tem o material pedido. Falta: ' : 'Você não tem nada que se venda aqui. Compra: ') + raw.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') +
+        (gear ? (raw.length ? ' e ' : '') + 'o que ele mesmo vende, usado' : '') + '.';
       wrap.appendChild(h);
     }
     sellShown = sellSig(id);
@@ -1041,7 +1357,7 @@
     var it = G.items[k], back = document.createElement('div'), downOut = false, deliver = s.type === 'deliver';
     back.className = 'sell-back';
     back.innerHTML = '<div class="sell-pop" role="dialog" tabindex="-1" aria-label="' + (deliver ? 'Colocar ' : 'Vender ') + esc(it.name.toLowerCase()) + '">' +
-      '<div class="sell-id"><span class="ic">' + itemIcon(k) + '</span><span class="nm"><b>' + esc(it.name) + '</b><small>' + (deliver ? 'Faltam ' + sim.dailyNeed(st, k) : coins(it.price) + ' cada') + '</small></span>' +
+      '<div class="sell-id"><span class="ic">' + itemIcon(k) + '</span><span class="nm"><b>' + esc(it.name) + '</b><small>' + (deliver ? 'Faltam ' + sim.dailyNeed(st, k) : coins(calc.sellPrice(world, st.player, k, 1)) + ' cada') + '</small></span>' +
       '<button type="button" class="x" data-x>Fechar</button></div>' +
       '<p class="sell-note" hidden></p>' +
       '<div class="sell-qty"><input type="range" min="1" step="1" value="1" aria-label="Quantidade">' +
@@ -1091,13 +1407,13 @@
   }
   // número, barra e botão sempre mostram o mesmo valor
   function sellPaint() {
-    var P = sellPop, can = boardMax(P.s, P.k), price = G.items[P.k].price;
+    var P = sellPop, can = boardMax(P.s, P.k), price = function (n) { return calc.sellPrice(world, st.player, P.k, n); };
     var v = P.blank ? '' : String(P.n);
     if (P.num.value !== v) { P.num.value = v; }
     P.range.value = P.n;
     P.range.style.setProperty('--p', (can > 1 ? (P.n - 1) / (can - 1) * 100 : 100) + '%');
     P.ok.disabled = P.blank;
-    P.ok.textContent = P.blank ? 'Escolha a quantidade' : P.s.type === 'deliver' ? 'Colocar ' + P.n + ' no baú' : 'Vender ' + P.n + ' por ' + P.n * price;
+    P.ok.textContent = P.blank ? 'Escolha a quantidade' : P.s.type === 'deliver' ? 'Colocar ' + P.n + ' no baú' : 'Vender ' + P.n + ' por ' + price(P.n);
   }
   function doSell(n) {
     var P = sellPop; closeSell(true);
@@ -1139,7 +1455,7 @@
     }
     if (ref.type === 'node') {
       if (!st.nodes[ref.id].alive) { toast(refName(ref)); return; }
-      if (d > G.player.reach + 0.6) { toast('Chegue mais perto para coletar.'); return; }
+      if (d > G.player.gatherReach) { toast('Chegue mais perto para coletar.'); return; }
       if (sim.takeControl(st)) { toast('Macro pausada.'); }
       p.goto = null; p.action = { type: 'gather', id: ref.id, prog: 0 };
       return;
@@ -1147,7 +1463,7 @@
     if (ref.type === 'mob') {
       if (sim.takeControl(st)) { toast('Macro pausada.'); }
       p.goto = null; p.action = { type: 'attack', id: ref.id };
-      if (d > G.player.reach) { toast('Alvo marcado: aproxime-se para atacar.'); }
+      if (d > calc.stats(world, p).reach) { toast('Alvo marcado: aproxime-se para atacar.'); }
     }
   }
   // E / botão Interagir: o que estiver mais perto, à frente
@@ -1161,7 +1477,7 @@
     }
     world.npcs.forEach(function (n) { consider({ type: 'npc', id: n.id }, n.x, n.z, G.settings.interactRange); });
     world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, G.settings.interactRange); });
-    world.nodes.forEach(function (n) { if (st.nodes[n.id].alive) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.reach + 0.6); } });
+    world.nodes.forEach(function (n) { if (st.nodes[n.id].alive) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.gatherReach); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, G.settings.interactRange); } });
     if (best) { interact(best); return; }
     // nada ao alcance: diz o que está à frente, mais longe
@@ -1179,8 +1495,9 @@
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
     else if (c === 'fullscreen') { toggleFull(); }
-    else if (c === 'inv') { toggle('w-inv', function () { $('iv-res').textContent = ''; }); if (openWin === 'w-inv') { renderInv(); } }
-    else if (c === 'bag') { toggle('w-bag'); if (openWin === 'w-bag') { renderBag(); } }
+    else if (c === 'inv') { openChar('equip'); }
+    else if (c === 'bag') { openChar('bag'); }
+    else if (c === 'char') { openChar(); }
     else if (c === 'stance') { setStance(); }
     else if (c === 'potion') { drinkPotion(); }
     else if (c === 'macro') {
@@ -1238,7 +1555,7 @@
     var cv = $('view');
     window.addEventListener('keydown', function (e) {
       // submenu de venda aberto: Esc fecha só ele e os atalhos do jogo ficam desligados
-      if (sellPop) { if (e.code === 'Escape') { closeSell(); e.preventDefault(); } return; }
+      if (sellPop || pop) { if (e.code === 'Escape') { if (sellPop) { closeSell(); } else { closePop(); } e.preventDefault(); } return; }
       if (e.target.tagName === 'INPUT' && e.target.id !== 'map-zoom') { return; } // a barra de zoom não tira M e Esc
       if (e.code === 'Escape') { if (openWin) { hide(); } else { cmd('menu'); } e.preventDefault(); return; }
       if (openWin === 'w-report' && (e.code === 'Enter' || e.code === 'Space')) { hide(); e.preventDefault(); return; }
@@ -1336,6 +1653,16 @@
     $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
     $('mm-pause').addEventListener('click', function () { mapMenu = false; pauseMacro(); mapUi(); toast('Macro pausada.'); });
     $('iv-drink').addEventListener('click', function () { drinkPotion(); });
+    // janela do personagem: as casas são refeitas quando algo muda, então o clique é apanhado na caixa de fora
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function (b) { b.addEventListener('click', function () { setTab(b.dataset.tab); }); });
+    $('eq-grid').addEventListener('click', function (e) { var b = e.target.closest('[data-slot]'); if (b) { openSlot(b.dataset.slot); } });
+    $('bg-board').addEventListener('click', function (e) { var b = e.target.closest('[data-item]'); if (b) { openBagItem(b.dataset.item); } });
+    $('at-list').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b || b.disabled) { return; }
+      if (b.dataset.add) { attrStep(b.dataset.add, 1); } else if (b.dataset.sub) { attrStep(b.dataset.sub, -1); }
+    });
+    $('at-undo').addEventListener('click', function () { attrAdd = {}; renderChar(); $('tab-attr').focus(); });
+    $('at-confirm').addEventListener('click', attrConfirm);
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) { b.addEventListener('click', function () { setStance(b.dataset.stance); }); });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-cmd]'), function (b) { b.addEventListener('click', function () { cmd(b.dataset.cmd); b.blur(); }); });
@@ -1367,8 +1694,8 @@
       win: function () { return openWin; },
       // a parte visível da tela inicial: trocar de parte (lista, nome, apagar) recomeça o foco do controle nela
       painel: function () { return !titleOn ? null : titleNew ? $('new-form') : titleDel ? $('t-del') : $('t-list'); },
-      sell: function () { return sellPop ? sellPop.pop : null; },
-      closeSell: function () { closeSell(); },
+      sell: function () { return sellPop ? sellPop.pop : pop ? pop.pop : null; },
+      closeSell: function () { if (sellPop) { closeSell(); } else { closePop(); } },
       mapBox: function () { return mapMenu === 'macro' ? $('map-menu') : mapMenu === 'caminhada' ? $('map-walk-menu') : null; },
       mapBoxClose: function () { var b = $(mapMenu === 'macro' ? 'map-macro' : 'map-walk'); mapMenu = false; mapUi(); b.focus(); }, // o foco volta a quem abriu o menu
       mapPan: function (fx, fz) { // fx e fz em frações da janela do mapa
