@@ -1,20 +1,43 @@
 """Confere as trilhas dos moradores (walkers/trails) e o rebanho (cows) de data/vila.json contra a planta da cidade.
 
 Percorre cada trilha em passos de 0,25 m, já com o desvio lateral (`side`) de cada pessoa, e acusa o ponto que
-entrar num obstáculo com folga de 0,5 m. Árvores, veios e figuras fixas vêm do próprio vila.json, então vale rodar de
-novo depois de mudar a cidade. Sai com código 1 se houver colisão. Uso: python3 tools/verificar_trilhas.py [vila.json]"""
+entrar num obstáculo com folga de 0,5 m. A planta sai toda do próprio vila.json (construções, pasto, aprisco,
+plantações, árvores, veios, pedras, figuras fixas e o portão), então vale rodar de novo depois de mudar a cidade.
+Sai com código 1 se houver colisão. Uso: python3 tools/verificar_trilhas.py [vila.json]"""
 import json, math, os, sys
 
-PASSO, FOLGA, LIMITE = 0.25, 0.5, 44.5        # LIMITE: a cerca externa fica em fence.half 45 menos 0,5
+PASSO, FOLGA = 0.25, 0.5
 RAIO_NO = 0.7                                  # tronco da árvore ou base do veio, em metros
+# o que cada construção põe na frente da porta (forja, barris, banca, degraus, barril de chuva), em metros além da parede
+FRENTE = {'ferreiro': 1.8, 'bar': 1.2, 'padaria': 1.3, 'casa_senhor': 1.1, 'igreja': 0.3, 'alfaiate': 1.0, 'moradia': 0.8, 'forno': 0.6}
+PLACA = {'ferreiro', 'bar', 'padaria', 'alfaiate'}  # oficinas com placa pendurada, que passa 0,8 m do canto da frente
 
-# (nome, x0, z0, x1, z1)
-PLANTA = [
-    ('igreja', -3.5, -18, 3.5, -8), ('ferreiro', -17, -3.5, -9, 3.5), ('forja e bigorna', -9, -3.5, -7.2, 3.5), ('bar', 9, -4, 17, 4),
-    ('barris do bar', 7.8, -4, 9, 4), ('quadro e baú', 8, 10, 9, 13.2), ('casa do senhor', -6, -38, 6, -28), ('padaria', 16, -33.5, 24, -26.5), ('forno', 24, -30.2, 26.4, -27.8),
-    ('moradia NO', -39, 15, -33, 21), ('moradia NE', -27, 15, -21, 21), ('moradia SO', -39, 29, -33, 35), ('moradia SE', -27, 29, -21, 35),
-    ('pasto', 20, -18, 42, 6), ('trigo', 14, 18, 42, 40), ('horta', -42, -32, -20, -10),
-]
+
+def pegada(b):
+    """retângulo da construção no mundo, com o que fica na frente da porta (rot 0 = sul, 90 = leste, -90 = oeste, 180 = norte)"""
+    vira = abs(b['rot']) == 90
+    fw, fd = (b['d'], b['w']) if vira else (b['w'], b['d'])
+    x0, x1, z0, z1 = b['x'] - fw / 2, b['x'] + fw / 2, b['z'] - fd / 2, b['z'] + fd / 2
+    f = FRENTE.get(b['type'], 0.5); r = b['rot'] % 360; LADO = 0.8 if b['type'] in PLACA else 0
+    if r == 0: z1 += f; x0 -= LADO; x1 += LADO
+    elif r == 180: z0 -= f; x0 -= LADO; x1 += LADO
+    elif r == 90: x1 += f; z0 -= LADO; z1 += LADO
+    else: x0 -= f; z0 -= LADO; z1 += LADO
+    return (b['id'], x0, z0, x1, z1)
+
+
+def planta(v):
+    out = [pegada(b) for b in v['buildings']]
+    out += [('pasto', v['pasture']['x0'], v['pasture']['z0'], v['pasture']['x1'], v['pasture']['z1'])]
+    out += [(f['id'], f['x0'], f['z0'], f['x1'], f['z1']) for f in v.get('folds', [])]
+    out += [(f['id'], f['x0'], f['z0'], f['x1'], f['z1']) for f in v['fields']]
+    out += [(p['id'], p['x'] - p['w'] / 2, p['z'] - p['d'] / 2, p['x'] + p['w'] / 2, p['z'] + p['d'] / 2) for p in v.get('props', [])]
+    g = v.get('gate')
+    if g:  # os dois mourões do portão, fora da estrada
+        for s in (-1, 1):
+            x = g['x'] + s * (g['w'] / 2 + 0.5)
+            out.append(('portão', x - 0.3, g['z'] - 0.3, x + 0.3, g['z'] + 0.3))
+    return out
 
 
 def medir(pts):
@@ -46,15 +69,19 @@ def lateral(pts, acc, s, lado):
 def main():
     raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     v = json.load(open(sys.argv[1] if len(sys.argv) > 1 else os.path.join(raiz, 'data', 'vila.json'), encoding='utf8'))
+    PLANTA, LIMITE = planta(v), v['bounds'] - 1
+    # os recursos ficam no centro da célula, como em sim.js
     circulos = [(n['id'], n['x'], n['z'], 0.5) for n in v['npcs']]
-    circulos += [('árvore', p[0] + 0.5, p[1] + 0.5, RAIO_NO) for p in v['trees']] + [('veio', p[0] + 0.5, p[1] + 0.5, RAIO_NO) for p in v['rocks']]
+    circulos += [('árvore', math.floor(p[0]) + 0.5, math.floor(p[1]) + 0.5, RAIO_NO) for p in v['trees']]
+    circulos += [('veio', math.floor(p[0]) + 0.5, math.floor(p[1]) + 0.5, RAIO_NO) for p in v['rocks']]
+    circulos += [('pedra', p[0], p[1], p[2] / 2 + 0.3) for p in v.get('boulders', [])]
     falhas = 0; menor = {}
     casos = sorted({(w['trail'], w['side']) for w in v['walkers']})
     for tr, lado in casos:
         pts = v['trails'][tr]; acc = medir(pts); n = int(acc[-1] / PASSO) + 1; achou = {}
         for k in range(n):
             x, z = lateral(pts, acc, k * PASSO, lado)
-            if abs(x) > LIMITE - FOLGA or abs(z) > LIMITE - FOLGA: achou.setdefault('cerca externa', (x, z))
+            if abs(x) > LIMITE - FOLGA or abs(z) > LIMITE - FOLGA: achou.setdefault('borda do mundo', (x, z))
             for nome, x0, z0, x1, z1 in PLANTA:
                 d = max(x0 - x, x - x1, z0 - z, z - z1)          # > 0: fora do retângulo, medido no eixo mais afastado
                 menor[tr] = min(menor.get(tr, 99), d)
@@ -67,7 +94,7 @@ def main():
     c = v['cows']; x0, z0, x1, z1 = c['area']; print('vacas: área do sprite x %g a %g, z %g a %g' % (x0, x1, z0, z1))
     for k, h in enumerate(c['herd']):
         if h[0] - h[2] < x0 or h[0] + h[2] > x1 or h[1] - h[3] < z0 or h[1] + h[3] > z1:
-            print('  vaca', k, 'alcança a borda: o limite em view.js a segura');
+            print('  vaca', k, 'alcança a borda: o limite em view.js a segura')
     for nome, cx, cz, r in circulos:
         if x0 - 1.5 <= cx <= x1 + 1.5 and z0 - 1.5 <= cz <= z1 + 1.5: print('  aviso:', nome, 'em (%g, %g) está dentro do pasto' % (cx, cz))
     print('resultado:', 'nenhuma colisão' if not falhas else '%d colisões' % falhas)

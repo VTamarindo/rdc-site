@@ -449,6 +449,50 @@
     });
     return g;
   }
+  // alfaiate: oficina modesta de enxaimel, com rolos de pano na banca junto à janela e um manequim ao lado da porta
+  function alfaiate(b) {
+    var g = house(b, 'enxaimel', 2.5, 'telha'), fz = b.d / 2;
+    g.add(box(b.w + 0.1, 0.36, b.d + 0.1, 'pedra', 1, 0, 0.18, 0));
+    win(g, -1.9, 1.7, fz + 0.05); win(g, 1.9, 1.7, fz + 0.05);
+    win(g, b.w / 2 + 0.05, 1.7, 0, true); win(g, -b.w / 2 - 0.05, 1.7, 0, true);
+    placaPendurada(g, 'placa_alfaiate', b.w / 2 + 0.6, fz + 0.6);
+    var tx = -1.9, tz = fz + 0.5;
+    g.add(box(1.7, 0.08, 0.7, 'tabuas', PX, tx, 0.82, tz));
+    [-0.75, 0.75].forEach(function (x) { g.add(box(0.1, 0.78, 0.6, 'tabuas', PX, tx + x, 0.39, tz)); });
+    [0x7a2522, 0x2c4a7a, 0x5a7a3a, 0xd8c8a0, 0x8a6a9a].forEach(function (c, i) { // rolos de pano deitados
+      g.add(box(0.24, 0.22, 0.6, null, 1, tx - 0.6 + i * 0.3, 0.97 + (i === 2 ? 0.2 : 0), tz, c));
+    });
+    var mx = 1.55, mz = fz + 0.5;                                                   // manequim de costura
+    g.add(box(0.36, 0.06, 0.36, 'tabuas', PX, mx, 0.03, mz)); g.add(box(0.07, 0.95, 0.07, 'tabuas', PX, mx, 0.5, mz));
+    g.add(box(0.46, 0.62, 0.28, null, 1, mx, 1.28, mz, 0x6a3a5a)); g.add(box(0.36, 0.12, 0.24, null, 1, mx, 1.64, mz, 0x6a3a5a));
+    return g;
+  }
+  // portão da vila: dois mourões altos com travessa e um telhadinho, sem cerca, marcando a entrada pela estrada
+  function portao(gt) {
+    var g = new Node().at(gt.x, 0, gt.z), x = gt.w / 2 + 0.5;
+    [-x, x].forEach(function (s) { g.add(box(0.36, 4.2, 0.36, 'tabuas', 1, s, 2.1, 0)); g.add(box(0.6, 0.5, 0.6, 'pedra', 1, s, 0.25, 0)); });
+    g.add(box(x * 2 + 1, 0.3, 0.3, 'tabuas', 1, 0, 3.9, 0));
+    g.add(new Node(cached('portao_telhado', function () { return gableGeo(x * 2 + 1.6, 0.7, 1, 1); }), 0xffffff, { tex: 'telha_escura' }).at(0, 4.05, 0));
+    return g;
+  }
+  // pedra solta do pedregal: blocos tortos uns sobre os outros
+  function pedra(p, i) {
+    var s = p[2], g = new Node().at(p[0], 0, p[1]);
+    g.rotY = sorte(i + 0.1) * 6.28;
+    g.add(box(s, s * 0.62, s * 0.8, 'pedra', 1.2, 0, s * 0.31, 0, 0xd8d4ca));
+    var t = box(s * 0.7, s * 0.5, s * 0.6, 'pedra', 1.2, s * 0.12, s * 0.8, -s * 0.05, 0xe4e0d6); t.rotY = 0.5; g.add(t);
+    var u = box(s * 0.5, s * 0.34, s * 0.5, 'pedra', 1.2, -s * 0.45, s * 0.17, s * 0.3, 0xc8c4ba); u.rotY = -0.4; g.add(u);
+    return g;
+  }
+  // moita sem figura própria (até a arte ter 'arbusto'): três bolos de folhagem achatados
+  function moita(p, i) {
+    var s = p[2], g = new Node().at(p[0], 0, p[1]);
+    [[0, 0, 0.62, 0.7], [0.42, 0.18, 0.44, 0.5], [-0.36, -0.2, 0.46, 0.55]].forEach(function (b, k) {
+      g.add(cyl(b[2] * 0.7, b[2], b[3], 6, 'grama', 1, sorte(i + k) * 3, 0x6a8a3e).at(b[0], b[3] / 2, b[1]));
+    });
+    g.scale = [s, s, s];
+    return g;
+  }
   function moradia(b) {
     var cal = b.wall === 'cal', g = house(b, b.wall, cal ? 2.5 : 1.28, 'palha'), fz = b.d / 2;
     g.add(box(b.w + 0.1, 0.36, b.d + 0.1, 'pedra', 1, 0, 0.18, 0));
@@ -575,9 +619,14 @@
     return g;
   }
   function fardo(x, z, y) { return box(1.1, 0.6, 0.7, 'palha', 1, x, 0.3 + (y || 0), z); }
-  // porteira da cerca oeste do pasto: mourões altos com travessa e as duas folhas abertas, encostadas na cerca pelo lado de dentro
+  // porteira do cercado: mourões altos com travessa e as duas folhas abertas, encostadas na cerca pelo lado de dentro.
+  // montada como se fosse na face oeste (cerca ao longo de z, dentro = +x) e girada para a face da porteira
+  var FACE = { west: 0, east: Math.PI, south: Math.PI / 2, north: -Math.PI / 2 };
   function porteira(p) {
-    var g = new Node(), x = p.x0 + 0.5, a = p.gate.from - 0.5, c = p.gate.to + 0.5;
+    var sd = p.gate.side, g = new Node(), x = 0, a = p.gate.from - 0.5, c = p.gate.to + 0.5;
+    if (sd === 'east' || sd === 'north') { var t = a; a = -c; c = -t; } // nessas faces o eixo da cerca corre ao contrário
+    g.rotY = FACE[sd];
+    g.pos = sd === 'west' ? [p.x0 + 0.5, 0, 0] : sd === 'east' ? [p.x1 - 0.5, 0, 0] : sd === 'south' ? [0, 0, p.z1 - 0.5] : [0, 0, p.z0 + 0.5];
     [a, c].forEach(function (z) { g.add(box(0.3, 2.8, 0.3, 'tabuas', 1, x, 1.4, z)); });
     g.add(box(0.2, 0.26, c - a + 0.7, 'tabuas', 1, x, 2.72, (a + c) / 2));
     [[a, -1], [c, 1]].forEach(function (f) {
@@ -591,7 +640,7 @@
 
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, alfaiate: 1.86, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
 
   // ---------- moradores e vacas: ambiente, só na tela ----------
   // a posição sai do relógio, nunca de tiques: nada disto entra na simulação, nas colisões ou no save
@@ -623,9 +672,23 @@
     return [Math.max(A[0], Math.min(A[2], h[0] + h[2] * Math.sin(u * h[4] + h[6]))), Math.max(A[1], Math.min(A[3], h[1] + h[3] * Math.sin(u * h[5] + h[7])))];
   }
 
+  // placa do alfaiate enquanto a arte não traz 'placa_alfaiate': tábua com moldura escura e uma tesoura aberta, em pixels
+  function placaTesoura(tab) {
+    var S = tab.width, c = document.createElement('canvas'); c.width = c.height = S;
+    var g = c.getContext('2d'), u = S / 32;
+    function px(x, y, w, h, cor) { g.fillStyle = cor; g.fillRect(Math.round(x * u), Math.round(y * u), Math.ceil(w * u), Math.ceil(h * u)); }
+    g.drawImage(tab, 0, 0, S, S);
+    px(0, 0, 32, 2, '#3a2616'); px(0, 30, 32, 2, '#3a2616'); px(0, 0, 2, 32, '#3a2616'); px(30, 0, 2, 32, '#3a2616');
+    for (var i = 0; i < 14; i++) { px(9 + i, 7 + i * 0.86, 2.2, 2.2, '#c9ccd2'); px(21 - i, 7 + i * 0.86, 2.2, 2.2, '#9aa0aa'); } // lâminas cruzadas
+    [[8, 22], [20, 22]].forEach(function (a) { px(a[0], a[1], 5, 1.4, '#7a2522'); px(a[0], a[1] + 3.6, 5, 1.4, '#7a2522'); px(a[0], a[1], 1.4, 5, '#7a2522'); px(a[0] + 3.6, a[1], 1.4, 5, '#7a2522'); }); // argolas
+    px(15, 13, 2, 2, '#3a3a42');
+    return c;
+  }
+
   function View(canvas, world, art) {
     this.w = world; this.r = new Renderer(canvas); this.art = art;
     var self = this;
+    if (!art.walls.placa_alfaiate && art.walls.tabuas) { art.walls.placa_alfaiate = placaTesoura(art.walls.tabuas); }
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {};
@@ -636,7 +699,10 @@
     this.yaw = Math.PI; this.pitch = -0.05; this.swing = -1; this.bob = 0; this.shake = 0; this.fov = 70 * Math.PI / 180; this.aspect = 1;
   }
 
+  // figura que a arte ainda não tem (ex.: o alfaiate antes do atlas novo): usa uma parecida, em vez de um quadro branco
+  var SUBSTITUTA = { alfaiate: 'taberneiro' };
   View.prototype.sprite = function (name, h) {
+    if (!this.art.sprites[name]) { name = this.art.sprites[SUBSTITUTA[name]] ? SUBSTITUTA[name] : 'anselmo'; }
     var o = new Node(sGeo(this.dim(name), h), 0xf2f2f2, { tex: 's:' + name, sprite: true, unlit: true });
     o.userData.img = name; o.userData.k = h / (SIZE[name] || h);
     return o;
@@ -649,17 +715,30 @@
     o.geo = sGeo(this.dim(img), (SIZE[img] || 1.9) * (o.userData.k || 1));
   };
 
+  // chão de cada região: a mesma grama com outra tinta (floresta escura, campina clara) e terra acinzentada no pedregal
+  var CHAO = { vila: ['grama', 0xe6eccc], floresta: ['grama', 0xa4bc8c], rochas: ['terra', 0xf0e6d0], campina: ['grama', 0xf4f4c4] };
   View.prototype.buildStatic = function () {
     var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2;
     R.add(new Node(planeGeo(S, S, 3), 0xffffff, { tex: 'grama' }));
-    R.add(new Node(planeGeo(V.fence.half * 2, V.fence.half * 2, 3), 0xe6eccc, { tex: 'grama' }).at(0, 0.01, 0));
+    (V.regions || []).forEach(function (r) {
+      var c = CHAO[r.kind]; if (!c) { return; }
+      R.add(new Node(chao(r.rects.map(function (q) { return { x0: q[0], z0: q[1], x1: q[2], z1: q[3] }; }), 3), c[1], { tex: c[0] }).at(0, 0.01, 0));
+    });
     var rd = V.road; R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
     R.add(new Node(chao(V.streets, 3), 0xffffff, { tex: 'terra' }).at(0, 0.015, 0));
+    // avenida calçada de ponta a ponta, com meio-fio de pedra dos dois lados
+    var av = V.avenue;
+    if (av) {
+      R.add(new Node(chao([av], 2.5), 0xe8e4dc, { tex: 'pavimento' }).at(0, 0.025, 0));
+      var mf = new Node(), aw = av.x1 - av.x0;
+      [av.z0, av.z1].forEach(function (z) { mf.add(box(aw, 0.12, 0.24, 'pedra', 1, (av.x0 + av.x1) / 2, 0.06, z, 0x9a9a9a)); });
+      L.funde(mf);
+    }
     var pl = V.plaza;
     R.add(cyl(pl.r + 0.35, pl.r + 0.35, 0.06, 40, 'pedra', 1.5, 0, 0x9a9a9a).at(pl.x, 0.03, pl.z));
     R.add(cyl(pl.r, pl.r, 0.1, 40, 'pavimento', 2.5).at(pl.x, 0.05, pl.z));
+    if (V.gate) { L.funde(portao(V.gate)); }
 
-    var F = V.fence.half - 0.5, g = V.fence.gate;
     function seg(x0, z0, x1, z1) {
       var len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 2));
       for (var i = 0; i <= n; i++) { var t = i / n; cerca.add(box(0.18, 1.3, 0.18, 'tabuas', 1, x0 + (x1 - x0) * t, 0.65, z0 + (z1 - z0) * t)); }
@@ -667,14 +746,29 @@
         var b = box(len, 0.1, 0.08, 'tabuas', 1, (x0 + x1) / 2, y, (z0 + z1) / 2); b.rotY = -Math.atan2(z1 - z0, x1 - x0); cerca.add(b);
       });
     }
-    seg(-F, -F, F, -F); seg(-F, -F, -F, F); seg(F, -F, F, F); seg(-F, F, g.from, F); seg(g.to, F, F, F);
-
-    // pasto: a cerca fica nas células da borda, como a da cidade; a oeste ela abre na porteira
-    var P = V.pasture, px0 = P.x0 + 0.5, px1 = P.x1 - 0.5, pz0 = P.z0 + 0.5, pz1 = P.z1 - 0.5;
-    R.add(new Node(chao([{ x0: px0, x1: px1, z0: pz0, z1: pz1 }], 3), 0xc8dc9a, { tex: 'grama' }).at(0, 0.012, 0));
-    seg(px0, pz0, px1, pz0); seg(px1, pz0, px1, pz1); seg(px0, pz1, px1, pz1); seg(px0, pz0, px0, P.gate.from - 0.5); seg(px0, P.gate.to + 0.5, px0, pz1);
-    cerca.add(porteira(P)); cerca.add(cocho(P.x1 - 4, P.z0 + 2.2)); cerca.add(fardo(P.x1 - 2.2, P.z0 + 4.5)); cerca.add(fardo(P.x1 - 3.4, P.z0 + 4.8)); cerca.add(fardo(P.x1 - 2.8, P.z0 + 4.6, 0.6));
+    // pasto e aprisco: a cerca fica nas células da borda (como em sim.js) e abre na porteira, em qualquer face
+    function cercado(P) {
+      var x0 = P.x0 + 0.5, x1 = P.x1 - 0.5, z0 = P.z0 + 0.5, z1 = P.z1 - 0.5, g = P.gate || {};
+      R.add(new Node(chao([{ x0: x0, x1: x1, z0: z0, z1: z1 }], 3), 0xc8dc9a, { tex: 'grama' }).at(0, 0.012, 0));
+      function lado(side, ax, az, bx, bz, along) { // along: 'x' ou 'z', o eixo que corre ao longo da face
+        if (g.side !== side) { seg(ax, az, bx, bz); return; }
+        if (along === 'x') { seg(ax, az, g.from - 0.5, az); seg(g.to + 0.5, az, bx, bz); } else { seg(ax, az, ax, g.from - 0.5); seg(ax, g.to + 0.5, bx, bz); }
+      }
+      lado('north', x0, z0, x1, z0, 'x'); lado('south', x0, z1, x1, z1, 'x'); lado('west', x0, z0, x0, z1, 'z'); lado('east', x1, z0, x1, z1, 'z');
+      if (P.gate) { cerca.add(porteira(P)); }
+    }
+    var P = V.pasture;
+    [P].concat(V.folds || []).forEach(cercado);
+    cerca.add(cocho(P.x1 - 4, P.z0 + 2.2)); cerca.add(fardo(P.x1 - 2.2, P.z0 + 4.5)); cerca.add(fardo(P.x1 - 3.4, P.z0 + 4.8)); cerca.add(fardo(P.x1 - 2.8, P.z0 + 4.6, 0.6));
+    (V.folds || []).forEach(function (f) { cerca.add(cocho(f.x1 - 3, f.z0 + 2)); });
     L.funde(cerca);
+    // pedregal: pedras soltas e moitas; com a figura 'arbusto', a moita vira dois planos em cruz no lote
+    (V.boulders || []).forEach(function (p, i) { L.funde(pedra(p, i)); });
+    var fig = self.art.sprites.arbusto && self.dim('arbusto'), mv = fig && L.get('s:arbusto', CLARO, true).v;
+    (V.bushes || []).forEach(function (p, i) {
+      if (!fig) { L.funde(moita(p, i)); return; }
+      var h = 1.1 * p[2]; L.pe(mv, p[0], p[1], h * fig.w / fig.h, 0, h, sorte(i) * 3, sorte(i + 0.5) > 0.5);
+    });
 
     // plantações
     V.fields.forEach(function (f) {
@@ -682,17 +776,12 @@
       R.add(new Node(chao(hortas.map(function (s) { return { x0: f.x0, x1: f.x1, z0: s.z0, z1: s.z1 }; }), 2), f.kind === 'trigo' ? 0xf0e0b0 : 0xffffff, { tex: 'lavoura' }).at(0, 0.025, 0));
       if (f.kind === 'trigo') { trigal(L, f); L.funde(espantalho((f.x0 + f.x1) / 2 + 3, (f.z0 + f.z1) / 2)); return; }
       R.add(new Node(chao([{ x0: f.x0, x1: f.x1, z0: f.z0, z1: f.z1 }], 3), 0xffffff, { tex: 'terra' }).at(0, 0.02, 0));
-      hortas.forEach(function (s) { canteiro(L, s, f.x0, f.x1); });
-      // cercadura baixa de toras em volta da horta; dá para pisar por cima
-      var b = new Node(), w = f.x1 - f.x0, d = f.z1 - f.z0, mx = (f.x0 + f.x1) / 2, mz = (f.z0 + f.z1) / 2;
-      [f.z0, f.z1].forEach(function (z) { b.add(box(w + 0.2, 0.16, 0.2, 'tabuas', 1, mx, 0.08, z)); });
-      [f.x0, f.x1].forEach(function (x) { b.add(box(0.2, 0.16, d, 'tabuas', 1, x, 0.08, mz)); });
-      L.funde(b);
+      hortas.forEach(function (s) { canteiro(L, s, f.x0, f.x1); }); // sem cercadura: a horta fica aberta
     });
 
-    var PREDIO = { igreja: church, ferreiro: smith, bar: bar, casa_senhor: casaSenhor, padaria: padaria, forno: forno, moradia: moradia };
+    var PREDIO = { igreja: church, ferreiro: smith, bar: bar, casa_senhor: casaSenhor, padaria: padaria, forno: forno, moradia: moradia, alfaiate: alfaiate };
     V.buildings.forEach(function (b) {
-      var o = PREDIO[b.type](b);
+      var o = (PREDIO[b.type] || moradia)(b); // tipo novo sem desenho ainda: vira uma moradia, em vez de travar o jogo
       o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; L.funde(o);
     });
     L.poe(R);
@@ -711,7 +800,7 @@
     var self = this, w = this.w;
     w.nodes.forEach(function (n) {
       var tree = n.kind === 'arvore', jit = ((n.x * 7 + n.z * 3) % 5 + 5) % 5 * 0.07;
-      var o = self.sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
+      var o = self.sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
       o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind;
       self.root.add(o); self.pick.push(o); self.objs[n.id] = o;
     });

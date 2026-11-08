@@ -26,20 +26,16 @@
     // borda do mundo
     for (i = 0; i < N; i++) { this.grid[i] = 1; this.grid[(N - 1) * N + i] = 1; this.grid[i * N] = 1; this.grid[i * N + N - 1] = 1; }
 
-    // cerca: linhas de células em z = -F e z = F-1, x = -F e x = F-1
-    var F = vila.fence.half, g = vila.fence.gate;
-    for (var c = -F; c < F; c++) {
-      this.block(c, -F); this.block(-F, c); this.block(F - 1, c);
-      if (!(c >= g.from && c < g.to)) { this.block(c, F - 1); }
-    }
-
-    // pasto: cerca nas células da borda, aberta na porteira da face oeste
-    var P = vila.pasture, pg = P.gate;
-    for (c = P.x0; c < P.x1; c++) { this.block(c, P.z0); this.block(c, P.z1 - 1); }
-    for (c = P.z0; c < P.z1; c++) {
-      this.block(P.x1 - 1, c);
-      if (!(c >= pg.from && c < pg.to)) { this.block(P.x0, c); }
-    }
+    // a vila não tem mais cerca: só o pasto e o aprisco são cercados, nas células da borda, abertos na porteira
+    [vila.pasture].concat(vila.folds || []).forEach(function (P) { self.cercado(P); });
+    // os dois mourões do portão, um de cada lado da estrada
+    var gt = vila.gate;
+    if (gt) { this.block(gt.x - gt.w / 2 - 0.5, gt.z); this.block(gt.x + gt.w / 2 + 0.5, gt.z); }
+    // pedras soltas: a pegada inteira bloqueia
+    (vila.boulders || []).forEach(function (b) {
+      var r = b[2] / 2;
+      for (var x = Math.floor(b[0] - r); x < Math.ceil(b[0] + r); x++) { for (var z = Math.floor(b[1] - r); z < Math.ceil(b[1] + r); z++) { self.block(x, z); } }
+    });
 
     // construções (pegada no mundo: troca w/d quando gira 90°)
     this.buildings = vila.buildings.map(function (b) {
@@ -54,12 +50,15 @@
 
     // recursos: centralizados na célula, que fica bloqueada
     this.nodes = [];
-    vila.trees.forEach(function (p, k) { self.addNode('arvore', 'arv' + k, p); });
+    vila.trees.forEach(function (p, k) { self.addNode('arvore', 'arv' + k, p); self.nodes[self.nodes.length - 1].s = p[2] || 0; }); // p[2]: escala da figura (0 = a de sempre)
     vila.rocks.forEach(function (p, k) { self.addNode('veio', 'veio' + k, p); });
     this.nodeById = {};
     this.nodes.forEach(function (n) { self.nodeById[n.id] = n; });
 
     this.spawns = vila.rabbits.map(function (p) { return { x: p[0] + 0.5, z: p[1] + 0.5 }; });
+    // pessoa da planta sem ficha em game.json (o alfaiate antes de ganhar loja): entra com uma ficha mínima, sem serviços
+    game.npcs = game.npcs || {};
+    vila.npcs.forEach(function (n) { if (!game.npcs[n.id]) { game.npcs[n.id] = { name: n.name || n.id, idle: 'Bom dia.', services: [] }; } });
     this.npcs = vila.npcs.map(function (n) { self.block(n.x, n.z); return { id: n.id, x: n.x, z: n.z }; });
 
     // objetos fixos do cenário: w x d em metros é a pegada no mundo, centrada em (x, z); h é a altura para o clique
@@ -75,6 +74,19 @@
     var ix = Math.floor(x) + this.B, iz = Math.floor(z) + this.B;
     if (ix < 0 || iz < 0 || ix >= this.N || iz >= this.N) { return -1; }
     return iz * this.N + ix;
+  };
+  // cerca nas células da borda do retângulo; gate = { side: 'north' | 'south' | 'west' | 'east', from, to } é a porteira
+  World.prototype.cercado = function (P) {
+    var g = P.gate || {}, c;
+    function aberto(side, c) { return g.side === side && c >= g.from && c < g.to; }
+    for (c = P.x0; c < P.x1; c++) {
+      if (!aberto('north', c)) { this.block(c, P.z0); }
+      if (!aberto('south', c)) { this.block(c, P.z1 - 1); }
+    }
+    for (c = P.z0; c < P.z1; c++) {
+      if (!aberto('west', c)) { this.block(P.x0, c); }
+      if (!aberto('east', c)) { this.block(P.x1 - 1, c); }
+    }
   };
   World.prototype.block = function (x, z) { var i = this.idx(x, z); if (i >= 0) { this.grid[i] = 1; } };
   World.prototype.blocked = function (x, z) { var i = this.idx(x, z); return i < 0 || this.grid[i] === 1; };
@@ -145,7 +157,7 @@
     g[s] = 0; push(s, h(s));
     var DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
     var found = false, guard = 0;
-    while (heap.length && guard++ < N * N * 2) { // o teto cobre o mapa inteiro: dar a volta por fora da cerca passa de 150 m
+    while (heap.length && guard++ < N * N * 2) { // o teto cobre o mapa inteiro (240 x 240 células): contornar o pasto ou a floresta passa de 150 m
       var cur = pop();
       if (closed[cur]) { continue; }
       if (cur === e) { found = true; break; }
@@ -180,7 +192,7 @@
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
     var st = {
-      v: 1, mapa: 2, seed: seed | 0, t: 0,
+      v: 1, mapa: 3, seed: seed | 0, t: 0,
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), weapon: 0, stance: 'ofensiva',
@@ -565,9 +577,10 @@
     if (p.combatT > G.player.regenDelaySec) { p.hp = Math.min(maxHp(w, p), p.hp + G.player.regenPerSec * dt); }
 
     // recursos voltam
-    for (var id in st.nodes) {
-      var ns = st.nodes[id];
-      if (!ns.alive) { ns.left -= dt; if (ns.left <= 0) { ns.alive = true; this.emit(st, { type: 'regrow', id: id }); } }
+    // pela lista fixa do mundo, não por for-in no save: com centenas de árvores, o recálculo do tempo fora pesa
+    for (var k = 0, nd = w.nodes; k < nd.length; k++) {
+      var ns = st.nodes[nd[k].id];
+      if (!ns.alive) { ns.left -= dt; if (ns.left <= 0) { ns.alive = true; this.emit(st, { type: 'regrow', id: nd[k].id }); } }
     }
     for (var i = 0; i < st.mobs.length; i++) { this.mobTick(st, st.mobs[i], dt); }
 
@@ -784,20 +797,29 @@
     return st;
   };
 
-  // acerta um save com o mapa atual. Save de antes da cidade (sem st.mapa): coelhos voltam aos pontos novos e a área da
-  // macro anda com o bosque, 25 m para fora. Em qualquer save, quem parou dentro de algo sai para a célula livre mais perto.
+  // acerta um save com o mapa atual (st.mapa: 2 = a cidade cercada, 3 = a vila aberta com floresta, pedregal e campina).
+  // Recursos e coelhos seguem a lista da planta: o que é novo nasce vivo, o que sumiu sai do save. Save de mapa antigo:
+  // coelhos voltam à toca e a área da macro, se não tiver mais nada para colher, vai para o recurso mais perto.
+  // Em qualquer save, quem parou dentro de algo sai para a célula livre mais perto.
   NZ.settle = function (world, st) {
-    var p = st.player, m = p.macro;
-    function fora(v) { return Math.abs(v) < 20 ? v : v + (v < 0 ? -25 : 25); }
-    if (!(st.mapa >= 2)) {
-      st.mapa = 2;
-      st.mobs.forEach(function (b) { var s = world.spawns[b.sp]; b.x = b.wx = s.x; b.z = b.wz = s.z; b.fight = false; });
+    var p = st.player, m = p.macro, G = world.game, ids = {};
+    world.nodes.forEach(function (n) { ids[n.id] = 1; if (!st.nodes[n.id]) { st.nodes[n.id] = { alive: true, left: 0 }; } });
+    Object.keys(st.nodes).forEach(function (id) { if (!ids[id]) { delete st.nodes[id]; } });
+    if (p.action && p.action.type === 'gather' && !ids[p.action.id]) { p.action = null; }
+    st.mobs = st.mobs.filter(function (b) { return b.kind !== 'coelho' || b.sp < world.spawns.length; });
+    world.spawns.forEach(function (s, i) {
+      if (st.mobs.some(function (b) { return b.kind === 'coelho' && b.sp === i; })) { return; }
+      st.mobs.push({ id: 'coelho' + i, kind: 'coelho', sp: i, x: s.x, z: s.z, hp: G.monsters.coelho.hp, alive: true, left: 0,
+        fight: false, wx: s.x, wz: s.z, wait: 0, atkCd: 0, face: 0 });
+    });
+    if (!(st.mapa >= 3)) {
+      st.mapa = 3;
+      st.mobs.forEach(function (b) { var s = world.spawns[b.sp]; if (s) { b.x = b.wx = s.x; b.z = b.wz = s.z; b.fight = false; } });
       var a = m.area;
-      if (a && (fora(a.x) !== a.x || fora(a.z) !== a.z)) {
-        var x = fora(a.x), z = fora(a.z), best = null, bd = 1e9;
-        world.nodes.forEach(function (n) { var d = dist(x, z, n.x, n.z); if (d < bd) { best = n; bd = d; } });
-        if (best && bd > a.r) { x = best.x; z = best.z; }
-        var c = world.nearestFree(x, z) || { x: x, z: z };
+      if (a && !world.nodes.some(function (n) { return dist(a.x, a.z, n.x, n.z) <= a.r; })) {
+        var best = null, bd = 1e9;
+        world.nodes.forEach(function (n) { var d = dist(a.x, a.z, n.x, n.z); if (d < bd) { best = n; bd = d; } });
+        var c = (best && world.nearestFree(best.x, best.z)) || { x: a.x, z: a.z };
         m.area = { x: c.x, z: c.z, r: a.r };
       }
       m.path = null; m.goal = null; p.goto = null;

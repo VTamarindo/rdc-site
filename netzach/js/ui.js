@@ -337,7 +337,12 @@
     trigger.focus(); // a opção some com o menu: o foco do teclado volta ao botão
     mapTip(b, 4);
   }
-  function openMap() { mapArmed = false; mapMenu = false; mapHover = null; mapDrag = null; mapDragged = false; mapCx = mapCz = 0; mapZ = 1; clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); mapZoomTo(0); }
+  // o mapa grande abre no meio da barra de zoom, centrado em quem joga; 0% mostra o mapa inteiro
+  var MAP_OPEN = 50, MINI_ZOOM = 80;
+  function openMap() {
+    mapArmed = false; mapMenu = false; mapHover = null; mapDrag = null; mapDragged = false; mapCx = st.player.x; mapCz = st.player.z; mapZ = 1;
+    clearTimeout(mapTipT); mapTipT = 0; $('map-tip').hidden = true; show('w-map'); mapUi(); mapZoomTo(MAP_OPEN);
+  }
   function pauseMacro() {
     if (!macroOn()) { return false; }
     sim.takeControl(st); st.player.macro.stop = isTouch ? 'Macro pausada · marque a área no mapa' : ctrl.active() ? 'Macro pausada · RB para marcar a área' : 'Macro pausada · G para marcar a área';
@@ -391,54 +396,104 @@
     c.strokeStyle = 'rgba(240,226,190,.9)'; c.lineWidth = 3; c.strokeText(t, x, y);
     c.fillStyle = INK; c.fillText(t, x, y);
   }
+  // tinta de cada região e o desenho que se repete dentro dela (só no que está à vista)
+  var REGIAO = { vila: 'rgba(160,120,60,.10)', floresta: 'rgba(60,96,36,.16)', rochas: 'rgba(110,100,86,.2)', campina: 'rgba(176,196,84,.14)' };
+  function sorteMapa(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
+  // big: mapa grande (zoom da barra, arrastável); senão, o pequeno do canto: zoom fixo, sempre centrado em quem joga
   function drawMap(cv, S, big) {
-    var c = cv.getContext('2d'), B = world.B, zm = big ? mapZ : 1, ox = big ? mapCx : 0, oz = big ? mapCz : 0, k = S / (B * 2) * zm;
+    var c = cv.getContext('2d'), B = world.B, p = st.player, zm = big ? mapZ : Math.pow(mapZMax, MINI_ZOOM / 100);
+    var ox = big ? mapCx : p.x, oz = big ? mapCz : p.z, k = S / (B * 2) * zm, hw = S / 2 / k + 4; // hw: meia janela em metros, com folga
     var u = big ? Math.max(1, Math.min(1.4, S / (cv.clientWidth || S))) : 1; // mapa encolhido (celular): letras maiores
     function X(x) { return (x - ox) * k + S / 2; }
     function Z(z) { return (z - oz) * k + S / 2; }
+    function vis(x, z, m) { return Math.abs(x - ox) < hw + (m || 0) && Math.abs(z - oz) < hw + (m || 0); }
+    function rect(x0, z0, x1, z1) { c.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k); }
     c.setLineDash([]); c.lineCap = 'butt'; c.lineJoin = 'miter';
-    var pw = S / zm; // o papel acompanha o zoom: as bordas queimadas marcam o fim da imagem
-    c.drawImage(parchment(S), (ox + B) / (B * 2) * S - pw / 2, (oz + B) / (B * 2) * S - pw / 2, pw, pw, 0, 0, S, S);
-    var F = V.fence.half, gt0 = V.fence.gate.from, gt1 = V.fence.gate.to, f = F - 0.5;
-    // dentro da cerca, um leve tom de terra cultivada
-    c.fillStyle = 'rgba(160,120,60,.10)'; c.fillRect(X(-f), Z(-f), f * 2 * k, f * 2 * k);
+    c.fillStyle = '#e2cc98'; c.fillRect(0, 0, S, S); // fora do mundo (o pequeno, perto da borda): papel liso
+    var pw = S / zm, sx = (ox + B) / (B * 2) * S - pw / 2, sz = (oz + B) / (B * 2) * S - pw / 2; // o papel acompanha o zoom
+    var cx0 = Math.max(0, sx), cz0 = Math.max(0, sz), cx1 = Math.min(S, sx + pw), cz1 = Math.min(S, sz + pw), q = S / pw;
+    if (cx1 > cx0 && cz1 > cz0) { c.drawImage(parchment(S), cx0, cz0, cx1 - cx0, cz1 - cz0, (cx0 - sx) * q, (cz0 - sz) * q, (cx1 - cx0) * q, (cz1 - cz0) * q); }
+
+    // regiões: floresta com copinhas, pedregal com pedrinhas, campina com tufos de capim
+    var passo = Math.max(5, 26 / k); // um desenho a cada ~26 px, nunca mais denso que 5 m
+    (V.regions || []).forEach(function (r) {
+      c.fillStyle = REGIAO[r.kind] || 'rgba(0,0,0,0)';
+      r.rects.forEach(function (q) {
+        if (!vis((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, Math.max(q[2] - q[0], q[3] - q[1]) / 2)) { return; }
+        rect(q[0], q[1], q[2], q[3]);
+        if (r.kind === 'vila') { return; }
+        c.save(); c.beginPath(); c.rect(X(q[0]), Z(q[1]), (q[2] - q[0]) * k, (q[3] - q[1]) * k); c.clip();
+        var gx0 = Math.floor(Math.max(q[0], ox - hw) / passo), gx1 = Math.ceil(Math.min(q[2], ox + hw) / passo);
+        var gz0 = Math.floor(Math.max(q[1], oz - hw) / passo), gz1 = Math.ceil(Math.min(q[3], oz + hw) / passo);
+        c.lineWidth = 1; c.strokeStyle = r.kind === 'floresta' ? 'rgba(52,74,30,.4)' : r.kind === 'rochas' ? 'rgba(80,70,60,.45)' : 'rgba(96,120,40,.45)';
+        c.beginPath();
+        for (var i = gx0; i <= gx1; i++) { for (var j = gz0; j <= gz1; j++) {
+          var n = i * 7919 + j * 104729, x = X((i + sorteMapa(n)) * passo), z = Z((j + sorteMapa(n + 0.5)) * passo), s = 3 + sorteMapa(n + 0.3) * 2;
+          if (r.kind === 'floresta') { c.moveTo(x + s, z); c.arc(x, z, s, 0, 6.3); }
+          else if (r.kind === 'rochas') { c.moveTo(x - s, z + s * 0.5); c.lineTo(x - s * 0.2, z - s * 0.6); c.lineTo(x + s, z + s * 0.5); c.closePath(); }
+          else { c.moveTo(x - s * 0.6, z - s * 0.8); c.lineTo(x, z); c.lineTo(x + s * 0.6, z - s * 0.8); c.moveTo(x, z - s); c.lineTo(x, z); }
+        } }
+        c.stroke(); c.restore();
+      });
+    });
     // estrada: duas linhas de tinta
     var rx0 = X(V.road.x - V.road.w / 2), rx1 = X(V.road.x + V.road.w / 2), rz0 = Z(V.road.z0), rz1 = Z(V.road.z1);
     c.fillStyle = 'rgba(196,160,98,.45)'; c.fillRect(rx0, rz0, rx1 - rx0, rz1 - rz0);
     c.strokeStyle = INK2; c.lineWidth = big ? 1.2 : 0.8;
     c.beginPath(); c.moveTo(rx0, rz0); c.lineTo(rx0, rz1); c.moveTo(rx1, rz0); c.lineTo(rx1, rz1); c.stroke();
-    // ruas de terra, plantações e pasto
+    // ruas de terra, a avenida calçada (pedras miúdas), plantações e cercados
     c.fillStyle = 'rgba(196,160,98,.38)';
-    V.streets.forEach(function (r) { c.fillRect(X(r.x0), Z(r.z0), (r.x1 - r.x0) * k, (r.z1 - r.z0) * k); });
+    V.streets.forEach(function (r) { rect(r.x0, r.z0, r.x1, r.z1); });
+    var av = V.avenue;
+    if (av) {
+      c.fillStyle = 'rgba(176,160,132,.55)'; rect(av.x0, av.z0, av.x1, av.z1);
+      c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.beginPath();
+      c.moveTo(X(av.x0), Z(av.z0)); c.lineTo(X(av.x1), Z(av.z0)); c.moveTo(X(av.x0), Z(av.z1)); c.lineTo(X(av.x1), Z(av.z1)); c.stroke();
+      if (big && k > 4) {
+        c.fillStyle = 'rgba(59,36,20,.3)';
+        for (var ax = Math.ceil(Math.max(av.x0, ox - hw)); ax < Math.min(av.x1, ox + hw); ax += 1.5) { c.fillRect(X(ax), Z((av.z0 + av.z1) / 2) - 1, 2, 2); }
+      }
+    }
     function canteiro(x0, x1, z0, z1, tinta, risco) {
-      c.fillStyle = tinta; c.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k);
-      if (big) { c.strokeStyle = risco; c.lineWidth = 1; c.beginPath(); for (var y = z0 + 1; y < z1; y += 2) { c.moveTo(X(x0) + 2, Z(y)); c.lineTo(X(x1) - 2, Z(y)); } c.stroke(); }
+      c.fillStyle = tinta; rect(x0, z0, x1, z1);
+      if (big) { c.strokeStyle = risco; c.lineWidth = 1; c.beginPath(); for (var y = z0 + 1; y < z1; y += Math.max(2, 6 / k)) { c.moveTo(X(x0) + 2, Z(y)); c.lineTo(X(x1) - 2, Z(y)); } c.stroke(); }
     }
     var TINTA = { trigo: ['rgba(214,168,52,.5)', 'rgba(140,96,20,.55)'], cebola: ['rgba(196,136,56,.42)', 'rgba(110,70,24,.5)'],
       nabo: ['rgba(150,88,142,.34)', 'rgba(90,44,84,.5)'], alho_poro: ['rgba(84,140,108,.42)', 'rgba(36,84,64,.5)'] };
     V.fields.forEach(function (f) {
       (f.strips || [f]).forEach(function (s) { canteiro(f.x0, f.x1, s.z0, s.z1, TINTA[s.kind][0], TINTA[s.kind][1]); });
-      c.strokeStyle = INK2; c.lineWidth = big ? 1 : 0.6; c.strokeRect(X(f.x0), Z(f.z0), (f.x1 - f.x0) * k, (f.z1 - f.z0) * k);
     });
-    var P = V.pasture, q0 = P.x0 + 0.5, q1 = P.x1 - 0.5, r0 = P.z0 + 0.5, r1 = P.z1 - 0.5;
-    c.fillStyle = 'rgba(110,140,50,.2)'; c.fillRect(X(q0), Z(r0), (q1 - q0) * k, (r1 - r0) * k);
-    c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.beginPath();
-    c.moveTo(X(q0), Z(P.gate.from)); c.lineTo(X(q0), Z(r0)); c.lineTo(X(q1), Z(r0)); c.lineTo(X(q1), Z(r1)); c.lineTo(X(q0), Z(r1)); c.lineTo(X(q0), Z(P.gate.to)); c.stroke();
+    var P = V.pasture, cercados = [P].concat(V.folds || []);
+    cercados.forEach(function (Q) {
+      var q0 = Q.x0 + 0.5, q1 = Q.x1 - 0.5, r0 = Q.z0 + 0.5, r1 = Q.z1 - 0.5, g = Q.gate || {};
+      c.fillStyle = 'rgba(110,140,50,.2)'; rect(q0, r0, q1, r1);
+      c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.beginPath();
+      // cada face, aberta na porteira
+      [['north', q0, r0, q1, r0], ['east', q1, r0, q1, r1], ['south', q0, r1, q1, r1], ['west', q0, r0, q0, r1]].forEach(function (f) {
+        var h = f[2] === f[4]; // face horizontal (ao longo de x)
+        if (g.side !== f[0]) { c.moveTo(X(f[1]), Z(f[2])); c.lineTo(X(f[3]), Z(f[4])); return; }
+        if (h) { c.moveTo(X(f[1]), Z(f[2])); c.lineTo(X(g.from), Z(f[2])); c.moveTo(X(g.to), Z(f[2])); c.lineTo(X(f[3]), Z(f[2])); }
+        else { c.moveTo(X(f[1]), Z(f[2])); c.lineTo(X(f[1]), Z(g.from)); c.moveTo(X(f[1]), Z(g.to)); c.lineTo(X(f[1]), Z(f[4])); }
+      });
+      c.stroke();
+    });
     // praça
     c.fillStyle = 'rgba(196,160,98,.5)'; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k, 0, 7); c.fill();
     c.strokeStyle = INK; c.lineWidth = big ? 1.3 : 0.8; c.stroke();
-    if (big) { c.strokeStyle = INK2; c.lineWidth = 0.8; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k - 4, 0, 7); c.stroke(); }
-    // cerca: linha dupla com postes, aberta no portão
-    c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 1;
-    c.beginPath();
-    c.moveTo(X(gt0), Z(f)); c.lineTo(X(-f), Z(f)); c.lineTo(X(-f), Z(-f)); c.lineTo(X(f), Z(-f)); c.lineTo(X(f), Z(f)); c.lineTo(X(gt1), Z(f));
-    c.stroke();
-    if (big) {
-      c.fillStyle = INK;
-      for (var t = -f; t <= f + 0.01; t += 2.5) {
-        [[t, -f], [-f, t], [f, t]].concat(t < gt0 || t > gt1 ? [[t, f]] : []).forEach(function (q) { c.fillRect(X(q[0]) - 1.5, Z(q[1]) - 1.5, 3, 3); });
-      }
-    }
+    if (big && V.plaza.r * k > 8) { c.strokeStyle = INK2; c.lineWidth = 0.8; c.beginPath(); c.arc(X(V.plaza.x), Z(V.plaza.z), V.plaza.r * k - 4, 0, 7); c.stroke(); }
+    // portão: os dois mourões na estrada
+    var pv = V.gate;
+    if (pv) { c.fillStyle = INK; [-1, 1].forEach(function (s) { var x = X(pv.x + s * (pv.w / 2 + 0.5)); c.fillRect(x - 2, Z(pv.z) - 2, 4, 4); }); }
+    // pedras soltas e moitas
+    (V.boulders || []).forEach(function (b) {
+      if (!vis(b[0], b[1])) { return; }
+      var s = Math.max(1.6, b[2] * k * 0.5); c.fillStyle = 'rgba(120,112,98,.6)'; c.beginPath(); c.arc(X(b[0]), Z(b[1]), s, 0, 7); c.fill();
+    });
+    c.fillStyle = 'rgba(80,110,44,.55)';
+    (V.bushes || []).forEach(function (b) {
+      if (!vis(b[0], b[1])) { return; }
+      c.beginPath(); c.arc(X(b[0]), Z(b[1]), Math.max(1.2, b[2] * k * 0.6), 0, 7); c.fill();
+    });
     // objetos fixos: a mesma tinta das casas
     world.props.forEach(function (o) {
       c.fillStyle = 'rgba(122,72,34,.55)'; c.fillRect(X(o.x - o.w / 2), Z(o.z - o.d / 2), o.w * k, o.d * k);
@@ -447,7 +502,7 @@
     world.buildings.forEach(function (b) {
       var x = X(b.x0), z = Z(b.z0), w = (b.x1 - b.x0) * k, h = (b.z1 - b.z0) * k;
       c.fillStyle = 'rgba(122,72,34,.55)'; c.fillRect(x, z, w, h);
-      if (big) {
+      if (big && k > 3) {
         c.save(); c.beginPath(); c.rect(x, z, w, h); c.clip();
         c.strokeStyle = 'rgba(59,36,20,.35)'; c.lineWidth = 1;
         for (var d = -h; d < w; d += 6) { c.beginPath(); c.moveTo(x + d, z + h); c.lineTo(x + d + h, z); c.stroke(); }
@@ -455,13 +510,14 @@
       }
       c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 0.9; c.strokeRect(x, z, w, h);
     });
-    // árvores e veios
+    // árvores e veios (só os que estão à vista)
     world.nodes.forEach(function (n) {
+      if (!vis(n.x, n.z)) { return; }
       var alive = st.nodes[n.id].alive, x = X(n.x), z = Z(n.z);
       if (n.kind === 'arvore') {
-        var r = Math.max(1.8, k * 0.95);
+        var r = Math.max(1.8, k * 0.95 * (n.s || 1));
         if (!alive) { c.fillStyle = 'rgba(59,36,20,.4)'; c.fillRect(x - 1.5, z - 1, 3, 2); return; }
-        if (big) { c.strokeStyle = INK; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, z); c.lineTo(x, z + r * 1.1); c.stroke(); }
+        if (big && k > 3) { c.strokeStyle = INK; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, z); c.lineTo(x, z + r * 1.1); c.stroke(); }
         c.fillStyle = 'rgba(88,104,44,.75)'; c.beginPath(); c.arc(x, z - (big ? r * 0.25 : 0), r, 0, 7); c.fill();
         c.strokeStyle = INK; c.lineWidth = big ? 1.1 : 0.7; c.stroke();
       } else {
@@ -473,7 +529,7 @@
     });
     // coelhos
     c.fillStyle = '#6b4424';
-    st.mobs.forEach(function (m) { if (m.alive) { c.beginPath(); c.arc(X(m.x), Z(m.z), big ? 2.4 : 1.4, 0, 7); c.fill(); } });
+    st.mobs.forEach(function (m) { if (m.alive && vis(m.x, m.z)) { c.beginPath(); c.arc(X(m.x), Z(m.z), big ? 2.4 : 1.4, 0, 7); c.fill(); } });
     // gente: tinta azul
     world.npcs.forEach(function (n) {
       c.fillStyle = '#2c4a7a'; c.strokeStyle = '#f1e2bb'; c.lineWidth = 1;
@@ -487,16 +543,33 @@
       c.strokeText('!', X(qd.x), Z(qd.z)); c.fillText('!', X(qd.x), Z(qd.z)); c.restore();
     }
     if (big) {
-      var NOME = { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar', casa_senhor: 'Casa do senhor', padaria: 'Padaria' };
-      var ACIMA = { casa_senhor: 8, padaria: 6.5, ferreiro: 7, bar: 7 }; // metros ao norte: nesta escala o nome não cabe sobre a casa sem bater no vizinho
-      V.buildings.forEach(function (b) { if (NOME[b.type]) { label(c, NOME[b.type], X(b.x), Z(b.z - (ACIMA[b.type] || 0)), Math.round(14 * u), false); } });
-      label(c, 'Moradias', X(-30), Z(25), Math.round(13 * u), false);
-      label(c, 'Pasto', X((P.x0 + P.x1) / 2), Z((P.z0 + P.z1) / 2), Math.round(13 * u), true);
-      V.fields.forEach(function (f) {
-        (f.strips || [f]).forEach(function (s) { label(c, s.name, X((f.x0 + f.x1) / 2), Z((s.z0 + s.z1) / 2), Math.round(12 * u), true); });
+      // de perto, os nomes das casas e lugares; de longe, só as regiões (os nomes da vila se atropelariam)
+      var perto = k >= 3.2;
+      (V.regions || []).forEach(function (r) {
+        if (r.kind === 'vila' && perto) { return; }
+        var q = r.rects.slice().sort(function (a, b) { return (b[2] - b[0]) * (b[3] - b[1]) - (a[2] - a[0]) * (a[3] - a[1]); })[0];
+        var lx = (q[0] + q[2]) / 2, lz = (q[1] + q[3]) / 2;
+        if (r.kind === 'vila') { lx = V.plaza.x - 40; lz = V.plaza.z + 10; } // no vão entre as moradias e a horta, longe dos outros nomes
+        label(c, r.name, X(lx), Z(lz), Math.round((perto ? 16 : 14) * u), true);
       });
-      label(c, 'Praça', X(V.plaza.x), Z(V.plaza.z), Math.round(12 * u), true);
-      label(c, 'Portão', X(V.road.x) + 22 + 8 * u, Z(F) + 8 * u, Math.round(11 * u), true);
+      if (perto) {
+        var NOME = { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar', casa_senhor: 'Casa do senhor', padaria: 'Padaria', alfaiate: 'Alfaiate' };
+        // o nome fica logo ao norte da pegada, para não cobrir a porta nem o vizinho
+        V.buildings.forEach(function (b, i) { if (NOME[b.type]) { label(c, NOME[b.type], X(b.x), Z(world.buildings[i].z0 - 2.2), Math.round(14 * u), false); } });
+        var mor = world.buildings.filter(function (b, i) { return V.buildings[i].type === 'moradia'; });
+        if (mor.length) {
+          var mx0 = Math.min.apply(null, mor.map(function (b) { return b.x0; })), mx1 = Math.max.apply(null, mor.map(function (b) { return b.x1; }));
+          var mz0 = Math.min.apply(null, mor.map(function (b) { return b.z0; }));
+          label(c, 'Moradias', X((mx0 + mx1) / 2), Z(mz0 - 2.5), Math.round(13 * u), false);
+        }
+        if (av) { label(c, av.name || 'Avenida', X((V.plaza.x + V.plaza.r + av.x1) / 2), Z((av.z0 + av.z1) / 2), Math.round(12 * u), true); }
+        cercados.forEach(function (Q) { label(c, Q.name || 'Pasto', X((Q.x0 + Q.x1) / 2), Z((Q.z0 + Q.z1) / 2), Math.round(13 * u), true); });
+        V.fields.forEach(function (f) {
+          (f.strips || [f]).forEach(function (s) { label(c, s.name, X((f.x0 + f.x1) / 2), Z((s.z0 + s.z1) / 2), Math.round(12 * u), true); });
+        });
+        label(c, 'Praça', X(V.plaza.x), Z(V.plaza.z), Math.round(12 * u), true);
+        if (pv) { label(c, pv.name || 'Portão', X(pv.x) + 22 + 8 * u, Z(pv.z) + 8 * u, Math.round(11 * u), true); }
+      }
       compass(c, S - 36, S - 40, 22);
       // moldura de linha dupla
       c.strokeStyle = INK; c.lineWidth = 1.2; c.strokeRect(5.5, 5.5, S - 11, S - 11);
