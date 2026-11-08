@@ -221,8 +221,81 @@ body.touch .only-pc { display: none; }
 #iv-stance { display: block; }
 #iv-res { display: inline-block; margin-top: 4px; color: var(--wax); }
 
+/* personagem: abas, casas do equipamento, números e atributos. Tudo em minmax(0, 1fr): no celular nada empurra a janela para os lados */
+#w-char { width: min(700px, 94vw); }
+.ch-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ch-top .bar { flex: 1 1 180px; margin: 2px 0; height: 17px; }
+.ch-top .bar span { line-height: 16px; }
+.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 8px 0 10px; }
+.tabs button { border-radius: 0; padding: 7px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabs button:first-child { border-radius: 3px 0 0 3px; }
+.tabs button:last-child { border-radius: 0 3px 3px 0; }
+.tabs button + button { margin-left: -1px; }
+@media (max-width: 480px) { .tabs button { font-size: 13.5px; padding: 7px 2px; } #w-char { padding: 10px 10px 14px; } }
+.tabs button[aria-selected="true"] { color: #f8ead0; border-color: #3a0d08; background: var(--grain), linear-gradient(#a8332a, #741711); box-shadow: inset 0 0 0 2px rgba(232, 190, 100, .7), inset 0 0 0 3px rgba(58, 13, 8, .6); }
+.tabs button[aria-selected="true"] .key { color: #f3e6c8; border-color: rgba(243, 230, 200, .6); }
+#tab-pts { display: inline-block; min-width: 1.5em; margin-left: 2px; padding: 0 4px; border-radius: 9px; font-size: 12px; line-height: 1.5; background: #d9a62e; color: #2b1709; }
+.ch-equip { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 640px) { .ch-equip { grid-template-columns: minmax(0, 1fr); } }
+/* boneco: arma e munição à esquerda, o corpo no meio, colar e anéis à direita */
+.eq-grid { display: grid; gap: 5px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "arma cabeca colar" "municao peito anel1" "luvas calcas anel2" ". botas anel3"; }
+.eq-cell { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 6px; text-align: left; }
+.eq-cell .ic { position: relative; flex: none; width: 40px; height: 40px; }
+.eq-cell .ic svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 0 rgba(255, 245, 220, .6)); }
+.eq-cell .ic .n { position: absolute; right: -3px; bottom: -3px; font-size: 12px; font-weight: bold; text-shadow: 0 0 2px #f8efd8, 0 0 2px #f8efd8, 0 0 3px #f8efd8; }
+.eq-cell .eq-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.eq-cell small { font-size: 11px; color: var(--dim); font-variant: small-caps; letter-spacing: .03em; }
+.eq-cell b { font-weight: normal; font-size: 13px; overflow-wrap: anywhere; }
+.eq-cell.empty { background: var(--grain), linear-gradient(#e2cd9c, #d2b881); }
+.eq-cell.empty .ic svg { opacity: .28; filter: grayscale(1); }
+.eq-cell.empty b { color: var(--dim); font-style: italic; }
+.eq-cell.off { opacity: .6; }
+/* celular em pé: ícone em cima, nome embaixo */
+@media (max-width: 480px) {
+  .eq-cell { flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 4px 3px; }
+  .eq-cell .eq-t { align-items: center; }
+  .eq-cell .ic { width: 34px; height: 34px; }
+  .eq-cell b { font-size: 12px; }
+}
+.sheet.stats { grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14px; }
+.sheet.stats dt { font-size: 13.5px; }
+.sheet.stats dd { overflow-wrap: anywhere; }
+#pn-equip > .sheet { margin-top: 12px; }
+.sheet dd { min-width: 0; }
+/* atributos */
+.at-pts { margin: 2px 0 6px; font-size: 15px; }
+.at-pts b { color: var(--wax); font-size: 18px; }
+.at-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+@media (max-width: 600px) { .at-list { grid-template-columns: minmax(0, 1fr); } }
+.at-list li { padding: 6px 0 4px; border-bottom: 1px dotted rgba(74, 44, 20, .55); min-width: 0; }
+.at-head { display: flex; align-items: center; gap: 6px; }
+.at-head b { flex: 1; min-width: 0; font-weight: normal; font-size: 16px; color: var(--wax); font-variant: small-caps; letter-spacing: .04em; }
+.at-v { font-size: 17px; min-width: 2.4em; text-align: right; }
+.at-v i { font-style: normal; color: #2f6b1f; font-size: 14px; }
+.at-head button { width: 34px; height: 32px; padding: 0; font-size: 18px; line-height: 1; }
+.at-list .hint { margin: 3px 0 2px; line-height: 1.3; }
+.at-eff { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink2); }
+.at-ok { display: flex; gap: 8px; align-items: stretch; margin-top: 10px; }
+.at-ok button { margin: 0; }
+.at-ok #at-undo { flex: none; }
+/* janela por cima: linhas do item e itens que servem na casa */
+.pop-lines { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.35; }
+.sell-pop h3 { margin: 4px 0 0; font-size: 15px; color: var(--wax); font-weight: normal; font-variant: small-caps; letter-spacing: .04em; }
+.sell-pop .hint { margin: 0; }
+.pop-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 5px 8px; }
+.pop-item svg { flex: none; width: 36px; height: 36px; }
+.pop-item span { display: flex; flex-direction: column; min-width: 0; }
+.pop-item b { font-weight: normal; }
+.pop-item small { font-size: 12px; color: var(--dim); }
+/* loja: preço no canto e o tamanho do feixe */
+.sell-cell .n.price { color: #6b4a08; }
+.sell-cell .lot { position: absolute; left: 3px; top: 1px; font-size: 11px; font-weight: bold; color: var(--ink2); text-shadow: 0 0 2px #f8efd8; }
+#fx span.crit { color: #ffd34a; font-size: 22px; }
+
 /* bolsa */
-#w-bag .row { font-size: 15px; margin: 8px 0 4px; }
+#pn-bag .row { font-size: 15px; margin: 4px 0 4px; }
+#bg-board { margin-top: 8px; }
+#bg-extra { margin: 6px 0 0; }
 .bar.cap i { background: linear-gradient(#c79a4a, #93621c); }
 .bar.cap.full i { background: linear-gradient(#b8382b, #7d1a12); }
 .ledger { list-style: none; margin: 10px 0 0; padding: 0; }
