@@ -12,7 +12,7 @@
   var MORTA = 0.18;                                     // abaixo disso o analógico conta como solto: controle gasto não anda sozinho
   var OLHAR_X = 2.6, OLHAR_Y = 1.7;                     // radianos por segundo com o analógico no fim
   var REPETE_1 = 0.35, REPETE = 0.12;                   // segurar uma direção: espera antes de repetir, e o passo depois
-  var CURSOR = 0.45, ROLA = 620, ZOOM = 60;             // cursor em frações do mapa por segundo; rolagem em pixels; zoom em passos da barra
+  var CURSOR = 0.5, ROLA = 620, ZOOM = 60;              // cursor em larguras do mapa por segundo; rolagem em pixels; zoom em passos da barra
   var ALVOS = 'button, input, select, textarea, a[href]';
 
   function analogico(x, y) {
@@ -31,11 +31,15 @@
 
   NZ.controle = function (api) {
     var antes = [], ativo = false, avisou = false, foco = null, indice = 0, raizAntes = null, dir = null, espera = 0, rolar = 0, zoom = 0;
-    var cx = 0.5, cy = 0.5, cursor = document.getElementById('map-cur'), mapa = document.getElementById('bigmap'), usaCursor = true;
+    // cursor do mapa em pixels da tela (null = ainda não posto: começa no meio do mapa); arrasta = barra presa ao cursor com A segurado
+    var px = null, py = null, arrasta = null, noCanvas = false;
+    var cursor = document.getElementById('map-cur'), mapa = document.getElementById('bigmap'), janMapa = document.getElementById('w-map');
 
     function liga(v) {
       if (v === ativo) { return; }
       ativo = v; document.body.classList.toggle('pad', v);
+      // sem blur: o foco pode estar no campo de texto, e tirá-lo fecharia o teclado do console
+      if (!v) { cursor.hidden = true; arrasta = null; if (foco) { foco.classList.remove('pad-foco'); foco = null; } }
       api.modo();
     }
     // câmera invertida por eixo: escolha de quem joga, guardada no navegador, fora do save
@@ -61,14 +65,15 @@
     window.addEventListener('pointerdown', solta, true);
     window.addEventListener('keydown', solta, true);
 
-    function poe(el) {
+    // fixo = foco do cursor do mapa: rolar até o botão o tiraria de baixo do cursor
+    function poe(el, fixo) {
       if (foco === el) { return; }
       if (foco) { foco.classList.remove('pad-foco'); if (document.activeElement === foco) { foco.blur(); } }
       foco = el;
       if (!el) { return; }
       el.classList.add('pad-foco');
       if (!digitavel(el)) { el.focus({ preventScroll: true }); } // focar um campo de texto abriria o teclado do console sem pedir
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (!fixo) { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
     }
     function alvos(raiz) {
       return Array.prototype.filter.call(raiz.querySelectorAll(ALVOS), function (el) { return visivel(el) && !el.classList.contains('num'); });
@@ -91,7 +96,8 @@
         var vai = d === 'c' ? -dy : d === 'b' ? dy : d === 'e' ? -dx : dx;
         var lado = d === 'c' || d === 'b' ? vao(a.left, a.right, b.left, b.right) : vao(a.top, a.bottom, b.top, b.bottom);
         if (vai < 4) { return; }
-        var n = vai + lado * 2.5;
+        // para os lados, o que está na mesma linha ganha: senão o botão largo logo acima, perto do centro, rouba o vizinho da direita
+        var n = vai + lado * 2.5 + (lado > 0 && (d === 'e' || d === 'd') ? 1e4 : 0);
         if (n < nota) { nota = n; melhor = el; }
       });
       return melhor;
@@ -121,49 +127,68 @@
       if (!foco) { poe(escolhe(lista)); return; }
       var v = vizinho(lista, d); if (v) { poe(v); }
     }
-    function pontoNaTela() {
-      var r = mapa.getBoundingClientRect();
-      return { clientX: r.left + cx * r.width, clientY: r.top + cy * r.height, bubbles: true };
+    function ponto() { return { clientX: px, clientY: py, bubbles: true }; }
+    // barra presa ao cursor: o valor segue a posição do cursor sobre ela
+    function arrastaBarra(el) {
+      var q = el.getBoundingClientRect(), f = Math.max(0, Math.min(1, (px - q.left) / q.width));
+      var mn = +el.min || 0, mx = el.max === '' ? 100 : +el.max, passo = +el.step || 1;
+      var v = Math.round((mn + f * (mx - mn)) / passo) * passo;
+      if (v === +el.value) { return; }
+      el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    function cursorNoMapa(on) {
-      cursor.hidden = !on; if (!on) { return; }
-      cursor.style.left = cx * 100 + '%'; cursor.style.top = cy * 100 + '%';
-    }
+    // no mapa não há foco andando entre botões: o cursor percorre a janela inteira, e A age no que estiver embaixo dele
     function noMapa(g, b, press, l, r, dt) {
-      if (l[0] || l[1]) {
-        usaCursor = true; poe(null);
-        var nx = cx + l[0] * CURSOR * dt, ny = cy + l[1] * CURSOR * dt;
-        // no canto, com zoom, o mapa anda em vez de o cursor sair
-        api.mapPan(nx < 0 ? nx : nx > 1 ? nx - 1 : 0, ny < 0 ? ny : ny > 1 ? ny - 1 : 0);
-        cx = Math.max(0, Math.min(1, nx)); cy = Math.max(0, Math.min(1, ny));
-        mapa.dispatchEvent(new PointerEvent('pointermove', pontoNaTela()));
-      }
+      var jr = janMapa.getBoundingClientRect(), mr = mapa.getBoundingClientRect(), m = 6;
+      if (px === null) { px = mr.left + mr.width / 2; py = mr.top + mr.height / 2; }
+      var vel = Math.max(mr.width, 280) * CURSOR;
+      px += l[0] * vel * dt; py += l[1] * vel * dt;
+      // janela maior que a tela (celular deitado): empurrar o cursor contra a borda rola a janela.
+      // O limite é medido com o cursor no topo: lá embaixo ele mesmo aumentaria a área de rolagem, sem fim
+      cursor.style.top = '0px';
+      var fim = janMapa.scrollHeight - janMapa.clientHeight;
+      if (py < jr.top + m) { janMapa.scrollTop = Math.max(0, janMapa.scrollTop - (jr.top + m - py)); }
+      if (py > jr.bottom - m) { janMapa.scrollTop = Math.min(fim, janMapa.scrollTop + py - (jr.bottom - m)); }
+      px = Math.max(jr.left + m, Math.min(jr.right - m, px)); py = Math.max(jr.top + m, Math.min(jr.bottom - m, py));
+      cursor.hidden = false;
+      cursor.style.left = (px - jr.left - janMapa.clientLeft + janMapa.scrollLeft) + 'px';
+      cursor.style.top = (py - jr.top - janMapa.clientTop + janMapa.scrollTop) + 'px';
+
+      var el = document.elementFromPoint(px, py), alvo = el && el.closest ? el.closest(ALVOS) : null;
+      if (alvo && (!janMapa.contains(alvo) || !visivel(alvo))) { alvo = null; }
+      var sobre = el === mapa;
+      if (sobre) { mapa.dispatchEvent(new PointerEvent('pointermove', ponto())); } // o mapa mostra o que há sob o cursor
+      else if (noCanvas) { mapa.dispatchEvent(new PointerEvent('pointerleave', ponto())); }
+      noCanvas = sobre;
+      if (!arrasta) { poe(alvo, true); }
+
       if (r[0] || r[1]) { api.mapPan(r[0] * CURSOR * dt, r[1] * CURSOR * dt); }
       zoom += ((g.buttons[RT] ? g.buttons[RT].value : 0) - (g.buttons[LT] ? g.buttons[LT].value : 0)) * ZOOM * dt;
       if (Math.abs(zoom) >= 1) { var z = zoom > 0 ? Math.floor(zoom) : Math.ceil(zoom); zoom -= z; api.mapZoom(z); }
-      cursorNoMapa(true);
       if (press(RB)) { api.cmd('macro'); return; }
+      if (!b[A]) { arrasta = null; }
+      if (arrasta) { arrastaBarra(arrasta); return; }
       if (press(A)) {
-        if (foco && !usaCursor) { aperta(foco); return; }
-        mapa.dispatchEvent(new MouseEvent('click', pontoNaTela()));
+        if (alvo && ajustavel(alvo)) { arrasta = alvo; arrastaBarra(alvo); }
+        else if (alvo) { aperta(alvo); }
+        else if (sobre) { mapa.dispatchEvent(new MouseEvent('click', ponto())); }
       }
     }
     function janela(g, b, press, l, r, dt, win) {
-      var sell = api.sell(), box = api.mapBox(), raiz = sell || box || document.getElementById(win);
-      var soMapa = win === 'w-map' && !sell && !box;
+      var sell = api.sell(), box = api.mapBox(), raiz = sell || box || api.painel() || document.getElementById(win);
       if (press(B)) {
         if (sell) { api.closeSell(); } else if (box) { api.mapBoxClose(); } else { api.hide(); }
         return;
       }
+      if (win === 'w-map' && !sell) { raizAntes = null; noMapa(g, b, press, l, r, dt); return; }
+      cursor.hidden = true; px = null; arrasta = null;
       if (raiz !== raizAntes) { raizAntes = raiz; indice = 0; } // outra janela ou submenu: a posição da lista anterior não vale aqui
       var lista = alvos(raiz);
       if (foco && lista.indexOf(foco) < 0) { foco.classList.remove('pad-foco'); foco = null; }
-      if (!foco && !(soMapa && usaCursor)) { poe(escolhe(lista)); }
+      if (!foco) { poe(escolhe(lista)); }
       indice = Math.max(0, lista.indexOf(foco));
-      var d = direcao(b, soMapa ? [0, 0] : l, dt);
-      if (d) { if (soMapa) { usaCursor = false; } anda(lista, d); }
-      if (soMapa) { noMapa(g, b, press, l, r, dt); return; }
-      cursorNoMapa(false);
+      var d = direcao(b, l, dt);
+      if (d) { anda(lista, d); }
       if (press(A) && foco) { aperta(foco); return; }
       if (r[1]) {
         rolar += r[1] * ROLA * dt;
@@ -172,15 +197,14 @@
       }
     }
     function noJogo(press, l, r, dt) {
-      poe(null); cursorNoMapa(false); indice = 0; raizAntes = null; usaCursor = true; cx = cy = 0.5;
+      poe(null); cursor.hidden = true; indice = 0; raizAntes = null; px = null; arrasta = null;
       api.move(-l[1], l[0]);
       if (r[0] || r[1]) { api.look((inv.x ? -1 : 1) * r[0] * OLHAR_X * dt, (inv.y ? -1 : 1) * r[1] * OLHAR_Y * dt); }
       if (press(A)) { api.interact(); }
       if (press(X)) { api.cmd('potion'); }
-      if (press(Y)) { api.cmd('bag'); }
-      if (press(LB)) { api.cmd('inv'); }
+      if (press(Y)) { api.cmd('bag'); } // a janela Personagem: o inventário fica lá dentro, sem atalho próprio
       if (press(RB)) { api.cmd('macro'); }
-      if (press(L3)) { api.quests(); }
+      if (press(CIMA) || press(L3)) { api.quests(); }
       if (press(R3)) { api.cmd('stance'); }
     }
 
