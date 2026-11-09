@@ -1395,10 +1395,10 @@ def alfaiate():
     cz = f.m_poly([(34, 34), (62, 34), (70, 42), (68, 56), (56, 60), (48, 58), (40, 60), (28, 56), (26, 42)])
     f.soft(cz, .14); f.shape(cz, 'vinho', R=6, tex=.03)
     f.fold([(38, 46), (36, 56)], .2, .08); f.fold([(60, 46), (62, 56)], .22, .05); f.fold([(48, 50), (48, 58)], .16, .05)
-    f.line([(61, 44), (64, 51)], 'aco', .95); f.line([(61, 44), (58, 47), (58, 52)], 'linho_c', .8)
-    # gola com galão
-    f.poly([(43, 36), (53, 36), (52, 42), (44, 42)], sk, R=2, bias=-.12)
-    f.line([(42, 36), (44, 43), (52, 43), (54, 36)], 'mostarda', .6)
+    f.line([(61, 45), (63, 50)], 'aco', .95); f.px(60, 45, 'linho_c', .7); f.px(59, 46, 'linho_c', .55)
+    # gola com galão, fechada no pescoço
+    f.crease([(43, 37), (48, 39), (53, 37)], .18)
+    f.line([(42, 36), (44, 39), (48, 40), (52, 39), (54, 36)], 'mostarda', .6)
     # cordão de medir com nós, pendurado no pescoço
     for pts in ([(42, 40), (40, 58), (39, 76)], [(54, 40), (56, 58), (57, 72)]):
         f.line(pts, 'corda', .55)
@@ -1601,9 +1601,9 @@ def veado():
     f.shape(body, V, R=18, tex=.04, vgrad=.12)
     # juba do pescoço (no outono): pelo comprido e escuro na garganta
     f.adj(f.m_poly([(56, 74), (70, 70), (92, 100), (64, 108)]) & body, -.16)
-    for k in range(9):
-        x = 54 + k * 4; y = 76 + k * 3.4
-        f.shape(f.m_cap(x, y, x + 1, y + 9, 2.6, .6), V, R=2, bias=-.25)
+    for k in range(8):                                   # tufos pendendo da garganta, para baixo e para trás
+        x = 45 + k * 2.3 + (k % 2); y = 70 + k * 4.6
+        f.shape(f.m_poly([(x + 1, y - 3), (x + 6, y + 1), (x + 1, y + 8 + (k % 3)), (x - 2, y + 2)]), V, R=2, bias=-.3 + .04 * (k % 2), tex=.04)
     pelagem(f, body, 300, rng, .12)
     f.crease([(150, 92), (158, 112), (160, 132)], .12); f.crease([(92, 128), (90, 150)], .14); f.crease([(102, 94), (104, 118)], .08)
     # espelho claro na anca e rabo curto
@@ -1701,7 +1701,13 @@ def arbusto():
     f.shape(mass, 'tojo', R=26, tex=.06, bias=-.12)
     for (x, y, rx, ry) in lobes[1:-1]:
         dx, dy = (x - cx) / 60, (y - cy) / 40
-        f.shape(f.m_ell(x, y, rx * .85, ry * .85), 'tojo', R=rx * .8, bias=-.3 * dx - .3 * dy - .1, tex=.08, grain=2)
+        f.shape(f.m_ell(x, y, rx * .85, ry * .85), 'tojo', R=rx * .8, bias=-.18 * dx - .18 * dy - .1, tex=.08, grain=2)
+    ys, xs = np.where(mass); lum0 = f.lum.copy()
+    for _ in range(420):                                                                  # tufos de folhinhas
+        k = rng.randint(len(xs)); x, y = xs[k], ys[k]
+        r = rng.uniform(2.2, 4.2); m = f.m_ell(x, y, r, r * .8) & mass
+        f.shape(m, 'tojo', R=r, bias=lum0[y, x] - .6 + rng.uniform(-.05, .05), tex=.05)
+        f.adj(m & ~f.m_ell(x + 1, y + 1, r, r * .8), .08)
     # espinhos: traços curtos, e na borda saindo para fora
     ys, xs = np.where(mass); lum0 = f.lum.copy()
     for _ in range(1500):
@@ -2193,28 +2199,7 @@ def espada(lam='aco'):
     f.cap(*P(gc - d * 2), *P(gc - d * 36), 4, 4, 'cinto', R=3)
     pm = gc - d * 40
     f.ell(*P(pm), 7, 7, 'ferro', R=6); f.ell(*P(pm + d * 2 + n * 2), 2.2, 2.2, 'ferro', R=2, bias=0.15)
-    # cano da luva (manopla de couro) alargando para o pulso
-    arm = f.m_poly([(118, 152), (122, 132), (136, 122), (152, 124), (156, 140), (146, 156), (128, 158)])
-    f.soft(arm, 0.12); f.shape(arm, 'luva', R=9, tex=0.03, bias=-0.04)
-    for k in range(3): f.fold([(126 + k * 9, 155), (134 + k * 7, 128)], .12, .06, clip=arm)
-    f.crease([(122, 134), (138, 124), (152, 126)], .1)
-    # luva de couro fechada no cabo: dorso, quatro dedos enrolados e o polegar por cima
-    hc = gc - d * 19
-    back = box(hc + n * 4, 13, 12)
-    f.soft(f.m_poly(back), 0.16); f.poly(back, 'luva', R=8, tex=0.03)
-    for k in range(4):                                     # dedos: rolos ao longo do cabo, do lado de baixo
-        c = hc - n * 7 + d * (9 - k * 6.2)
-        m = f.m_ell(c[0], c[1], 5.2, 4.4)
-        f.soft(m, 0.1); f.shape(m, 'luva', R=4, tex=0.03, bias=-0.04 * k)
-        f.crease([P(c + d * 3 - n * 3), P(c + d * 3 + n * 3)], .14)
-    th0, th1 = hc + n * 9 + d * 2, hc + n * 3 + d * 15     # polegar
-    f.cap(*P(th0), *P(th1), 5, 3.8, 'luva', R=4, tex=0.03, bias=0.05)
-    f.crease([P(th0 - n * 3), P(th1 - n * 3)], .12)
-    for k in range(3): f.crease([P(hc + n * (10 - k * 2) - d * (6 - k * 6)), P(hc + n * (14 - k * 2) - d * (2 - k * 6))], .07)  # tendões
-    # punho da luva
-    cf = box(hc - d * 15 + n * 5, 5, 14)
-    f.soft(f.m_poly(cf), 0.12); f.poly(cf, 'luva', R=4, bias=-0.08, tex=0.03)
-    f.crease([P(hc - d * 11 + n * 16), P(hc - d * 11 - n * 8)], .14)
+    luva_no_cabo(f, gc - d * 19, d, n)
     return f
 
 
@@ -2231,6 +2216,193 @@ def espada_rastro():
     keep = band & (rng.uniform(0, 1, band.shape) < dens * 1.15)
     f.mat[keep] = f.mid('rastro'); f.lum[keep] = (0.35 + 0.65 * inner)[keep]
     return f
+
+
+def _rot(d, n):
+    """funções de apoio das armas: P (ponto -> tupla) e box (retângulo girado ao longo de d/n)"""
+    P = lambda v: (float(v[0]), float(v[1]))
+    def box(c, la, lb, ax=d, bx=n):
+        return [P(c + ax * la + bx * lb), P(c + ax * la - bx * lb), P(c - ax * la - bx * lb), P(c - ax * la + bx * lb)]
+    return P, box
+
+
+def luva_no_cabo(f, hc, d=ED, n=EN):
+    """manopla de couro fechada num cabo que passa por hc na direção d (o polegar fica do lado n), com o cano
+    alargando para o pulso no canto de baixo à direita do quadro; igual à mão da espada"""
+    P, box = _rot(d, n)
+    arm = f.m_poly([(118, 152), (122, 132), (136, 122), (152, 124), (156, 140), (146, 156), (128, 158)])
+    f.soft(arm, 0.12); f.shape(arm, 'luva', R=9, tex=0.03, bias=-0.04)
+    for k in range(3): f.fold([(126 + k * 9, 155), (134 + k * 7, 128)], .12, .06, clip=arm)
+    f.crease([(122, 134), (138, 124), (152, 126)], .1)
+    back = box(hc + n * 4, 13, 12)
+    f.soft(f.m_poly(back), 0.16); f.poly(back, 'luva', R=8, tex=0.03)
+    for k in range(4):                                     # dedos: rolos ao longo do cabo, do lado de baixo
+        c = hc - n * 7 + d * (9 - k * 6.2)
+        m = f.m_ell(c[0], c[1], 5.2, 4.4)
+        f.soft(m, 0.1); f.shape(m, 'luva', R=4, tex=0.03, bias=-0.04 * k)
+        f.crease([P(c + d * 3 - n * 3), P(c + d * 3 + n * 3)], .14)
+    th0, th1 = hc + n * 9 + d * 2, hc + n * 3 + d * 15     # polegar
+    f.cap(*P(th0), *P(th1), 5, 3.8, 'luva', R=4, tex=0.03, bias=0.05)
+    f.crease([P(th0 - n * 3), P(th1 - n * 3)], .12)
+    for k in range(3): f.crease([P(hc + n * (10 - k * 2) - d * (6 - k * 6)), P(hc + n * (14 - k * 2) - d * (2 - k * 6))], .07)  # tendões
+    cf = box(hc - d * 15 + n * 5, 5, 14)                   # punho da luva
+    f.soft(f.m_poly(cf), 0.12); f.poly(cf, 'luva', R=4, bias=-0.08, tex=0.03)
+    f.crease([P(hc - d * 11 + n * 16), P(hc - d * 11 - n * 8)], .14)
+
+
+# ---------------- armas em primeira pessoa (quadro 160x160, mão em EH, como a espada) ----------------
+MAT.update({
+    'freixo': ramp('2a1c10', '45301c', '624629', '7e5d38', '99764a', 'b18e5e'),   # cabo de freixo, claro
+    'teixo': ramp('2e140a', '4c2412', '6e381c', '8e5028', 'ad6a38', 'c8874e'),    # arco de teixo (cerne alaranjado)
+    'corda_a': ramp('4a4436', '6e6650', '948a6e', 'b6ac8e', 'd2caae'),            # corda do arco, linho encerado
+    'pena': ramp('3a3a36', '6a675e', '9a968a', 'c8c4b6', 'e6e2d6'),
+})
+DITHER.update({'freixo': 0.4, 'teixo': 0.35})
+
+
+def _cabo_machado(f, hc, L, d, n, mat='freixo', r=3.4):
+    """cabo de freixo levemente curvo: do toco abaixo da mão até a cabeça; a ponta de baixo alarga num punho"""
+    P, box = _rot(d, n)
+    pts = [hc - d * 18, hc + d * (L * .35) + n * 1.2, hc + d * (L * .75) + n * 1.0, hc + d * L]
+    m = np.zeros((f.h, f.w), bool)
+    for a, b in zip(pts, pts[1:]): m |= f.m_cap(*P(a), *P(b), r, r * .92)
+    m |= f.m_ell(*P(hc - d * 18), r + 1.6, r + 1.6)
+    f.soft(m, .14); f.shape(m, mat, R=r, tex=.05, bias=.02)
+    for t in range(-14, int(L), 9):                          # veio da madeira
+        c = hc + d * t + n * ((t // 9) % 2 - .5)
+        f.line([P(c), P(c + d * 5)], mat, .25)
+    return P, box
+
+
+def _cabeca(f, T, d, n, pts_ab, mat, bias=0.0, R=5):
+    """polígono dado em coordenadas (a ao longo do cabo, b para o lado n) a partir do centro T"""
+    P = lambda v: (float(v[0]), float(v[1]))
+    pts = [P(T + d * a + n * b) for a, b in pts_ab]
+    m = f.m_poly(pts); f.soft(m, .18, sigma=1.6, off=(2, 3)); f.shape(m, mat, R=R, tex=.03, bias=bias)
+    return m
+
+
+def _fio(f, T, d, n, pts_ab, mat, lum=.98, larg=2):
+    """fio afiado: faixa clara ao longo da borda de corte"""
+    P = lambda v: (float(v[0]), float(v[1]))
+    for k in range(larg):
+        f.line([P(T + d * a + n * (b + (k if b < 0 else -k))) for a, b in pts_ab], mat, lum - k * .25)
+
+
+def machado_trabalho():
+    """machado de trabalho (de lenhador): cabo de freixo, cabeça de ferro pequena em cunha com olho e nuca curta,
+    fio de aço caldeado; mesma mão e mesmo pivô da espada (a lâmina corta para a esquerda, do lado -n)"""
+    f = Fig(160, 160, seed=91); d, n = ED, EN; H = np.array(EH); hc = H + d * 3
+    P, box = _cabo_machado(f, hc, 100, d, n)
+    T = hc + d * 92
+    _cabeca(f, T, d, n, [(9, 7), (9, -4), (12, -14), (15, -24), (13, -27), (-11, -27), (-13, -24), (-10, -14), (-8, -4), (-8, 7)], 'ferro', .02)
+    nuca = _cabeca(f, T, d, n, [(7, 4), (7, 10), (-6, 10), (-6, 4)], 'ferro', -.08, R=3)
+    f.crease([P(T + d * 8 - n * 4), P(T - d * 7 - n * 4)], .2)                    # olho (onde o cabo entra)
+    f.crease([P(T + d * 11 - n * 15), P(T - d * 9 - n * 15)], .14)                # onde começa o aço do fio
+    fio = _cabeca(f, T, d, n, [(13, -16), (15, -24), (13, -27), (-11, -27), (-13, -24), (-11, -16)], 'aco', .12, R=3)
+    _fio(f, T, d, n, [(14, -26), (5, -27.3), (-5, -27.3), (-12, -26)], 'aco', .98)
+    f.px(*P(T + d * 2 + n * 7), 'ferro', .9)
+    luva_no_cabo(f, hc, d, n)
+    return f
+
+
+def machado_guerra():
+    """machado de guerra (de barba, à moda dos dinamarqueses): cabo mais longo, cabeça fina com a lâmina larga que
+    desce em barba junto ao cabo, fio de aço comprido e curvo, aro de latão no olho"""
+    f = Fig(160, 160, seed=92); d, n = ED, EN; H = np.array(EH); hc = H + d * 3
+    P, box = _cabo_machado(f, hc, 112, d, n, r=3.2)
+    T = hc + d * 102
+    lam = [(8, 4), (8, -4), (12, -12), (17, -24), (18, -32), (14, -38), (2, -40), (-12, -39), (-26, -35), (-32, -31), (-26, -26), (-17, -15), (-10, -6), (-8, -4), (-8, 4)]
+    _cabeca(f, T, d, n, lam, 'ferro', .04, R=6)
+    f.crease([P(T + d * 8 - n * 4), P(T - d * 8 - n * 4)], .2)
+    f.crease([P(T + d * 14 - n * 28), P(T - d * 20 - n * 26)], .12)
+    _cabeca(f, T, d, n, [(16, -28), (18, -32), (14, -38), (2, -40), (-12, -39), (-26, -35), (-32, -31), (-26, -29), (-12, -31), (2, -32)], 'aco_af', .1, R=3)
+    _fio(f, T, d, n, [(17, -34), (12, -38.5), (2, -40.3), (-12, -39.4), (-26, -35.4), (-31, -31.6)], 'aco_af', .98)
+    aro = [box(T + d * 9, 1.6, 5.2), box(T - d * 9, 1.6, 5.2)]
+    for a in aro: f.poly(a, 'latao', R=1.5, bias=.05)
+    luva_no_cabo(f, hc, d, n)
+    return f
+
+
+def machado_duas_faces():
+    """machado de duas faces: duas lâminas em meia-lua, uma de cada lado do olho, com o fio temperado (azulado);
+    cabo comprido com tiras de couro abaixo da cabeça"""
+    f = Fig(160, 160, seed=93); d, n = ED, EN; H = np.array(EH); hc = H + d * 3
+    P, box = _cabo_machado(f, hc, 108, d, n, r=3.3)
+    T = hc + d * 96
+    for s in (-1, 1):
+        lam = [(7, 4 * s), (10, 12 * s), (17, 22 * s), (20, 29 * s), (10, 31 * s), (0, 31.6 * s), (-10, 31 * s), (-20, 29 * s), (-17, 22 * s), (-10, 12 * s), (-7, 4 * s)]
+        _cabeca(f, T, d, n, lam, 'ferro', .06 if s > 0 else -.04, R=6)
+        f.crease([P(T + d * 14 + n * 20 * s), P(T + n * 13 * s), P(T - d * 14 + n * 20 * s)], .14)
+        _cabeca(f, T, d, n, [(18, 25 * s), (20, 29 * s), (10, 31 * s), (0, 31.6 * s), (-10, 31 * s), (-20, 29 * s), (-18, 25 * s), (0, 27 * s)], 'aco_t', .12, R=3)
+        _fio(f, T, d, n, [(19, 29 * s), (10, 31.2 * s), (0, 31.8 * s), (-10, 31.2 * s), (-19, 29 * s)], 'aco_t', .98)
+    _cabeca(f, T, d, n, [(9, 5), (9, -5), (-9, -5), (-9, 5)], 'ferro', -.02, R=3)
+    f.crease([P(T + d * 9), P(T - d * 9)], .16)
+    for t in range(68, 84, 4):                                 # tiras de couro enroladas sob a cabeça
+        f.poly(box(hc + d * t, 1.6, 4.4), 'cinto', R=1.5, bias=.05 if t % 8 else -.08)
+    luva_no_cabo(f, hc, d, n)
+    return f
+
+
+def _arco(f, L_cima, L_baixo, curva, larg, puxado=False):
+    """arco de teixo em pé, um pouco inclinado, seguro pela mão em EH; a barriga curva para a esquerda e as pontas
+    para a direita, onde passa a corda. puxado: a corda vai até o rosto (fora do quadro, à direita) com a flecha"""
+    H = np.array(EH)
+    u = np.array([-0.30, -0.954]); u = u / np.linalg.norm(u); p = np.array([-u[1], u[0]])   # p: para a direita
+    if puxado: curva *= 1.35
+    def s(t):                                                    # ponto da vara a t px da empunhadura
+        L = L_cima if t > 0 else L_baixo
+        return H + u * t + p * curva * (abs(t) / L) ** 1.8 * L
+    ts = np.linspace(-L_baixo, L_cima, 90)
+    m = np.zeros((f.h, f.w), bool)
+    for a, b in zip(ts, ts[1:]):
+        r0 = larg * (1 - .55 * min(1, abs(a) / (L_cima if a > 0 else L_baixo)) ** 1.5)
+        r1 = larg * (1 - .55 * min(1, abs(b) / (L_cima if b > 0 else L_baixo)) ** 1.5)
+        m |= f.m_cap(*s(a), *s(b), r0, r1)
+    # corda (de ponta a ponta, ou em V até o rosto)
+    topo, base = s(L_cima - 2), s(-L_baixo + 2)
+    if puxado:
+        N = np.array([176.0, 158.0])
+        f.line([tuple(topo), tuple(N)], 'corda_a', .75); f.line([tuple(base), tuple(N)], 'corda_a', .6)
+    f.soft(m, .16, sigma=1.6, off=(2, 3)); f.shape(m, 'teixo', R=larg, tex=.04)
+    # alburno claro na face de trás (a do lado da corda) e as pontas de chifre
+    for a, b in zip(ts, ts[1:]):
+        if abs(a) < 12: continue
+        f.line([tuple(s(a) + p * (larg * .5)), tuple(s(b) + p * (larg * .5))], 'teixo', .95)
+    for t in (L_cima, -L_baixo):
+        c = s(t); f.ell(c[0], c[1], 2.6, 3.4, 'chifre', R=2, bias=.05)
+    if not puxado:
+        f.line([tuple(topo), tuple(base)], 'corda_a', .75)
+    else:
+        # flecha: da corda (fora do quadro) por cima da mão, ponta além da vara
+        A = s(0) - p * 2 + u * 3; dirv = (A - N) / np.linalg.norm(A - N); ponta = A + dirv * 34
+        f.cap(*N, *ponta, 1.3, 1.3, 'freixo', R=1, bias=.1)
+        for k in (-1, 1):                                          # penas perto da corda (cortadas pela borda)
+            q = N + dirv * 28; f.poly([tuple(q), tuple(q + dirv * 18 + np.array([-dirv[1], dirv[0]]) * 3.4 * k), tuple(q + dirv * 22)], 'pena', R=1.5, bias=.05 * k)
+        f.poly([tuple(ponta + dirv * 9), tuple(ponta + np.array([-dirv[1], dirv[0]]) * 3), tuple(ponta - np.array([-dirv[1], dirv[0]]) * 3)], 'aco', R=1.5, bias=.1)
+    # empunhadura de couro e a mão fechada na vara
+    for t in range(-9, 10, 3): f.line([tuple(s(t) - p * (larg + .5)), tuple(s(t) + p * (larg + .5))], 'cinto', .45 if t % 2 else .3)
+    luva_no_cabo(f, H, u, p)
+    return f
+
+
+def arco_curto():
+    """arco curto de caça, de teixo, de pontas simples; a parte de baixo sai pela borda do quadro"""
+    return _arco(Fig(160, 160, seed=94), 96, 70, .2, 4.4)
+
+
+def arco_longo():
+    """arco longo inglês: uma vara inteira de teixo, reta e funda (sem recurva), mais alta que o quadro; pontas de chifre"""
+    return _arco(Fig(160, 160, seed=95), 128, 120, .15, 5.2)
+
+
+def arco_curto_tenso():
+    return _arco(Fig(160, 160, seed=94), 96, 70, .2, 4.4, puxado=True)
+
+
+def arco_longo_tenso():
+    return _arco(Fig(160, 160, seed=95), 128, 120, .15, 5.2, puxado=True)
+
 
 
 # ---------------- texturas (repetíveis) ----------------
@@ -2527,6 +2699,8 @@ def SPRITES():
              ('anselmo', anselmo), ('arvore', arvore), ('toco', toco), ('arvore_2', arvore_2), ('toco_2', toco_2), ('arvore_3', arvore_3), ('toco_3', toco_3), ('veio', veio), ('veio_vazio', veio_vazio),
              ('espada', lambda: espada('aco')), ('espada_afiada', lambda: espada('aco_af')),
              ('espada_temperada', lambda: espada('aco_t')), ('espada_rastro', espada_rastro),
+             ('machado_trabalho', machado_trabalho), ('machado_guerra', machado_guerra), ('machado_duas_faces', machado_duas_faces),
+             ('arco_curto', arco_curto), ('arco_curto_tenso', arco_curto_tenso), ('arco_longo', arco_longo), ('arco_longo_tenso', arco_longo_tenso),
              ('quadro_frente', quadro_frente), ('bau_frente', bau_frente), ('bau_tampa', bau_tampa), ('bau_couro', bau_couro), ('lenha_topo', lenha_topo),
              ('faz_velho', faz_velho), ('faz_forte', faz_forte), ('faz_gordo', faz_gordo), ('faz_jovem', faz_jovem), ('mulher_cesta', mulher_cesta),
              ('mulher_tranca', mulher_tranca), ('mulher_velha', mulher_velha), ('padeira', padeira), ('menino_a', menino_a), ('menino_b', menino_b),
