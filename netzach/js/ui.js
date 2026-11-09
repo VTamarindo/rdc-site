@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261109-3', SAVE_VER = '20261105-3';
+  var VERSION = '20261109-4', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1420,7 +1420,13 @@
   ITEM_ICONS.couro_veado = iPelt('#c08850', '#7a5430', '<g fill="#f2e4c4"><circle cx="18" cy="22" r="1.6"/><circle cx="30" cy="22" r="1.6"/><circle cx="19" cy="30" r="1.4"/><circle cx="29" cy="30" r="1.4"/><circle cx="24" cy="40" r="1.2"/></g>');
   ITEM_ICONS.pele_serpente = '<path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" ' + K + ' stroke-width="9" stroke-linecap="round"/><path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" stroke="#7a8a3c" stroke-width="5.4" stroke-linecap="round"/>' +
     '<path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" stroke="#d6c860" stroke-width="2" stroke-dasharray="1.6 3"/>';
-  ITEM_ICONS.carne_veado = '<path d="M8 26 C8 15 20 9 30 11 C40 13 43 22 39 30 C35 38 22 41 14 37 C10 35 8 31 8 26 Z" fill="#8a2c22" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+  // troll: o couro verde-acinzentado com os calombos de pedra do desenho; a presa curva, cor de osso
+  ITEM_ICONS.couro_troll = iPelt('#5a6446', '#2e3426', '<g fill="#9b958b" stroke="#45423b" stroke-width="1.2"><circle cx="18" cy="20" r="2.6"/><circle cx="30" cy="21" r="2.3"/><circle cx="24" cy="27" r="2"/><circle cx="17" cy="33" r="2.2"/><circle cx="31" cy="33" r="2.5"/></g>' +
+    '<g fill="#55514b"><circle cx="18" cy="20" r="0.9"/><circle cx="30" cy="21" r="0.8"/><circle cx="17" cy="33" r="0.8"/><circle cx="31" cy="33" r="0.9"/></g>');
+  ITEM_ICONS.presa_troll = '<path d="M14 42 C10 30 12 18 22 10 C27 6 34 5 39 8 C33 10 28 14 26 20 C24 27 25 34 24 42 Z" fill="#e4d8b8" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M13 41 H25" stroke="#8a6a44" stroke-width="3" stroke-linecap="round"/><path d="M17 33 C16 26 18 19 24 14" fill="none" stroke="#fff6dc" stroke-width="1.6" stroke-linecap="round"/>' +
+    '<path d="M21 36 L23 35 M20 29 L22.5 28.5" stroke="#a89c7e" stroke-width="1.2"/>';
+  ITEM_ICONS.carne_veado ='<path d="M8 26 C8 15 20 9 30 11 C40 13 43 22 39 30 C35 38 22 41 14 37 C10 35 8 31 8 26 Z" fill="#8a2c22" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
     '<path d="M12 25 C13 19 20 14 29 15" fill="none" stroke="#e8c8a8" stroke-width="2.2" stroke-linecap="round"/><path d="M17 33 C24 35 32 32 35 27" fill="none" stroke="#c45a46" stroke-width="1.4" stroke-linecap="round"/><circle cx="27" cy="25" r="3.6" fill="#efe5cf" ' + K + ' stroke-width="1.4"/>';
   ITEM_ICONS.ferrao = '<path d="M13 41 C9 29 15 15 29 10 C33 9 37 10 40 6 C41 13 37 18 31 19 C22 22 19 30 21 41 Z" fill="#6a3a22" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
     '<path d="M14 33 L20 32 M14.5 26 L21 27 M18 19 L23 22" stroke="#2b1709" stroke-width="1.3"/><path d="M33 13 C35 12.5 37 11.5 38.5 9.5" fill="none" stroke="#e0b070" stroke-width="1.4" stroke-linecap="round"/>';
