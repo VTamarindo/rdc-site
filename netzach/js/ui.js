@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261109-9', SAVE_VER = '20261105-3';
+  var VERSION = '20261109-10', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1149,7 +1149,8 @@
       s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' : s === 'closed' ? 'Encerrada até o reinício.' :
       'Recompensa: ' + r.moedas + ' moedas, ' + r.xp + ' XP e ' + r.rp + ' rp.');
   }
-  // ---------- gente: menu Conversar / Negociar / Atacar / Fechar ----------
+  // ---------- gente: menu Conversar / Negociar / Fechar ----------
+  // o protagonista é da vila e não ataca os moradores: a opção Atacar saiu do jogo (ver LORE.md, "O protagonista")
   // vale para os NPCs parados e para os moradores que andam, pelo id; o quadro e o baú são objetos e abrem direto (openNpc)
   function persona(id) { return G.pessoas[id] || {}; }
   // falas em rodízio: cada pessoa (e cada assunto dela) diz a fala 1, depois a 2, e volta à 1. O contador fica no save
@@ -1188,7 +1189,6 @@
     var mk = st.hostil ? '' : pending(id), opts = [];
     opts.push({ text: 'Conversar' + (mk === '!' ? ' (!)' : mk === '?' ? ' (?)' : ''), fn: function () { if (st.hostil) { personMenu(id, angry(id)); } else { talk(id); } } });
     if (hasTrade(id)) { opts.push({ text: 'Negociar', fn: function () { negotiate(id); } }); }
-    opts.push({ text: 'Atacar', cls: 'opt perigo', fn: function () { askAttack(id); } });
     opts.push({ text: 'Fechar', fn: hide });
     setTalk(said || (st.hostil ? angry(id) : alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.')), opts);
   }
@@ -1204,17 +1204,6 @@
   function topics(id, text) {
     var T = persona(id).temas || [];
     setTalk(text, T.map(function (t, i) { return { text: t.p, fn: function () { topics(id, alterna('tema:' + id + ':' + i, t.r)); } }; }).concat([backTo(id)]));
-  }
-  function askAttack(id) {
-    if (st.hostil) { doAttack(id); return; }
-    setTalk(G.aldeoes.textos.confirmar.replace('{alvo}', personName(id)), [
-      { text: 'Sim, atacar', cls: 'main perigo', fn: function () { doAttack(id); } },
-      { text: 'Não', fn: function () { personMenu(id); } }
-    ]);
-  }
-  function doAttack(id) {
-    if (!st.hostil) { sim.provoke(st, id, view.walkerPos()); }
-    hide(); target(id); handleEvents(); save();
   }
   // marca a pessoa como alvo: o golpe sai sozinho quando ela estiver ao alcance (como com os bichos)
   function target(id) {

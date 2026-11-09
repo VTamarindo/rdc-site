@@ -1470,6 +1470,19 @@
       m.path = null; m.goal = null; p.goto = null;
       if (p.action && (p.action.type === 'gather' || p.action.type === 'attack')) { p.action = null; }
     }
+    // a briga com os moradores saiu do jogo: save gravado no meio de uma termina aqui, como em Sim.calm (os mortos
+    // ficam mortos, quem está desacordado segue no chão até a hora dele, o resto volta à rotina)
+    if (st.hostil) {
+      st.hostil = null;
+      if (p.action && p.action.type === 'luta') { p.action = null; }
+      if (G.aldeoes && m.stop === G.aldeoes.textos.macro) { m.stop = ''; }
+      Object.keys(st.gente).forEach(function (id) {
+        var g = st.gente[id];
+        if (st.mortos && st.mortos[id]) { g.path = null; }
+        else if (g.ko > 0) { delete g.x; delete g.z; g.path = null; }
+        else { delete st.gente[id]; }
+      });
+    }
     // gente: quem saiu da planta sai do save; com a vila em armas, quem anda e ficou sem posição (passou de parado a
     // morador, por exemplo) começa na praça; quem virou parado perde a posição de andante
     Object.keys(st.gente).forEach(function (id) {

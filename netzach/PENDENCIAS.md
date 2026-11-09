@@ -10,6 +10,8 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   - **NPCs:** menu Conversar, Negociar, Atacar e Fechar para as 22 pessoas, falas com personalidade (`game.json` → `pessoas`),
     ataque com −100 de reputação por incidente, soldados e homens atacam, mulheres e crianças fogem, quem cai levanta em 2 min,
     a hostilidade acaba com desmaio (multa de 25% das moedas) ou ficando 60 s longe da vila (`game.json` → `aldeoes`).
+    **Em 9/11 (versão `20261109-10`) a opção Atacar saiu do menu:** o protagonista é da vila e não ataca os moradores.
+    O código da briga, da morte e dos substitutos continua no jogo, sem uso; dá para apagar depois.
   - **Fauna:** 2 lobos, 4 escorpiões e 4 serpentes (com veneno), 6 veados que fogem; 5 ovelhas no aprisco.
   - **Fazenda:** leite das vacas (balde, no ferreiro), lã das ovelhas (tesoura, no alfaiate), colheita em 39 retalhos das
     plantações, regra da macro "Colher a plantação", 14 itens novos com compradores.

@@ -7,6 +7,7 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
 - **[decidido]** veio do autor do jogo e vale como verdade.
 - **[nas falas]** já está dito no jogo (nas falas ou nas missões); mudar exige mexer no `game.json`.
 - **[sugestão]** é ideia para completar a história; só vale depois de aprovada. Apague a marca ao aprovar.
+- **[dúvida]** o autor aceitou a ideia como possibilidade, mas ela continua em aberto.
 
 ---
 
@@ -24,6 +25,57 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
   Ver "Pontos para decidir".
 - **[nas falas]** Calendário: missa e vésperas; Candelária (2 de fevereiro); noite de São João (fogueira e dança na
   praça); casamentos depois da colheita, com proclamas do padre.
+
+## A trama maior: Echad e o loop
+
+- **[decidido]** Netzach faz parte de uma franquia. O outro jogo se chama **Echad**, e os eventos de Netzach saem de
+  um episódio da história dele.
+- **[decidido]** Em Echad, o protagonista visita a vila e depois vai até os **dois reis que estão em guerra**. Isso
+  termina com o rei oponente mandando uma suposta **ajuda humanitária** à vila. Dentro dela vem **um dragão
+  escondido**, e o dragão destrói a vila.
+- **[decidido]** Os dois reis só são citados: eles pertencem a Echad e não aparecem neste jogo.
+- **[decidido]** **Netzach é um demiurgo.** Ele pega esse episódio e prende o protagonista num **loop do tempo**: os
+  eventos do jogo Netzach são esse loop. O **ciclo é eterno** e não tem saída.
+- **[decidido]** Fim do ciclo: depois que a vila é destruída, o jogador enfrenta o Netzach e vence, mas morre (o plot
+  twist) e volta ao momento inicial.
+- **[decidido]** Quando o dragão chega, o protagonista **não está na vila**: só descobre a destruição quando volta.
+- **[decidido]** **Só o protagonista lembra** dos ciclos. **[ideia do autor, em aberto]** Um personagem que encarna o
+  tempo e fala coisas misteriosas.
+- **[decidido]** Nada do que aconteceu era profecia nem destino: o drama se sustenta porque **tudo poderia ter sido
+  evitado**. Os sinais (como a "estrela de cauda" do Wat) são só o que são.
+- **[decidido]** A cada ciclo, o mundo **muda um pouco**.
+- **[decidido]** Os chefes são **eventos fixos**: acontecem em todo ciclo (o troll, por exemplo, morre sempre).
+- **[decidido]** Falta inventar os eventos intermediários: o que gera angústia e tensão, os mistérios, as sociedades
+  antigas com ruínas escondidas e as masmorras gigantes no subsolo. O esqueleto de cada ciclo ainda está com o autor.
+- **A fazer:** listar o que passa pela cabeça do jogador para salvar a vila (e por que não adianta). Exemplo já
+  anotado: queimar o comboio não resolve, porque o dragão queima a vila do mesmo jeito.
+
+### O protagonista
+- **[decidido]** Não é um forasteiro: é um **órfão da guerra**, da vila. As pessoas que conhece são tudo o que tem; por
+  isso continua lutando para sempre para protegê-las.
+- **[decidido]** O resto da vila, sim, é quase todo de gente de fora: a vila foi **remontada** depois da guerra (ver
+  "A guerra e a fome"). Ser forasteiro não pesa na história; ser da vila, sim.
+- **[decidido]** Não faz sentido ele atacar os moradores: a opção de atacar os NPCs da vila saiu do jogo (versão
+  `20261109-10`).
+
+### A guerra e a fome
+- **[decidido]** Os homens da vila foram mandados para a guerra dos dois reis e morreram. Sem gente para trabalhar o
+  campo, veio a fome.
+- **[decidido]** O rei, vendo que a guerra não se sustentava sem os mantimentos da vila, deixou a vila por conta
+  própria e parou de exigir homens para o exército.
+- **[decidido]** O trauma da fome causada pela guerra é o que dá à vila a boa vontade de aceitar a "ajuda
+  humanitária". Pesam também a honra e a moral inabaláveis do senhor, da esposa dele (**Matilda**), da Maud e do
+  Wulfric.
+
+## A estrutura do jogo
+
+- **[decidido]** O jogo vai ter cara de jogo-serviço (mesmo sem ser, a princípio): login, um hub global onde os
+  jogadores se encontram, PvP etc.
+- **[decidido]** A **campanha** (a vila e o ciclo) serve para testar mecânicas. Depois dela, o jogador entra num
+  **mundo intermediário** aberto: missões, chefes, equipamento para farmar, o nível máximo do ciclo (para quem não
+  chegou nele na campanha) e ruínas para investigar.
+- **[decidido]** Há uma **zona fixa** onde o jogador tem a sua casa e guarda o seu equipamento; ela não é afetada
+  pela reciclagem do mundo a cada ciclo.
 
 ## Lugares
 
@@ -54,9 +106,10 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
 
 ### A falecida senhora
 - **[decidido]** Morreu de doença. Desde então, Isolda é a principal mulher nobre da vila.
+- **[decidido]** Chamava-se **Matilda**. Era honrada e de moral inabalável, como o marido (ver "A guerra e a fome").
 - **[decidido]** O nome da Maud veio da casa do senhor.
-- **[sugestão]** Ela se chamava **Matilda**, e foi ela quem escolheu o nome da Maud (forma popular de Matilda) no
-  batismo, como madrinha. A vila lembra dela com carinho; o senhor não fala dela.
+- **[sugestão]** Foi a Matilda quem escolheu o nome da Maud (forma popular de Matilda) no batismo, como madrinha. A
+  vila lembra dela com carinho; o senhor não fala dela.
 
 ### Dona Isolda, filha do senhor
 - **[decidido]** Jovem; com a morte da mãe, é a principal mulher nobre da vila.
@@ -170,18 +223,29 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
 ## Ganchos em aberto (para missões e updates)
 
 - **[nas falas]** A luz na Casa do Senhor de madrugada (Maud). Quem estava acordado: o senhor, Isolda, o intendente?
+  **[dúvida]** O Sir Aymer recebe à noite um enviado do rei oponente.
 - **[nas falas]** Cuthbert e Isolda, contra o casamento com o barão de Wessex.
 - **[nas falas]** O intendente que esconde moeda, e os porcos escondidos do Hob.
+  **[dúvida]** O Ralf é pago pelo rei oponente para garantir que o comboio entre pelos portões sem ser revistado.
 - **[nas falas]** O moleiro que rouba no peso (o moinho ainda não está no mapa).
 - **[nas falas]** O lobo "do tamanho de um boi" do Wat.
   **[sugestão]** É o **troll**: as crianças nunca o viram direito, e o boato virou lobo.
-- **[nas falas]** O veado branco da campina; o tesouro do pedregal ("quem procura não volta").
-- **[nas falas]** Bandidos na estrada do sul.
+- **[nas falas]** O tesouro do pedregal ("quem procura não volta").
+  **[decidido]** Vai ser implementado: é a entrada das ruínas, e quem entrou ficou preso no tempo, igual ao dia em que
+  entrou.
+- **[nas falas]** O veado branco da campina. Sem papel na trama (a ideia de ser o rosto do Netzach foi descartada).
+- **[nas falas]** Bandidos na estrada do sul. Sem papel na trama (a ideia de serem batedores do rei foi descartada).
 - **[nas falas]** O celeiro novo do senhor (missões diárias do quadro).
 - **[sugestão]** O avô do Wat, da "estrela de cauda", não pode ser parente do Wulfric se o Wat for filho dele (os
   dois chegaram de fora já adultos). Ou o avô é o pai da mãe do Wat, nascida na vila.
 
 ## Pontos para decidir
+
+- **O "forasteiro" das falas:** 7 falas chamam o jogador de forasteiro (o Brand e o Sir Aymer desconfiam dele, a Maud
+  quer novidades dele). Isso contradiz o protagonista ser um órfão da vila; as falas precisam mudar.
+- **Matilda viva ou morta na hora da ajuda:** ela morreu de doença, mas a moral dela pesa na decisão de aceitar a
+  ajuda. Morreu antes (e pesa como lembrança) ou ainda estava viva?
+- **A Mãe Hilda viu "a fome de três invernos seguidos":** pode ser a fome da guerra.
 
 - **Nomes de lugares reais:** Winchester, Wessex, Flandres e "o rei" aparecem nas falas. Como a vila só se inspira na
   Inglaterra, dá para manter (o mundo se parece com o nosso) ou trocar por nomes inventados.

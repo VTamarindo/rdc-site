@@ -55,7 +55,9 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 - **Recursos** (`nodes`): árvores e veios: tempo de coleta e o que dão.
 - **NPCs** (`npcs`): nome, fala, e o que vendem e compram (`services`: `shop` = loja, `sell` = compra do jogador).
 - **Pessoas** (`pessoas`): papel, saudações (`ola`) e assuntos (`temas`) de cada um dos 22 moradores e lojistas.
-- **Hostilidade** (`aldeoes`): reputação perdida (por incidente e por inocente morto), multa, tempo para acalmar e a força de cada papel na luta.
+- **Hostilidade** (`aldeoes`): **desligada desde a versão `20261109-10`**: o menu das pessoas não tem mais "Atacar" (o
+  protagonista é da vila; ver `LORE.md`), e um save gravado no meio de uma briga termina a briga ao carregar
+  (`NZ.settle`, em `js/sim.js`). O resto do sistema continua no código, sem uso. Antes: reputação perdida (por incidente e por inocente morto), multa, tempo para acalmar e a força de cada papel na luta.
   **Morte** (`aldeoes` → `morte`): quanto tempo o corpo fica, quando chegam os substitutos de lojistas e guardas, e os nomes deles.
 - **Macro** (`macro`): as regras automáticas. **Diárias** (`daily`): missões do quadro, horário de reinício e recompensas.
 - **Missões** (`quests`) e **conversas** (`dialogues`, `_textos`).
