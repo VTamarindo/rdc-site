@@ -15,6 +15,13 @@
   // '2026-11-6' -> 20261106: as datas das diárias só andam para a frente
   function dayNum(k) { var a = String(k).split('-'); return a[0] * 10000 + a[1] * 100 + +a[2]; }
   function dist(ax, az, bx, bz) { var dx = bx - ax, dz = bz - az; return Math.sqrt(dx * dx + dz * dz); }
+  // sorteio fixo pelo índice (sem mexer na semente do save): os bichos das regiões nascem sempre no mesmo lugar
+  function sorte(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
+  // recurso: o ponto dele mais perto de (x, z). Retalho de plantação é um retângulo; árvore e veio, o centro da célula
+  function nodePoint(n, x, z) { var r = n.rect; return r ? { x: Math.max(r.x0, Math.min(r.x1, x)), z: Math.max(r.z0, Math.min(r.z1, z)) } : n; }
+  function nodeDist(n, x, z) { var q = nodePoint(n, x, z); return dist(x, z, q.x, q.z); }
+  // tempo que falta, para mostrar: '10 min' ou '45 s' (a folga tira o erro de soma de 600,0000001 s virar 11 min)
+  function fmtLeft(s) { return s > 90 ? Math.ceil(s / 60 - 1e-6) + ' min' : Math.ceil(s - 1e-6) + ' s'; }
 
   // ---------- mundo estático (montado a partir de vila.json) ----------
   function World(game, vila) {
@@ -52,10 +59,9 @@
     this.nodes = [];
     vila.trees.forEach(function (p, k) { self.addNode('arvore', 'arv' + k, p); self.nodes[self.nodes.length - 1].s = p[2] || 0; }); // p[2]: escala da figura (0 = a de sempre)
     vila.rocks.forEach(function (p, k) { self.addNode('veio', 'veio' + k, p); });
+    (vila.fields || []).forEach(function (f) { self.addCrops(f); });
     this.nodeById = {};
     this.nodes.forEach(function (n) { self.nodeById[n.id] = n; });
-
-    this.spawns = vila.rabbits.map(function (p) { return { x: p[0] + 0.5, z: p[1] + 0.5 }; });
     // pessoa da planta sem ficha em game.json (o alfaiate antes de ganhar loja): entra com uma ficha mínima, sem serviços
     game.npcs = game.npcs || {};
     var PS = game.pessoas || {};
@@ -81,7 +87,40 @@
       return { id: p.id, name: p.name, npc: p.npc, x: p.x, z: p.z, w: p.w, d: p.d, h: p.h, rot: p.rot || 0 };
     });
     this.plaza = vila.plaza;
+
+    // bichos: os coelhos da planta primeiro (coelho0..9, os ids dos saves antigos), depois os das regiões:
+    // cada monstro com 'spot' nasce 'count' vezes em cada ponto marcado com esse tipo, espalhado no raio, sempre no mesmo lugar
+    this.spawns = vila.rabbits.map(function (p, i) { return { id: 'coelho' + i, kind: 'coelho', x: p[0] + 0.5, z: p[1] + 0.5 }; });
+    keys(game.monsters).forEach(function (k) {
+      var M = game.monsters[k], n = 0; if (!M.spot) { return; }
+      (vila.regions || []).forEach(function (r) { (r.spots || []).forEach(function (s) {
+        if (s.kind !== M.spot) { return; }
+        for (var c = 0; c < (M.count || 1); c++, n++) {
+          var a = sorte(n * 7.3 + k.length) * Math.PI * 2, rr = (M.count > 1 ? 0.2 + 0.45 * sorte(n * 3.1 + 1) : 0) * s.r;
+          var q = self.nearestFree(s.x + Math.cos(a) * rr, s.z + Math.sin(a) * rr) || { x: s.x, z: s.z };
+          self.spawns.push({ id: k + n, kind: k, x: q.x, z: q.z });
+        }
+      }); });
+    });
+    this.spawnById = {};
+    this.spawns.forEach(function (s, i) { s.i = i; self.spawnById[s.id] = s; });
   }
+  // plantação: cada faixa vira retalhos de ~8 m, recursos que não bloqueiam o chão, cada um com o seu tempo para voltar.
+  // Grande o bastante para o save e o desenho ficarem leves (39 retalhos no mapa atual), pequeno para a colheita aparecer no campo
+  var RETALHO = 8;
+  World.prototype.addCrops = function (f) {
+    var self = this, faixas = f.strips || [{ kind: f.kind, z0: f.z0, z1: f.z1 }];
+    faixas.forEach(function (s) {
+      if (!self.game.nodes[s.kind]) { return; }
+      var nx = Math.max(1, Math.round((f.x1 - f.x0) / RETALHO)), nz = Math.max(1, Math.round((s.z1 - s.z0) / RETALHO));
+      for (var i = 0; i < nx; i++) {
+        for (var j = 0; j < nz; j++) {
+          var r = { x0: f.x0 + (f.x1 - f.x0) * i / nx, x1: f.x0 + (f.x1 - f.x0) * (i + 1) / nx, z0: s.z0 + (s.z1 - s.z0) * j / nz, z1: s.z0 + (s.z1 - s.z0) * (j + 1) / nz };
+          self.nodes.push({ id: f.id + '_' + s.kind + '_' + i + '_' + j, kind: s.kind, field: f.id, x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2, rect: r });
+        }
+      }
+    });
+  };
   World.prototype.idx = function (x, z) {
     var ix = Math.floor(x) + this.B, iz = Math.floor(z) + this.B;
     if (ix < 0 || iz < 0 || ix >= this.N || iz >= this.N) { return -1; }
@@ -214,18 +253,19 @@
         macro: { area: null, on: false, phase: 'idle', stop: '', path: null, goal: null, repath: 0 }
       },
       rules: G.macro.defaultOrder.map(function (id) { return { id: id, on: true, val: G.macro.rules[id].val }; }),
-      nodes: {}, mobs: [],
+      nodes: {}, mobs: [], farm: {},
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
       gente: {}, hostil: null, // gente[id]: vida, desmaio e, com a vila em armas, a posição de quem anda; hostil: o incidente em curso
       log: []
     };
     world.nodes.forEach(function (n) { st.nodes[n.id] = { alive: true, left: 0 }; });
-    world.spawns.forEach(function (s, i) {
-      st.mobs.push({ id: 'coelho' + i, kind: 'coelho', sp: i, x: s.x, z: s.z, hp: G.monsters.coelho.hp, alive: true, left: 0,
-        fight: false, wx: s.x, wz: s.z, wait: 0, atkCd: 0, face: 0 });
-    });
+    world.spawns.forEach(function (s) { st.mobs.push(newMob(G, s)); });
     return st;
+  }
+  function newMob(G, s) {
+    return { id: s.id, kind: s.kind, sp: s.i, x: s.x, z: s.z, hp: G.monsters[s.kind].hp, alive: true, left: 0,
+      fight: false, wx: s.x, wz: s.z, wait: 0, atkCd: 0, face: 0 };
   }
 
   // ---------- equipamento e atributos ----------
@@ -329,8 +369,8 @@
     var w = this.w, p = st.player;
     if (!(p.inv.pocao > 0) || p.potCd > 0) { return false; }
     var mh = maxHp(w, p);
-    if (p.hp >= mh) { return false; }
-    p.inv.pocao--; p.potCd = w.game.player.potionCooldown;
+    if (p.hp >= mh && !p.poison) { return false; }
+    p.inv.pocao--; p.potCd = w.game.player.potionCooldown; p.poison = null; // a poção também corta o veneno
     p.hp = Math.min(mh, p.hp + potionHeal(w, p));
     st.stats.potions++;
     this.log(st, 'Bebeu uma poção.');
@@ -341,7 +381,7 @@
   Sim.prototype.faint = function (st) {
     var w = this.w, p = st.player, pl = w.plaza;
     p.x = pl.x; p.z = pl.z + 1; p.hp = Math.round(maxHp(w, p) * w.game.player.faintHpFrac);
-    p.action = null; p.goto = null; st.stats.faints++;
+    p.action = null; p.goto = null; p.poison = null; st.stats.faints++;
     st.mobs.forEach(function (m) { m.fight = false; });
     this.stopMacro(st, 'Você desmaiou e foi levado à praça.');
     this.log(st, 'Você desmaiou e acordou na praça.');
@@ -437,6 +477,11 @@
     var w = this.w, G = w.game, p = st.player;
     var h = this.strike(st, mobStats(def), stats(w, p), G.stances[p.stance].taken);
     p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval;
+    // veneno: dano por segundo que a armadura não corta; a picada nova renova o tempo, não soma
+    if (def.poison && !(p.poison && p.poison.t > def.poison.sec)) {
+      if (!p.poison) { this.log(st, 'Envenenado! A poção ou o padre curam.'); }
+      p.poison = { dps: Math.max(def.poison.dps, (p.poison && p.poison.dps) || 0), t: def.poison.sec };
+    }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
     this.emit(st, { type: 'hit', who: 'player', n: h.n, crit: h.crit });
     if (p.hp <= 0) { this.faint(st); }
@@ -453,7 +498,10 @@
       if (e.path && e.path.length) { tx = e.path[0].x; tz = e.path[0].z; direct = false; }
     } else if (smart) { e.path = null; }
     var dd = dist(e.x, e.z, tx, tz), step = Math.min(def.speed * dt, direct ? d - def.reach * 0.9 : dd);
-    if (dd > 0.001 && step > 0) { this.nudge(e, (tx - e.x) / dd * step, (tz - e.z) / dd * step, 0.15); }
+    if (dd > 0.001 && step > 0) {
+      if (smart) { this.nudge(e, (tx - e.x) / dd * step, (tz - e.z) / dd * step, 0.15); }
+      else { this.passo(e, Math.atan2(tx - e.x, tz - e.z), step, 0.15, CERCO); } // bicho contorna árvore e pedra no caminho
+    }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
   };
   Sim.prototype.genteTick = function (st, dt) {
@@ -553,7 +601,7 @@
   Sim.prototype.finishGather = function (st, n) {
     var G = this.w.game, def = G.nodes[n.kind], ns = st.nodes[n.id];
     ns.alive = false; ns.left = def.respawn;
-    this.log(st, def.name + ': coleta concluída.');
+    this.log(st, def.name + (n.rect ? ': colheita concluída.' : ': coleta concluída.'));
     this.emit(st, { type: 'gathered', id: n.id });
     this.rollDrops(st, def.drops);
   };
@@ -619,11 +667,11 @@
     });
     return best;
   };
-  Sim.prototype.nearestNode = function (st, kind) {
+  Sim.prototype.nearestNode = function (st, kinds) {
     var p = st.player, best = null, bd = 1e9, self = this;
     this.w.nodes.forEach(function (n) {
-      if (n.kind !== kind || !st.nodes[n.id].alive || !self.inArea(st, n.x, n.z)) { return; }
-      var d = dist(p.x, p.z, n.x, n.z); if (d < bd) { bd = d; best = n; }
+      if (kinds.indexOf(n.kind) < 0 || !st.nodes[n.id].alive || !self.inArea(st, n.x, n.z)) { return; }
+      var d = nodeDist(n, p.x, p.z); if (d < bd) { bd = d; best = n; }
     });
     return best;
   };
@@ -647,9 +695,10 @@
           break;
         }
         case 'node_in_area': {
+          var ks = def.kinds || [def.kind]; // kinds: uma regra para vários recursos (as quatro plantações)
           var c = p.action && p.action.type === 'gather' ? w.nodeById[p.action.id] : null;
-          if (c && c.kind === def.kind && st.nodes[c.id].alive) { return { act: 'gather', id: c.id }; }
-          var n = this.nearestNode(st, def.kind);
+          if (c && ks.indexOf(c.kind) >= 0 && st.nodes[c.id].alive) { return { act: 'gather', id: c.id }; }
+          var n = this.nearestNode(st, ks);
           if (n) { return { act: 'gather', id: n.id }; }
           break;
         }
@@ -699,7 +748,8 @@
       case 'gather': {
         var n = w.nodeById[d.id];
         if (!p.action || p.action.type !== 'gather' || p.action.id !== n.id) { p.action = { type: 'gather', id: n.id, prog: 0 }; }
-        if (this.moveTo(st, n.x, n.z, 1.5, dt, n.id)) {
+        var q = nodePoint(n, p.x, p.z); // plantação: a borda mais perto do retalho basta
+        if (this.moveTo(st, q.x, q.z, n.rect ? 0.6 : 1.5, dt, n.id)) {
           this.face(st, n.x, n.z);
           p.action.prog += dt;
           if (p.action.prog >= gatherSec(w, p, n.kind)) { this.finishGather(st, n); p.action = null; }
@@ -727,7 +777,7 @@
     if (a.type === 'gather') {
       var n = w.nodeById[a.id];
       if (!st.nodes[n.id].alive) { p.action = null; return; }
-      if (dist(p.x, p.z, n.x, n.z) > G.player.gatherReach) { p.action = null; this.log(st, 'Longe demais para coletar.'); return; }
+      if (nodeDist(n, p.x, p.z) > G.player.gatherReach) { p.action = null; this.log(st, 'Longe demais para coletar.'); return; }
       a.prog += dt;
       if (a.prog >= gatherSec(w, p, n.kind)) { this.finishGather(st, n); p.action = null; }
     } else if (a.type === 'attack') {
@@ -749,7 +799,8 @@
   };
 
   Sim.prototype.mobTick = function (st, m, dt) {
-    var w = this.w, G = w.game, def = G.monsters[m.kind], p = st.player, sp = w.spawns[m.sp];
+    // sp: o ponto de nascer; combatente sem ponto na planta (de outro sistema) usa o lugar onde está
+    var w = this.w, G = w.game, def = G.monsters[m.kind], p = st.player, sp = w.spawnById[m.id] || m;
     if (!m.alive) {
       m.left -= dt;
       if (m.left <= 0) {
@@ -761,10 +812,15 @@
       return;
     }
     m.atkCd -= dt;
+    if (m.calm > 0) { m.calm -= dt; }
     var step, d, dx, dz;
+    if (def.flee && this.flee(st, m, def, sp, dt)) { return; }
+    // bicho bravo (aggro = raio em m): ataca quem chega perto, mas só dentro da sua área (leash) e não logo depois de desistir,
+    // senão ficaria preso entre atacar e voltar para casa
+    if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = true; m.wait = 0; }
     if (m.fight) {
       if (dist(m.x, m.z, sp.x, sp.z) > def.leash || dist(m.x, m.z, p.x, p.z) > def.leash) {
-        m.fight = false; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; return;
+        m.fight = false; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
       }
       this.chase(st, m, def, dt, false); // o mesmo perseguir-e-bater dos aldeões em armas
       return;
@@ -784,6 +840,49 @@
     if (w.free(m.x + dx, m.z + dz, 0.15)) { m.x += dx; m.z += dz; m.face = Math.atan2(dx, dz); }
     else { m.wx = m.x; m.wz = m.z; }
   };
+  // presa que foge (veado): corre de quem chega a menos de 'flee' m (ferida, de mais longe). O fôlego (sta, em s de corrida)
+  // acaba e ela fica lenta (tiredSpeed) até descansar longe de quem caça: a caçada é uma perseguição, não um passeio.
+  // Longe de casa, a fuga puxa de volta para o ponto de nascer. Devolve true quando fugiu neste tique
+  // um passo na direção a (radianos, como face); bloqueado, tenta os desvios da lista, do menor para o maior
+  var CERCO = [0, 0.6, -0.6, 1.2, -1.2], FUGA = [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.3, -2.3];
+  Sim.prototype.passo = function (m, a, step, r, desvios) {
+    for (var i = 0; i < desvios.length; i++) {
+      var b = a + desvios[i], dx = Math.sin(b) * step, dz = Math.cos(b) * step;
+      if (this.w.free(m.x + dx, m.z + dz, r)) { m.x += dx; m.z += dz; return b; }
+    }
+    return null;
+  };
+  Sim.prototype.flee = function (st, m, def, sp, dt) {
+    var p = st.player, dp = dist(m.x, m.z, p.x, p.z);
+    if (typeof m.sta !== 'number') { m.sta = def.stamina; }
+    if (!(dp < def.flee || (m.fight && dp < def.flee * 1.6))) {
+      m.fight = false; m.sta = Math.min(def.stamina, m.sta + dt * def.rest); return false;
+    }
+    var spd = m.sta > 0 ? def.speed : def.tiredSpeed, step = spd * dt; m.sta = Math.max(0, m.sta - dt);
+    var ax = (m.x - p.x) / (dp || 1), az = (m.z - p.z) / (dp || 1), dh = dist(m.x, m.z, sp.x, sp.z), k = Math.max(0, dh / def.leash - 0.5) * 2;
+    if (dh > 0.1) { ax += (sp.x - m.x) / dh * k; az += (sp.z - m.z) / dh * k; }
+    var a = this.passo(m, Math.atan2(ax, az), step, 0.25, FUGA);
+    if (a !== null) { m.face = a; }
+    m.wx = m.x; m.wz = m.z; m.wait = 1.5;
+    return true;
+  };
+
+  // ---------- curral: tirar leite e tosquiar ----------
+  // vacas e ovelhas só existem no desenho (andam pelo relógio, como os moradores). A simulação guarda só quando cada uma
+  // fica pronta de novo (st.farm[id] = st.t em que volta, então o tempo fora também conta); quem chama confere a distância
+  Sim.prototype.farmKind = function (id) { var k = String(id).replace(/\d+$/, ''); return this.w.game.farm[k] ? k : null; };
+  Sim.prototype.farmLeft = function (st, id) { return Math.max(0, ((st.farm && st.farm[id]) || 0) - st.t); };
+  Sim.prototype.farmUse = function (st, id) {
+    var F = this.w.game.farm[this.farmKind(id)], p = st.player;
+    if (!F) { return ''; }
+    if (F.tool && !(p.inv[F.tool] > 0)) { return F.noTool; }
+    var left = this.farmLeft(st, id);
+    if (left > 0) { return F.wait.replace('{t}', fmtLeft(left)); }
+    if (!this.give(st, F.item, F.n)) { return 'Bolsa cheia: libere espaço antes.'; }
+    st.farm = st.farm || {}; st.farm[id] = st.t + F.cooldown;
+    this.log(st, F.done);
+    return F.done;
+  };
 
   Sim.prototype.tick = function (st) {
     var w = this.w, G = w.game, dt = G.settings.tickSec, p = st.player;
@@ -791,6 +890,11 @@
     p.potCd = Math.max(0, p.potCd - dt);
     p.atkCd = Math.max(0, p.atkCd - dt);
     p.combatT += dt;
+    if (p.poison) { // envenenado não se recupera sozinho
+      p.hp -= p.poison.dps * dt; p.poison.t -= dt; p.combatT = 0;
+      if (p.poison.t <= 0) { p.poison = null; this.log(st, 'O veneno passou.'); }
+      if (p.hp <= 0) { this.faint(st); }
+    }
     if (p.combatT > G.player.regenDelaySec && p.hp < maxHp(w, p)) { var s = stats(w, p); p.hp = Math.min(s.hp, p.hp + G.player.regenPerSec * s.regen * dt); }
 
     // recursos voltam
@@ -830,7 +934,7 @@
     if (q && this.isKo(st, npc)) { return G.aldeoes.textos.desacordado.replace('{alvo}', q.name); }
     if (q && st.hostil) { return (G.pessoas[npc] && G.pessoas[npc].recusa) || G.aldeoes.textos.recusa; }
     if (s.type === 'heal') {
-      p.hp = maxHp(w, p); return 'Vida restaurada.';
+      var ven = !!p.poison; p.hp = maxHp(w, p); p.poison = null; return ven ? 'Vida restaurada e veneno curado.' : 'Vida restaurada.';
     }
     if (s.type === 'buy') {
       var price = buyPrice(w, p, s.item);
@@ -858,6 +962,7 @@
   Sim.prototype.buyItem = function (st, s, item, n, equip) {
     var w = this.w, G = w.game, p = st.player, def = G.items[item];
     if (!def || s.items.indexOf(item) < 0) { return 'Isso não se compra aqui.'; }
+    if (def.tool && p.inv[item] > 0) { return 'Você já tem ' + def.name.toLowerCase() + ': uma basta.'; } // ferramenta não gasta
     n = Math.floor(+n || 0);
     if (n < 1) { return 'Escolha quantos comprar.'; }
     var lot = (s.lots && s.lots[item]) || 1, units = n * lot, cost = buyPrice(w, p, item, units);
@@ -1088,6 +1193,7 @@
   NZ.migrate = function (st) {
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
     st.daily = st.daily || { day: '', q: {} };
+    st.farm = st.farm || {};
     if (typeof st.player.rep !== 'number') { st.player.rep = 0; }
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
@@ -1123,12 +1229,20 @@
     world.nodes.forEach(function (n) { ids[n.id] = 1; if (!st.nodes[n.id]) { st.nodes[n.id] = { alive: true, left: 0 }; } });
     Object.keys(st.nodes).forEach(function (id) { if (!ids[id]) { delete st.nodes[id]; } });
     if (p.action && p.action.type === 'gather' && !ids[p.action.id]) { p.action = null; }
-    st.mobs = st.mobs.filter(function (b) { return b.kind !== 'coelho' || b.sp < world.spawns.length; });
-    world.spawns.forEach(function (s, i) {
-      if (st.mobs.some(function (b) { return b.kind === 'coelho' && b.sp === i; })) { return; }
-      st.mobs.push({ id: 'coelho' + i, kind: 'coelho', sp: i, x: s.x, z: s.z, hp: G.monsters.coelho.hp, alive: true, left: 0,
-        fight: false, wx: s.x, wz: s.z, wait: 0, atkCd: 0, face: 0 });
+    // bichos seguem a planta pelo id: o que é novo (lobos, veados... em save antigo) nasce, o que sumiu sai.
+    // Combatente sem ponto de nascer, de outro sistema, fica como está
+    function fauna(b) { return b.kind === 'coelho' || !!(G.monsters[b.kind] && G.monsters[b.kind].spot); }
+    st.mobs = st.mobs.filter(function (b) { return G.monsters[b.kind] && (!fauna(b) || world.spawnById[b.id]); });
+    world.spawns.forEach(function (s) {
+      var b = st.mobs.filter(function (x) { return x.id === s.id; })[0];
+      if (b) { b.sp = s.i; } else { st.mobs.push(newMob(G, s)); }
     });
+    // regra de macro nova entra no fim da lista do jogador; regra que saiu do jogo sai
+    st.rules = st.rules.filter(function (r) { return G.macro.rules[r.id]; });
+    G.macro.defaultOrder.forEach(function (id) {
+      if (!st.rules.some(function (r) { return r.id === id; })) { st.rules.push({ id: id, on: true, val: G.macro.rules[id].val }); }
+    });
+    if (p.poison && !(p.poison.t > 0)) { p.poison = null; }
     if (!(st.mapa >= 3)) {
       st.mapa = 3;
       st.mobs.forEach(function (b) { var s = world.spawns[b.sp]; if (s) { b.x = b.wx = s.x; b.z = b.wz = s.z; b.fight = false; } });
@@ -1166,5 +1280,5 @@
   NZ.Sim = Sim;
   NZ.newState = newState;
   NZ.calc = { maxHp: maxHp, stats: stats, mobStats: mobStats, armorCut: armorCut, bagCount: bagCount, bagCap: bagCap, buyPrice: buyPrice, sellPrice: sellPrice,
-    potionHeal: potionHeal, gatherSec: gatherSec, keys: keys, dist: dist };
+    potionHeal: potionHeal, gatherSec: gatherSec, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
 })(window.NZ = window.NZ || {});

@@ -203,7 +203,7 @@
   }
   function report(snap, total, used) {
     var s = st.stats, a = snap.stats, li = [];
-    var k = s.kills - a.kills; if (k) { li.push(k + ' coelho' + (k > 1 ? 's' : '') + ' abatido' + (k > 1 ? 's' : '')); }
+    var k = s.kills - a.kills; if (k) { li.push(k + (k > 1 ? ' bichos abatidos' : ' bicho abatido')); }
     for (var it in s.items) { var n = s.items[it] - (a.items[it] || 0); if (n) { li.push('+' + n + ' ' + G.items[it].name.toLowerCase()); } }
     var x = s.xp - a.xp; if (x) { li.push('+' + x + ' de experiência' + (st.player.lv > snap.lv ? ' (nível ' + st.player.lv + ')' : '')); }
     var p = s.potions - a.potions; if (p) { li.push(p + ' poç' + (p > 1 ? 'ões bebidas' : 'ão bebida')); }
@@ -332,7 +332,7 @@
   function hud() {
     var p = st.player, mh = calc.maxHp(world, p);
     $('hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
-    $('hp-t').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh;
+    $('hp-t').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh + (p.poison ? ' · envenenado' : '');
     var need = p.lv * G.player.xpPerLevel;
     $('xp-bar').style.width = (p.xp / need * 100) + '%';
 
@@ -375,8 +375,8 @@
     if (ph === 'full') { return 'bolsa cheia, voltando à praça'; }
     if (ph === 'rest') { return 'descansando na praça'; }
     if (!a) { return 'pensando'; }
-    if (a.type === 'gather') { var n = world.nodeById[a.id]; return (n.kind === 'arvore' ? 'cortando árvore' : 'minerando veio'); }
-    if (a.type === 'attack') { return 'caçando coelho'; }
+    if (a.type === 'gather') { var n = world.nodeById[a.id]; return n.kind === 'arvore' ? 'cortando árvore' : n.kind === 'veio' ? 'minerando veio' : 'colhendo ' + G.nodes[n.kind].name.toLowerCase(); }
+    if (a.type === 'attack') { var mb = sim.mobById(st, a.id); return 'caçando ' + (mb ? G.monsters[mb.kind].name.toLowerCase() : 'bicho'); }
     if (a.type === 'travel') { return a.label; }
     return 'esperando algo aparecer na área';
   }
@@ -520,6 +520,7 @@
   }
   // tinta de cada região e o desenho que se repete dentro dela (só no que está à vista)
   var REGIAO = { vila: 'rgba(160,120,60,.10)', floresta: 'rgba(60,96,36,.16)', rochas: 'rgba(110,100,86,.2)', campina: 'rgba(176,196,84,.14)' };
+  var COR_BICHO = { coelho: '#6b4424', veado: '#a8763a', lobo: '#3a3a44', escorpiao: '#8a2a1a', serpente: '#4a6a24' };
   function sorteMapa(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
   // big: mapa grande (zoom da barra, arrastável); senão, o pequeno do canto: zoom fixo, sempre centrado em quem joga
   function drawMap(cv, S, big) {
@@ -636,6 +637,10 @@
     world.nodes.forEach(function (n) {
       if (!vis(n.x, n.z)) { return; }
       var alive = st.nodes[n.id].alive, x = X(n.x), z = Z(n.z);
+      if (n.rect) { // retalho colhido: terra lisa por cima das fileiras
+        if (!alive) { c.fillStyle = 'rgba(120,86,48,.55)'; rect(n.rect.x0, n.rect.z0, n.rect.x1, n.rect.z1); }
+        return;
+      }
       if (n.kind === 'arvore') {
         var r = Math.max(1.8, k * 0.95 * (n.s || 1));
         if (!alive) { c.fillStyle = 'rgba(59,36,20,.4)'; c.fillRect(x - 1.5, z - 1, 3, 2); return; }
@@ -649,9 +654,12 @@
         c.strokeStyle = alive ? INK : INK2; c.lineWidth = big ? 1.1 : 0.7; c.stroke();
       }
     });
-    // coelhos
-    c.fillStyle = '#6b4424';
-    st.mobs.forEach(function (m) { if (m.alive && vis(m.x, m.z)) { c.beginPath(); c.arc(X(m.x), Z(m.z), big ? 2.4 : 1.4, 0, 7); c.fill(); } });
+    // bichos: cada espécie com a sua tinta; os bravos (lobo, escorpião, serpente) em tons de perigo e um pouco maiores
+    st.mobs.forEach(function (m) {
+      if (!m.alive || !vis(m.x, m.z)) { return; }
+      c.fillStyle = COR_BICHO[m.kind] || '#6b4424';
+      c.beginPath(); c.arc(X(m.x), Z(m.z), (big ? 2.4 : 1.4) * (G.monsters[m.kind] && G.monsters[m.kind].aggro ? 1.25 : 1), 0, 7); c.fill();
+    });
     // gente: tinta azul
     world.npcs.forEach(function (n) {
       c.fillStyle = '#2c4a7a'; c.strokeStyle = '#f1e2bb'; c.lineWidth = 1;
@@ -902,7 +910,8 @@
     $('bg-coins').textContent = 'Moedas: ' + (p.inv.moeda || 0);
     $('bg-bar').style.width = Math.min(100, used / cap * 100) + '%';
     $('bg-bar').parentNode.classList.toggle('full', used >= cap);
-    var ex = ['Poções: ' + (p.inv.pocao || 0)];
+    var ex = ['Poções: ' + (p.inv.pocao || 0)], tools = calc.keys(G.items).filter(function (x) { return G.items[x].tool && p.inv[x] > 0; });
+    if (tools.length) { ex.push('Ferramentas: ' + tools.map(function (x) { return G.items[x].name.toLowerCase(); }).join(', ')); }
     calc.keys(G.items).forEach(function (x) { if (G.items[x].stack && p.inv[x] > 0) { ex.push('Na aljava: ' + p.inv[x] + ' ' + itemName(x, p.inv[x]).toLowerCase()); } });
     $('bg-extra').textContent = ex.join(' · ') + '. Toque ou clique num item para ver e equipar.'.replace('Toque ou clique', isTouch ? 'Toque' : 'Clique');
   }
@@ -1379,6 +1388,41 @@
   ITEM_ICONS.perneiras_couro = iLegs(LEATHER, LEATHER2, true);
   ITEM_ICONS.luvas_la = iGlove(WOOL, WOOL2, false);
   ITEM_ICONS.luvas_couro = iGlove(LEATHER, LEATHER2, true);
+  // do mato, do curral e da lavoura
+  function iPelt(cloth, line, marks) {
+    return '<path d="M16 7 L20 13 H28 L32 7 L35 15 C35 20 37 23 41 25 L36 29 C36 34 37 37 40 41 L31 39 L24 43 L17 39 L8 41 C11 37 12 34 12 29 L7 25 C11 23 13 20 13 15 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+      '<path d="M24 16 V37" stroke="' + line + '" stroke-width="1.4" stroke-dasharray="3 2"/>' + marks;
+  }
+  ITEM_ICONS.pele_lobo = iPelt('#7f7b74', '#4a4640', '<path d="M17 21 L20 24 M31 21 L28 24 M16 31 L20 29 M32 31 L28 29 M19 15 L22 18 M29 15 L26 18" stroke="#c9c4b8" stroke-width="1.5" stroke-linecap="round"/>');
+  ITEM_ICONS.couro_veado = iPelt('#c08850', '#7a5430', '<g fill="#f2e4c4"><circle cx="18" cy="22" r="1.6"/><circle cx="30" cy="22" r="1.6"/><circle cx="19" cy="30" r="1.4"/><circle cx="29" cy="30" r="1.4"/><circle cx="24" cy="40" r="1.2"/></g>');
+  ITEM_ICONS.pele_serpente = '<path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" ' + K + ' stroke-width="9" stroke-linecap="round"/><path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" stroke="#7a8a3c" stroke-width="5.4" stroke-linecap="round"/>' +
+    '<path d="M7 38 C13 28 21 41 27 32 C33 23 39 31 42 19" fill="none" stroke="#d6c860" stroke-width="2" stroke-dasharray="1.6 3"/>';
+  ITEM_ICONS.carne_veado = '<path d="M8 26 C8 15 20 9 30 11 C40 13 43 22 39 30 C35 38 22 41 14 37 C10 35 8 31 8 26 Z" fill="#8a2c22" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M12 25 C13 19 20 14 29 15" fill="none" stroke="#e8c8a8" stroke-width="2.2" stroke-linecap="round"/><path d="M17 33 C24 35 32 32 35 27" fill="none" stroke="#c45a46" stroke-width="1.4" stroke-linecap="round"/><circle cx="27" cy="25" r="3.6" fill="#efe5cf" ' + K + ' stroke-width="1.4"/>';
+  ITEM_ICONS.ferrao = '<path d="M13 41 C9 29 15 15 29 10 C33 9 37 10 40 6 C41 13 37 18 31 19 C22 22 19 30 21 41 Z" fill="#6a3a22" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M14 33 L20 32 M14.5 26 L21 27 M18 19 L23 22" stroke="#2b1709" stroke-width="1.3"/><path d="M33 13 C35 12.5 37 11.5 38.5 9.5" fill="none" stroke="#e0b070" stroke-width="1.4" stroke-linecap="round"/>';
+  ITEM_ICONS.veneno = '<path d="M24 6 C30 16 36 22 36 30 C36 37 30 42 24 42 C18 42 12 37 12 30 C12 22 18 16 24 6 Z" fill="#6aa040" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M18 30 C18 25 20 21 22.5 18" fill="none" stroke="#d8f0a0" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="33" r="2.2" fill="#3e6a22"/><circle cx="22" cy="36" r="1.4" fill="#3e6a22"/>';
+  ITEM_ICONS.leite = '<path d="M36 19 C43 19 43 31 35.5 32" fill="none" ' + K + ' stroke-width="2.6"/><path d="M17 8 H31 L30 14 C36 18 38 26 36 34 C35 40 31 43 24 43 C17 43 13 40 12 34 C10 26 12 18 18 14 Z" fill="#b8784a" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<ellipse cx="24" cy="9.5" rx="7" ry="2.4" fill="#fbf6ea" ' + K + ' stroke-width="1.4"/><path d="M13.5 24 H34.5" stroke="#7a4a28" stroke-width="1.4"/><path d="M16 30 C16 34 18 38 21 39" fill="none" stroke="#e0b088" stroke-width="1.6" stroke-linecap="round"/>';
+  ITEM_ICONS.la = '<g fill="#efe6d2" ' + K + ' stroke-width="2"><circle cx="16" cy="29" r="8"/><circle cx="32" cy="29" r="8"/><circle cx="24" cy="20" r="9.5"/><circle cx="24" cy="33" r="8.5"/></g>' +
+    '<path d="M19 19 C21 16 25 16 27 19 M13 29 C15 26 18 27 18.5 29.5 M29 29 C31 26 34 27 34.5 29.5 M21 34 C23 31 26 31 27 34" fill="none" stroke="#b0a488" stroke-width="1.4" stroke-linecap="round"/>';
+  ITEM_ICONS.trigo = '<path d="M24 44 V17 M24 44 L16 19 M24 44 L32 19" ' + K + ' stroke-width="4" stroke-linecap="round"/><path d="M24 44 V17 M24 44 L16 19 M24 44 L32 19" stroke="#d8b050" stroke-width="1.8" stroke-linecap="round"/>' +
+    [[24, 10, 0], [15, 13, -18], [33, 13, 18]].map(function (e) { return '<ellipse cx="' + e[0] + '" cy="' + e[1] + '" rx="3.4" ry="7.5" transform="rotate(' + e[2] + ' ' + e[0] + ' ' + e[1] + ')" fill="#e8c060" ' + K + ' stroke-width="1.6"/><path d="M' + e[0] + ' ' + (e[1] - 5) + ' V' + (e[1] + 5) + '" transform="rotate(' + e[2] + ' ' + e[0] + ' ' + e[1] + ')" stroke="#a8781c" stroke-width="1"/>'; }).join('') +
+    '<rect x="18.5" y="31" width="11" height="4" rx="1" fill="#8a5428" ' + K + ' stroke-width="1.3"/>';
+  ITEM_ICONS.cebola = '<path d="M22 13 C21 8 22 5 24 2.5 C26 5 27 8 26 13" fill="#7a9a40" ' + K + ' stroke-width="1.5" stroke-linejoin="round"/>' +
+    '<path d="M24 12 C33 18 39 25 38 32 C37 39 31 42 24 42 C17 42 11 39 10 32 C9 25 15 18 24 12 Z" fill="#c8843a" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M24 15 C18 22 17 34 21 41 M24 15 C30 22 31 34 27 41" fill="none" stroke="#8a5420" stroke-width="1.2"/><path d="M15 27 C16 23 18 21 20 19" fill="none" stroke="#f0c890" stroke-width="1.6" stroke-linecap="round"/><path d="M21 42 L19 46 M24 42 V46.5 M27 42 L29 46" ' + K + ' stroke-width="1.2"/>';
+  ITEM_ICONS.nabo = '<path d="M24 19 C18 13 13 7 15 3 C20 4 23 10 24 19 C25 10 28 4 33 3 C35 7 30 13 24 19 Z" fill="#5a8a3a" ' + K + ' stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<path d="M24 18 C33 18 39 24 38 31 C37 37 30 40 24 46 C18 40 11 37 10 31 C9 24 15 18 24 18 Z" fill="#efe5dc"/><path d="M10.5 28 C11 21 17 18 24 18 C31 18 37 21 37.5 28 C30 25 18 25 10.5 28 Z" fill="#9a4a8a"/>' +
+    '<path d="M24 18 C33 18 39 24 38 31 C37 37 30 40 24 46 C18 40 11 37 10 31 C9 24 15 18 24 18 Z" fill="none" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M16 32 C17 35 19 37 21 38" fill="none" stroke="#c9b8b0" stroke-width="1.4" stroke-linecap="round"/>';
+  ITEM_ICONS.alho_poro = '<g transform="rotate(35 24 24)"><path d="M20 18 L16 2 L21.5 6 L24 0 L26.5 6 L32 2 L28 18 Z" fill="#5a8a50" ' + K + ' stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<rect x="20" y="16" width="8" height="28" rx="3" fill="#efeee0" ' + K + ' stroke-width="2"/><rect x="21.2" y="17.5" width="5.6" height="6" fill="#c8dca0"/><path d="M21 44 L19 47.5 M24 44 V48 M27 44 L29 47.5" ' + K + ' stroke-width="1.2"/></g>';
+  ITEM_ICONS.balde = '<path d="M10 16 C10 3 38 3 38 16" fill="none" ' + K + ' stroke-width="2.4"/><path d="M10 16 H38 L34.5 43 H13.5 Z" fill="#9a6232" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
+    '<path d="M18 17 L19 42 M24 17 V42 M30 17 L29 42" stroke="#6a4020" stroke-width="1.1"/><path d="M11 23 H37 M12.8 36 H35.2" stroke="#5f5148" stroke-width="2.6"/><ellipse cx="24" cy="16" rx="14" ry="3" fill="#5a341a" ' + K + ' stroke-width="1.6"/>';
+  ITEM_ICONS.tesoura = '<path d="M17 30 C11 34 13 44 24 44 C35 44 37 34 31 30" fill="none" ' + K + ' stroke-width="5"/><path d="M17 30 C11 34 13 44 24 44 C35 44 37 34 31 30" fill="none" stroke="#9c958a" stroke-width="2.4"/>' +
+    '<path d="M14.5 30 L17.5 3 L23.5 6.5 L22 30.5 Z" fill="#d6d1c4" ' + K + ' stroke-width="1.6" stroke-linejoin="round"/><path d="M33.5 30 L30.5 3 L24.5 6.5 L26 30.5 Z" fill="#d6d1c4" ' + K + ' stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<rect x="15.5" y="24" width="6.5" height="7" rx="1" fill="#8a5428" ' + K + ' stroke-width="1.2"/><rect x="26" y="24" width="6.5" height="7" rx="1" fill="#8a5428" ' + K + ' stroke-width="1.2"/>';
   // casas vazias sem item no jogo ainda (anel e colar): o contorno, para a casa não parecer quebrada
   ITEM_ICONS._anel = '<ellipse cx="24" cy="28" rx="12" ry="11" fill="none" ' + K + ' stroke-width="5"/><ellipse cx="24" cy="28" rx="12" ry="11" fill="none" stroke="#c99a3b" stroke-width="2.6"/><path d="M19 15 L24 8 L29 15 L24 19 Z" fill="#8fb8d6" ' + K + ' stroke-width="1.5" stroke-linejoin="round"/>';
   ITEM_ICONS._colar = '<path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" ' + K + ' stroke-width="3.6"/><path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" stroke="#c99a3b" stroke-width="1.6" stroke-dasharray="2.4 1.6"/>' +
@@ -1517,18 +1561,22 @@
   function refName(ref) {
     if (ref.type === 'npc' || ref.type === 'gente') { return personName(ref.id); }
     if (ref.type === 'amb') { return view.amb[ref.id].name; }
-    if (ref.type === 'mob') { return G.monsters.coelho.name; }
+    if (ref.type === 'mob') { var mb = sim.mobById(st, ref.id); return G.monsters[mb ? mb.kind : 'coelho'].name; }
+    if (ref.type === 'farm') {
+      var F = G.farm[sim.farmKind(ref.id)], left = sim.farmLeft(st, ref.id);
+      return F.name + ' (' + (left > 0 ? 'volta em ' + calc.fmtLeft(left) : F.ready) + ')';
+    }
     if (ref.type === 'prop') { return propById(ref.id).name; }
     var n = world.nodeById[ref.id], def = G.nodes[n.kind], ns = st.nodes[n.id];
     return def.name + (ns.alive ? '' : ' (volta em ' + Math.ceil(ns.left) + ' s)');
   }
   function propById(id) { return world.props.filter(function (o) { return o.id === id; })[0]; }
   function refPos(ref) {
-    if (ref.type === 'amb') { var o = view.amb[ref.id].o; return { x: o.pos[0], z: o.pos[2] }; }
+    if (ref.type === 'amb' || ref.type === 'farm') { var o = view.amb[ref.id].o; return { x: o.pos[0], z: o.pos[2] }; }
     if (ref.type === 'npc' || ref.type === 'gente') { return personPos(ref.id); }
     if (ref.type === 'mob') { return sim.mobById(st, ref.id); }
     if (ref.type === 'prop') { return propById(ref.id); }
-    return world.nodeById[ref.id];
+    return calc.nodePoint(world.nodeById[ref.id], st.player.x, st.player.z); // plantação: a borda mais perto do retalho
   }
   function interact(ref) {
     var p = st.player, pos = refPos(ref), d = calc.dist(p.x, p.z, pos.x, pos.z);
@@ -1555,6 +1603,11 @@
       p.goto = null; p.action = { type: 'attack', id: ref.id };
       if (d > calc.stats(world, p).reach) { toast('Alvo marcado: aproxime-se para atacar.'); }
     }
+    if (ref.type === 'farm') {
+      var F = G.farm[sim.farmKind(ref.id)];
+      if (d > F.range) { toast('Chegue mais perto da ' + F.name.toLowerCase() + '.'); return; }
+      toast(sim.farmUse(st, ref.id)); save();
+    }
   }
   // E / botão Interagir: o que estiver mais perto, à frente
   function interactFront() {
@@ -1574,8 +1627,16 @@
     }
     people(G.settings.interactRange);
     world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, G.settings.interactRange); });
-    world.nodes.forEach(function (n) { if (st.nodes[n.id].alive) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.gatherReach); } });
+    world.nodes.forEach(function (n) { if (st.nodes[n.id].alive && !n.rect) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.gatherReach); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, G.settings.interactRange); } });
+    (view.cows || []).forEach(function (v) { consider({ type: 'farm', id: v.id }, v.o.pos[0], v.o.pos[2], G.farm[sim.farmKind(v.id)].range); });
+    // plantação: vale estar dentro do retalho ou na beira; perde para o que estiver à frente (pessoa, bicho, árvore)
+    if (!best) {
+      world.nodes.forEach(function (n) {
+        if (!n.rect || !st.nodes[n.id].alive) { return; }
+        var dd = calc.nodeDist(n, p.x, p.z) + 1; if (dd - 1 <= G.player.gatherReach && dd < bd) { bd = dd; best = { type: 'node', id: n.id }; }
+      });
+    }
     if (best) { interact(best); return; }
     // nada ao alcance: diz o que está à frente, mais longe
     people(12);

@@ -82,6 +82,21 @@
       "price": 4,
       "plural": "peles de coelho"
     },
+    "_fauna": "Do mato, do curral e da lavoura. price = o que o comprador paga (taberneiro, padeira, alfaiate, padre; ver npcs).",
+    "pele_lobo": { "name": "Pele de lobo", "plural": "peles de lobo", "price": 18 },
+    "carne_veado": { "name": "Carne de veado", "plural": "carnes de veado", "price": 6 },
+    "couro_veado": { "name": "Couro de veado", "plural": "couros de veado", "price": 10 },
+    "ferrao": { "name": "Ferrão de escorpião", "plural": "ferrões de escorpião", "price": 6 },
+    "pele_serpente": { "name": "Pele de serpente", "plural": "peles de serpente", "price": 7 },
+    "veneno": { "name": "Glândula de veneno", "plural": "glândulas de veneno", "price": 8 },
+    "leite": { "name": "Leite", "plural": "leites", "price": 3 },
+    "la": { "name": "Lã", "plural": "lãs", "price": 4 },
+    "trigo": { "name": "Trigo", "plural": "feixes de trigo", "price": 1 },
+    "cebola": { "name": "Cebola", "plural": "cebolas", "price": 1 },
+    "nabo": { "name": "Nabo", "plural": "nabos", "price": 1 },
+    "alho_poro": { "name": "Alho-poró", "plural": "alhos-porós", "price": 2 },
+    "balde": { "name": "Balde", "plural": "baldes", "tool": true, "noBag": true, "price": 4, "buy": 12 },
+    "tesoura": { "name": "Tesoura de tosquia", "plural": "tesouras de tosquia", "tool": true, "noBag": true, "price": 5, "buy": 15 },
     "pocao": {
       "name": "Poção",
       "price": 10,
@@ -174,7 +189,16 @@
           "chance": 0.5
         }
       ]
-    }
+    },
+    "_fauna": "Bichos das regiões: spot = tipo do ponto marcado em vila.json (regions.spots.kind), count = quantos nascem em cada ponto. aggro = raio (m) em que atacam quem chega; leash = até onde perseguem a partir de casa. poison = veneno { dps, sec } a cada picada (a armadura não corta; poção e padre curam). flee = raio em que a presa foge; stamina = segundos de corrida até cansar, tiredSpeed = velocidade cansada, rest = fôlego recuperado por segundo longe do caçador.",
+    "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 1.3, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
+      "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }] },
+    "escorpiao": { "name": "Escorpião", "spot": "escorpioes", "count": 4, "hp": 22, "dmg": [4, 6], "def": 8, "speed": 1.9, "wanderSpeed": 0.5, "interval": 1.5, "reach": 1.1, "aggro": 4.5, "poison": { "dps": 1, "sec": 6 }, "xp": 14, "respawn": 150, "leash": 14, "wanderRadius": 5,
+      "drops": [{ "item": "ferrao", "n": 1, "chance": 0.7 }] },
+    "serpente": { "name": "Serpente", "spot": "cobras", "count": 4, "hp": 22, "dmg": [4, 6], "def": 0, "speed": 2.6, "wanderSpeed": 0.4, "interval": 1.3, "reach": 1.2, "aggro": 3.5, "poison": { "dps": 1.5, "sec": 6 }, "xp": 12, "respawn": 150, "leash": 12, "wanderRadius": 4,
+      "drops": [{ "item": "pele_serpente", "n": 1, "chance": 0.6 }, { "item": "veneno", "n": 1, "chance": 0.5 }] },
+    "veado": { "name": "Veado", "spot": "cervos", "count": 3, "hp": 34, "dmg": [1, 1], "def": 2, "speed": 5.6, "wanderSpeed": 0.8, "interval": 9, "reach": 0, "flee": 14, "stamina": 7, "tiredSpeed": 2.4, "rest": 0.5, "xp": 22, "respawn": 180, "leash": 30, "wanderRadius": 8,
+      "drops": [{ "item": "carne_veado", "n": 2, "chance": 1 }, { "item": "couro_veado", "n": 1, "chance": 0.8 }] }
   },
   "nodes": {
     "arvore": {
@@ -210,7 +234,17 @@
           "chance": 0.25
         }
       ]
-    }
+    },
+    "_plantacao": "Retalhos das plantações (vila.json → fields): cada faixa vira retalhos de ~8 m; colhido, o retalho fica de terra arada até voltar (respawn em s).",
+    "trigo": { "name": "Trigo", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "trigo", "n": 2, "chance": 1 }, { "item": "trigo", "n": 1, "chance": 0.5 }] },
+    "cebola": { "name": "Cebolas", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "cebola", "n": 2, "chance": 1 }, { "item": "cebola", "n": 1, "chance": 0.5 }] },
+    "nabo": { "name": "Nabos", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "nabo", "n": 2, "chance": 1 }, { "item": "nabo", "n": 1, "chance": 0.5 }] },
+    "alho_poro": { "name": "Alho-poró", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "alho_poro", "n": 2, "chance": 1 }] }
+  },
+  "farm": {
+    "_nota": "Vacas (vila.json → cows) e ovelhas (folds[].flock): interagir de perto tira leite ou tosquia. tool = item exigido (fica com o jogador), cooldown em s por animal.",
+    "vaca": { "name": "Vaca", "tool": "balde", "item": "leite", "n": 1, "cooldown": 300, "noTool": "Para tirar leite, compre um balde no ferreiro.", "wait": "Esta vaca já deu leite: volta em {t}.", "done": "Tirou leite da vaca.", "ready": "dá leite", "range": 2.8 },
+    "ovelha": { "name": "Ovelha", "tool": "tesoura", "item": "la", "n": 2, "cooldown": 600, "noTool": "Para tosquiar, compre uma tesoura de tosquia com o alfaiate.", "wait": "Ovelha tosquiada: a lã volta em {t}.", "done": "Tosquiou a ovelha.", "ready": "com lã", "range": 2.5 }
   },
   "npcs": {
     "padre": {
@@ -223,6 +257,11 @@
         {
           "type": "buy",
           "item": "pocao"
+        },
+        {
+          "type": "sell",
+          "_nota": "o padre faz remédios e antídotos com o veneno dos bichos do pedregal",
+          "items": ["ferrao", "veneno"]
         }
       ]
     },
@@ -233,7 +272,7 @@
         {
           "type": "shop",
           "_nota": "lots: o item sai em feixes desse tamanho (o preço de buy é por unidade)",
-          "items": ["espada_ferro", "espada_aco", "espada_ostanita", "machado_trabalho", "machado_guerra", "machado_duas_faces", "arco_curto", "arco_longo", "flecha"],
+          "items": ["espada_ferro", "espada_aco", "espada_ostanita", "machado_trabalho", "machado_guerra", "machado_duas_faces", "arco_curto", "arco_longo", "flecha", "balde"],
           "lots": { "flecha": 10 }
         },
         {
@@ -248,11 +287,11 @@
       "services": [
         {
           "type": "shop",
-          "items": ["capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto"]
+          "items": ["capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto", "tesoura"]
         },
         {
           "type": "sell",
-          "items": ["pele", "capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto"]
+          "items": ["pele", "pele_lobo", "couro_veado", "pele_serpente", "la", "capuz_la", "coifa_couro", "gambeson", "tunica_couro", "luvas_la", "luvas_couro", "calcas_la", "perneiras_couro", "sapatos_couro", "botas_cano_alto"]
         }
       ]
     },
@@ -262,10 +301,27 @@
       "services": [
         {
           "type": "sell",
+          "_nota": "trigo: a taberna faz cerveja; enquanto a padeira não tem balcão fixo, é aqui que o trigo se vende",
           "items": [
             "carne",
-            "pele"
+            "pele",
+            "carne_veado",
+            "leite",
+            "cebola",
+            "nabo",
+            "alho_poro",
+            "trigo"
           ]
+        }
+      ]
+    },
+    "padeira": {
+      "name": "Padeira",
+      "idle": "Trigo bom vira pão bom. E leite, se tiver.",
+      "services": [
+        {
+          "type": "sell",
+          "items": ["trigo", "leite"]
         }
       ]
     },
@@ -311,7 +367,7 @@
         "act": "retreat_stop"
       },
       "atacar": {
-        "label": "Caçar coelhos dentro da área",
+        "label": "Caçar os bichos dentro da área",
         "cond": "mob_in_area",
         "act": "attack"
       },
@@ -326,6 +382,12 @@
         "cond": "node_in_area",
         "kind": "veio",
         "act": "gather"
+      },
+      "colheita": {
+        "label": "Colher a plantação dentro da área",
+        "cond": "node_in_area",
+        "kinds": ["trigo", "cebola", "nabo", "alho_poro"],
+        "act": "gather"
       }
     },
     "defaultOrder": [
@@ -334,7 +396,8 @@
       "bolsa",
       "atacar",
       "madeira",
-      "pedra"
+      "pedra",
+      "colheita"
     ]
   },
   "_textos": "Falas de missão marcadas com _provisorio foram escritas a partir das premissas e devem ser substituídas.",
