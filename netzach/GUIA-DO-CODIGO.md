@@ -38,6 +38,7 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 | `art/` | Imagens prontas: `sprites.png` (figuras), `walls.png` (texturas), `atlas.json` (onde cada figura está). |
 | `tools/` | Ferramentas: `gerar_arte.py` (desenha a arte), `verificar_trilhas.py` (confere os caminhos dos moradores), `gerar_icones.py` (ícones do app), `servidor.ps1` (servidor de teste). |
 | `PENDENCIAS.md` | O que falta fazer. |
+| `LORE.md` | A história da vila: quem é quem, lugares, ganchos para missões e o que ainda está para decidir. |
 
 ## "Quero mudar…" → onde mexer
 ### Números e regras (`data/game.json`)
