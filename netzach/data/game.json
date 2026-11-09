@@ -317,13 +317,18 @@
     },
     "padeira": {
       "name": "Padeira",
-      "idle": "Trigo bom vira pão bom. E leite, se tiver.",
+      "idle": "O forno está quente desde antes do galo. Pão fresco não espera ninguém.",
       "services": [
         {
           "type": "sell",
           "items": ["trigo", "leite"]
         }
       ]
+    },
+    "senhor": {
+      "name": "Senhor da vila",
+      "idle": "Fale depressa, forasteiro. Esta casa tem muito o que governar.",
+      "services": []
     },
     "quadro": {
       "name": "Missões diárias",

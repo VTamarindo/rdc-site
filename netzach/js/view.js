@@ -182,8 +182,12 @@
     'void main(){vec4 w=M*vec4(p,1.0);vn=N*n;vw=w.xyz;vu=uv;gl_Position=VP*w;}';
   var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;uniform vec3 tint;' +
     'uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;uniform vec3 fogCol;uniform vec2 fog;' +
+    // dentro: peça de interior, iluminada pela luz da casa (ambiente + lareira/velas), não pelo céu, que à noite apagaria a sala
+    'uniform float dentro;uniform vec3 amb;uniform vec4 l1;uniform vec3 c1;uniform vec4 l2;uniform vec3 c2;' +
+    'vec3 lp(vec4 L,vec3 C,vec3 nn){vec3 d=L.xyz-vw;float r=max(length(d),0.01);float a=clamp(1.0-r/L.w,0.0,1.0);return C*a*a*(0.4+0.6*max(dot(nn,d/r),0.0));}' +
     'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;vec3 nn=normalize(vn);' +
     'vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vec3 b=col*t.rgb;' +
+    'if(dentro>0.5){l=amb*(0.82+0.18*nn.y)+lp(l1,c1,nn)+lp(l2,c2,nn);}' +
     'vec3 c=mix(b*l,b*tint,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
 
   function Renderer(canvas) {
@@ -194,7 +198,7 @@
     var pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
     var u = this.u = {};
-    ['VP', 'M', 'N', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
+    ['VP', 'M', 'N', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
     this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
     gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
@@ -222,6 +226,7 @@
     var gl = this.gl, u = this.u, self = this;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(env.fogCol[0], env.fogCol[1], env.fogCol[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniform3fv(u.amb, env.amb || BRANCO); gl.uniform1f(u.dentro, 0); this.envTint = env.tint; this.inT = false;
     gl.uniform3fv(u.fogCol, env.fogCol);
     if (env.ceu) { this.ceu(env.ceu, cam); }
     gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.vp)); gl.uniform3fv(u.eye, cam.eye); gl.uniform3fv(u.tint, env.tint);
@@ -273,6 +278,11 @@
     gl.uniformMatrix4fv(u.M, false, new Float32Array(n.world)); gl.uniformMatrix3fv(u.N, false, new Float32Array(normalMat(n.world)));
     gl.uniform3fv(u.col, n.color); gl.uniform3fv(u.emi, n.emissive);
     gl.uniform1f(u.alpha, n.alpha); gl.uniform1f(u.unlit, n.unlit ? 1 : 0);
+    // peça de interior: as luzes da sala e, nas sem sombra (chamas, figuras), o brilho próprio no lugar da tinta do céu
+    if (n.dentro) {
+      var S = n.dentro; gl.uniform1f(u.dentro, 1); gl.uniform4fv(u.l1, S.l1); gl.uniform3fv(u.c1, S.c1); gl.uniform4fv(u.l2, S.l2); gl.uniform3fv(u.c2, S.c2);
+      gl.uniform3fv(u.tint, n.brilho || BRANCO); this.inT = true;
+    } else if (this.inT) { gl.uniform1f(u.dentro, 0); gl.uniform3fv(u.tint, this.envTint || BRANCO); this.inT = false; }
     var noCull = n.alpha < 1 || n.unlit;
     if (noCull) { gl.disable(gl.CULL_FACE); }
     gl.drawArrays(gl.TRIANGLES, 0, n.geo.count);
@@ -302,17 +312,35 @@
     [0.3, 0.9].forEach(function (k) { g.add(box(0.02, 0.16, 0.02, null, 1, x, 2.99, z + k, 0x3a3a42)); });
     g.add(box(0.08, 0.9, 0.9, tex, 'fit', x, 2.47, z + 0.6));
   }
-  function house(b, wall, wallTile, roof) {
+  // I: o interior da construção (vila.json → interiores), ou nada. Com interior, a caixa maciça vira casca oca com o vão
+  // da porta aberto, e o lado de dentro (paredes, móveis, porta aberta) é montado em sala()
+  function house(b, wall, wallTile, roof, I) {
     var g = new Node();
-    g.add(box(b.w, b.h, b.d, wall, wallTile, 0, b.h / 2, 0));
+    if (I) { g.add(cascaFora(b, I, wall, wallTile)); }
+    else { g.add(box(b.w, b.h, b.d, wall, wallTile, 0, b.h / 2, 0)); }
     g.add(new Node(roofSlopeUV(gableGeo(b.w + 0.8, b.w * 0.45, b.d + 0.8, 2), b.d), 0xffffff, { tex: roof }).at(0, b.h, 0));
-    g.add(box(1.4, 2.2, 0.1, 'porta', 'fit', 0, 1.1, b.d / 2 + 0.05));
+    if (!I) { g.add(box(1.4, 2.2, 0.1, 'porta', 'fit', 0, 1.1, b.d / 2 + 0.05)); }
     return g;
   }
-  function win(g, x, y, z, side) { g.add(side ? box(0.08, 1.0, 1.0, 'janela', 'fit', x, y, z) : box(1.0, 1.0, 0.08, 'janela', 'fit', x, y, z)); }
-  function church(b) {
-    var g = house(b, 'cal', 2.5, 'telha_escura'), tw = 2.6, th = b.h + 4.5, tz = b.d / 2 - tw / 2 - 0.2;
-    g.add(box(tw, th, tw, 'cal', 2.5, 0, th / 2, tz));
+  // JAN: enquanto se monta uma construção com interior, guarda as janelas da fachada para pôr o vidro também do lado de dentro
+  var JAN = null;
+  function win(g, x, y, z, side) {
+    g.add(side ? box(0.08, 1.0, 1.0, 'janela', 'fit', x, y, z) : box(1.0, 1.0, 0.08, 'janela', 'fit', x, y, z));
+    if (JAN) { JAN.push([x, y, z, side]); }
+  }
+  // faixa maciça que dá a volta na construção (embasamento, cinta): com interior, vira moldura de quatro lados, aberta na porta (dw)
+  function aro(g, I, W, D, h, y, tex, map, color, dw) {
+    if (!I) { g.add(box(W, h, D, tex, map, 0, y, 0, color)); return; }
+    var e = 0.3;
+    g.add(box(W, h, e, tex, map, 0, y, -D / 2 + e / 2, color));
+    [-1, 1].forEach(function (s) { g.add(box(e, h, D - 2 * e, tex, map, s * (W / 2 - e / 2), y, 0, color)); });
+    if (!dw) { g.add(box(W, h, e, tex, map, 0, y, D / 2 - e / 2, color)); return; }
+    [-1, 1].forEach(function (s) { g.add(box((W - dw) / 2, h, e, tex, map, s * (dw / 2 + (W - dw) / 4), y, D / 2 - e / 2, color)); });
+  }
+  function church(b, I) {
+    var g = house(b, 'cal', 2.5, 'telha_escura', I), tw = 2.6, th = b.h + 4.5, tz = b.d / 2 - tw / 2 - 0.2;
+    // a torre nasce dentro da nave: com interior, começa no forro (de fora, a parte de baixo nunca apareceu)
+    if (I) { g.add(box(tw, th - b.h + 0.2, tw, 'cal', 2.5, 0, (th + b.h - 0.2) / 2, tz)); } else { g.add(box(tw, th, tw, 'cal', 2.5, 0, th / 2, tz)); }
     g.add(cyl(0, tw * 0.75, 3, 4, 'telha_escura', 1.5, Math.PI / 4).at(0, th + 1.5, tz));
     g.add(box(0.15, 1.2, 0.15, null, 1, 0, th + 3.5, tz, 0x2b2b2b)); g.add(box(0.7, 0.15, 0.15, null, 1, 0, th + 3.7, tz, 0x2b2b2b));
     win(g, 0, th - 2.2, tz + tw / 2 + 0.05);
@@ -325,8 +353,8 @@
     for (var i = -1; i <= 1; i++) { win(g, b.w / 2 + 0.05, 2.8, i * 2.6, true); win(g, -b.w / 2 - 0.05, 2.8, i * 2.6, true); }
     return g;
   }
-  function smith(b) {
-    var g = house(b, 'pedra', 2, 'palha');
+  function smith(b, I) {
+    var g = house(b, 'pedra', 2, 'palha', I);
     g.add(box(1, 3, 1, 'pedra', 1, b.w / 2 - 1, b.h + 1.5, -b.d / 4));
     g.add(box(1.6, 1, 1.2, 'pedra', 1, -2, 0.5, b.d / 2 + 1.2));
     var coal = box(1.2, 0.3, 0.9, null, 1, -2, 1.05, b.d / 2 + 1.2, 0xd8581c); coal.unlit = true; g.add(coal);
@@ -335,9 +363,9 @@
     placaPendurada(g, 'placa_ferreiro', b.w / 2 + 0.6, b.d / 2 + 0.6);
     return g;
   }
-  function bar(b) {
-    var g = house(b, 'enxaimel', 2.5, 'telha');
-    g.add(box(b.w + 0.1, 0.25, b.d + 0.1, 'tabuas', 1, 0, 2.6, 0, 0x8a7a6a));
+  function bar(b, I) {
+    var g = house(b, 'enxaimel', 2.5, 'telha', I);
+    aro(g, I, b.w + 0.1, b.d + 0.1, 0.25, 2.6, 'tabuas', 1, 0x8a7a6a, 0);
     win(g, -2.4, 1.6, b.d / 2 + 0.05); win(g, 2.4, 1.6, b.d / 2 + 0.05); win(g, -2.4, 3.8, b.d / 2 + 0.05); win(g, 2.4, 3.8, b.d / 2 + 0.05);
     placaPendurada(g, 'placa', b.w / 2 + 0.6, b.d / 2 + 0.6);
     for (var i = 0; i < 2; i++) { g.add(cyl(0.4, 0.4, 0.9, 8, 'tabuas', 0.8).at(-b.w / 2 + 0.6 + i * 0.9, 0.45, b.d / 2 + 0.7)); }
@@ -380,11 +408,11 @@
   }
 
   // ---------- a cidade: construções novas ----------
-  function casaSenhor(b) {
+  function casaSenhor(b, I) {
     var g = new Node(), W = b.w, D = b.d, H = b.h, fz = D / 2, tw = 2.8, th = H + 2.6, tx = W / 2 - tw / 2, tz = fz - tw / 2, rh = (W + 0.8) * 0.42;
-    g.add(box(W - 0.2, H, D - 0.2, 'pedra', 2, 0, H / 2, 0));
-    g.add(box(W, 0.6, D, 'pedra', 1, 0, 0.3, 0, 0x8c8880));          // embasamento
-    g.add(box(W, 0.2, D, 'pedra', 1, 0, 3.6, 0, 0xc4c0b4));          // cinta entre os andares
+    if (I) { g.add(cascaFora(b, I, 'pedra', 2)); } else { g.add(box(W - 0.2, H, D - 0.2, 'pedra', 2, 0, H / 2, 0)); }
+    aro(g, I, W, D, 0.6, 0.3, 'pedra', 1, 0x8c8880, I && I.porta[0]); // embasamento
+    aro(g, I, W, D, 0.2, 3.6, 'pedra', 1, 0xc4c0b4, 0);               // cinta entre os andares
     g.add(new Node(roofSlopeUV(gableGeo(W + 0.8, rh, D + 0.8, 2), D), 0xffffff, { tex: 'telha_escura' }).at(0, H, 0));
     g.add(new Node(cached('empena', function () { return gableGeo(W + 0.5, (W + 0.5) * 0.42, 0.44, 2); }), 0xffffff, { tex: 'pedra' }).at(0, H, fz + 0.2));
     // duas torres na fachada, mais altas que a cumeeira
@@ -406,7 +434,7 @@
       win(g, s * 3, 2.2, -fz + 0.05); win(g, s * 3, 5.2, -fz + 0.05);
       win(g, s * 1.8, 5.2, fz - 0.05);
       // portal em duas folhas, com ombreiras de pedra
-      g.add(box(1.2, 2.7, 0.1, 'porta', 'fit', s * 0.6, 1.35, fz + 0.02));
+      if (!I) { g.add(box(1.2, 2.7, 0.1, 'porta', 'fit', s * 0.6, 1.35, fz + 0.02)); } // com interior, as folhas ficam abertas por dentro
       g.add(box(0.4, 3, 0.34, 'pedra', 1, s * 1.42, 1.5, fz + 0.1, 0xc4c0b4));
     });
     g.add(box(3.4, 0.46, 0.36, 'pedra', 1, 0, 3.02, fz + 0.1, 0xc4c0b4));
@@ -415,9 +443,9 @@
     g.add(pintura(box(1.5, 1.7, 0.01, 'brasao', 'fit', 0, 5.2, fz - 0.09)));
     return g;
   }
-  function padaria(b) {
-    var g = house(b, 'tijolo', 2, 'telha'), fz = b.d / 2;
-    g.add(box(b.w + 0.1, 0.5, b.d + 0.1, 'pedra', 1, 0, 0.25, 0));
+  function padaria(b, I) {
+    var g = house(b, 'tijolo', 2, 'telha', I), fz = b.d / 2;
+    aro(g, I, b.w + 0.1, b.d + 0.1, 0.5, 0.25, 'pedra', 1, undefined, I && I.porta[0]);
     win(g, -2.4, 1.7, fz + 0.05); win(g, 2.4, 1.7, fz + 0.05); win(g, -b.w / 2 - 0.05, 1.7, 0, true);
     // a chaminé do forno de dentro, larga, sobre a água leste do telhado
     g.add(box(1.5, 4.8, 1.5, 'tijolo', 1.5, b.w / 2 - 1.4, b.h + 2.4, -0.8)); g.add(box(1.9, 0.24, 1.9, 'pedra', 1, b.w / 2 - 1.4, b.h + 4.8, -0.8));
@@ -450,9 +478,9 @@
     return g;
   }
   // alfaiate: oficina modesta de enxaimel, com rolos de pano na banca junto à janela e um manequim ao lado da porta
-  function alfaiate(b) {
-    var g = house(b, 'enxaimel', 2.5, 'telha'), fz = b.d / 2;
-    g.add(box(b.w + 0.1, 0.36, b.d + 0.1, 'pedra', 1, 0, 0.18, 0));
+  function alfaiate(b, I) {
+    var g = house(b, 'enxaimel', 2.5, 'telha', I), fz = b.d / 2;
+    aro(g, I, b.w + 0.1, b.d + 0.1, 0.36, 0.18, 'pedra', 1, undefined, I && I.porta[0]);
     win(g, -1.9, 1.7, fz + 0.05); win(g, 1.9, 1.7, fz + 0.05);
     win(g, b.w / 2 + 0.05, 1.7, 0, true); win(g, -b.w / 2 - 0.05, 1.7, 0, true);
     placaPendurada(g, 'placa_alfaiate', b.w / 2 + 0.6, fz + 0.6);
@@ -578,20 +606,315 @@
     return g;
   }
 
+  // ---------- interiores (vila.json → interiores) ----------
+  // A sala fica dentro da própria construção, com as paredes ocas: a posição do jogador continua sendo a do mundo, então
+  // mapa, caminhos, proximidade dos NPCs e saves funcionam sem portal. Medidas em metros, no referencial da construção:
+  // x ao longo da fachada, z para a frente (a porta fica em z = +d/2). A face de dentro das paredes cai em
+  // ±(w/2 - 0,5), ±(d/2 - 0,5), na borda das células de 1 m de sim.js: o jogador encosta na parede que vê
+  function cascaDim(b) { var k = b.type === 'casa_senhor' ? 0.1 : 0; return { hx: b.w / 2 - k, hz: b.d / 2 - k, a: b.w / 2 - 0.5, c: b.d / 2 - 0.5, H: b.h }; }
+  function face(g, ax, az, bx, bz, y0, y1) { g.quad([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az]); } // normal para (-dz, 0, dx)
+  // fora: as quatro faces de fora, com o vão da porta; senão, as de dentro, as ombreiras e a verga. y vai de -H/2 a H/2,
+  // como na caixa inteira de antes, para a textura da fachada cair no mesmo lugar
+  function casca(C, porta, fora, map) {
+    var g = new Geo(), hx = C.hx, hz = C.hz, a = C.a, c = C.c, y0 = -C.H / 2, y1 = C.H / 2, w = porta[0] / 2, t = porta[1] - C.H / 2;
+    if (fora) {
+      face(g, -hx, hz, -w, hz, y0, y1); face(g, w, hz, hx, hz, y0, y1); face(g, -w, hz, w, hz, t, y1);
+      face(g, hx, hz, hx, -hz, y0, y1); face(g, hx, -hz, -hx, -hz, y0, y1); face(g, -hx, -hz, -hx, hz, y0, y1);
+    } else {
+      face(g, -a, -c, a, -c, y0, y1); face(g, a, -c, a, c, y0, y1); face(g, -a, c, -a, -c, y0, y1);
+      face(g, a, c, w, c, y0, y1); face(g, -w, c, -a, c, y0, y1); face(g, w, c, -w, c, t, y1);
+      face(g, -w, hz, -w, c, y0, t); face(g, w, c, w, hz, y0, t);
+      g.quad([-w, t, c], [w, t, c], [w, t, hz], [-w, t, hz]);
+    }
+    return g.done(map);
+  }
+  function cascaFora(b, I, tex, map) { return new Node(casca(cascaDim(b), I.porta, true, map), 0xffffff, { tex: tex }).at(0, b.h / 2, 0); }
+
+  var MAD = 0xd0c0aa, MADE = 0x8a6a4a, FERRO = 0x3a3a42, ACO = 0xa4aab4, VERM = 0x7a2522, OURO = 0xd9b24a, LINHO = 0xe8e0cc, CERA = 0xf0e8d0;
+  function acesa(o) { o.unlit = true; return o; } // brasa e chama: brilho próprio, de dia e de noite
+  function chama(g, x, y, z, s) { s = s || 1; g.add(acesa(box(0.05 * s, 0.11 * s, 0.05 * s, null, 1, x, y + 0.055 * s, z, 0xffc040))); }
+  function pernas(g, W, D, h, t, cor) {
+    [-1, 1].forEach(function (sx) { [-1, 1].forEach(function (sz) { g.add(box(t, h, t, 'tabuas', PX, sx * (W / 2 - t / 2 - 0.04), h / 2, sz * (D / 2 - t / 2 - 0.04), cor)); }); });
+  }
+  function deitado(r, len, x, y, z, cor, tex) { // cilindro deitado ao longo de z (tonel, rolo de pano)
+    return new Node(cached('dt' + [r, len], function () { return rotX(cylGeo(r, r, len, 10, 0, 0.8), Math.PI / 2); }), cor, { tex: tex === undefined ? 'tabuas' : tex }).at(x, y, z);
+  }
+  function estante(g, W, D, H, n) { // estante encostada na parede de trás (-z); devolve a altura de cada prateleira
+    [-1, 1].forEach(function (s) { g.add(box(0.06, H, D, 'tabuas', PX, s * (W / 2 - 0.03), H / 2, 0, MADE)); });
+    g.add(box(W, H, 0.03, 'tabuas', PX, 0, H / 2, -D / 2 + 0.015, MADE));
+    var ys = [];
+    for (var i = 0; i < n; i++) { var y = 0.12 + i * (H - 0.2) / (n - 1 || 1); ys.push(y); g.add(box(W - 0.1, 0.04, D - 0.04, 'tabuas', PX, 0, y, 0.01, MAD)); }
+    return ys;
+  }
+  // cada móvel no seu referencial: largura W em x, fundura D em z, frente para +z (o encosto e a parede ficam em -z)
+  var MOVEL = {
+    banco: function (g, W, D) {
+      g.add(box(W, 0.06, D, 'tabuas', PX, 0, 0.45, 0, MAD));
+      if (W >= D) { [-1, 1].forEach(function (s) { g.add(box(0.06, 0.42, D * 0.8, 'tabuas', PX, s * (W / 2 - 0.15), 0.21, 0, MADE)); }); }
+      else { [-1, 1].forEach(function (s) { g.add(box(W * 0.8, 0.42, 0.06, 'tabuas', PX, 0, 0.21, s * (D / 2 - 0.15), MADE)); }); }
+    },
+    mesa: function (g, W, D, m) {
+      g.add(box(W, 0.07, D, 'tabuas', PX, 0, 0.76, 0, MAD)); pernas(g, W, D, 0.73, 0.08, MADE);
+      [[-0.3, -0.2], [0.25, 0.15]].forEach(function (p) { // canecas e uma tigela
+        g.add(cyl(0.05, 0.045, 0.13, 6, 'tabuas', PX, 0, MADE).at(p[0] * W, 0.86, p[1] * D));
+      });
+      g.add(cyl(0.14, 0.08, 0.07, 8, null, 1, 0, 0x9a8a7a).at(0, 0.83, 0));
+      if (m.cor) { g.add(box(W * 0.7, 0.01, D * 0.6, null, 1, 0, 0.8, 0, m.cor)); }
+    },
+    mesa_alta: function (g, W, D) { // mesa do senhor: toalha até o chão na frente e nos lados
+      g.add(box(W, 0.07, D, 'tabuas', PX, 0, 0.8, 0, MADE));
+      g.add(box(W + 0.04, 0.74, D * 0.7, null, 1, 0, 0.41, D * 0.1, LINHO));
+      g.add(box(W + 0.06, 0.03, D + 0.04, null, 1, 0, 0.85, 0, LINHO));
+      g.add(box(W + 0.07, 0.28, 0.02, null, 1, 0, 0.66, D * 0.45 + 0.03, VERM)); g.add(box(W + 0.07, 0.05, 0.025, null, 1, 0, 0.5, D * 0.45 + 0.035, OURO));
+      for (var x = -W / 2 + 0.6; x < W / 2 - 0.3; x += 1) {
+        g.add(cyl(0.16, 0.16, 0.02, 8, null, 1, 0, 0x9aa0aa).at(x, 0.875, -D * 0.15));
+        g.add(cyl(0.045, 0.03, 0.18, 6, null, 1, 0, OURO).at(x + 0.3, 0.96, -D * 0.2));
+      }
+      g.add(box(0.5, 0.16, 0.3, null, 1, 0.4, 0.95, 0.05, 0xb87a30)); g.add(cyl(0.2, 0.15, 0.08, 8, null, 1, 0, 0x9a8a7a).at(-1.1, 0.9, 0.05));
+    },
+    balcao: function (g, W, D) {
+      g.add(box(W, 0.98, D, 'tabuas', PX, 0, 0.49, 0, MADE)); g.add(box(W + 0.08, 0.06, D + 0.12, 'tabuas', PX, 0, 1.01, 0, MAD));
+      for (var x = -W / 2 + 0.4; x < W / 2 - 0.2; x += 0.9) { g.add(cyl(0.055, 0.05, 0.14, 6, 'tabuas', PX, 0, MADE).at(x, 1.11, 0.1)); }
+      g.add(cyl(0.09, 0.12, 0.3, 8, null, 1, 0, 0x8a6a5a).at(W / 2 - 0.35, 1.19, -0.1));
+    },
+    barril: function (g, W, D) {
+      var r = Math.min(W, D) * 0.4;
+      g.add(cyl(r, r, 0.9, 10, 'tabuas', 0.8, 0, MAD).at(0, 0.45, 0));
+      [0.18, 0.72].forEach(function (y) { g.add(cyl(r + 0.015, r + 0.015, 0.05, 10, null, 1, 0, FERRO).at(0, y, 0)); });
+    },
+    tina: function (g, W, D) { MOVEL.barril(g, W, D); var r = Math.min(W, D) * 0.4; g.add(cyl(r - 0.02, r - 0.02, 0.01, 10, null, 1, 0, 0x4a6a7a).at(0, 0.905, 0)); },
+    tonel: function (g, W, D) { // toneis deitados na armação, com a torneira virada para a sala
+      [-1, 1].forEach(function (s) { g.add(box(W, 0.12, 0.12, 'tabuas', PX, 0, 0.1, s * (D / 2 - 0.15), MADE)); });
+      var n = Math.max(1, Math.floor(W / 0.95));
+      for (var i = 0; i < n; i++) {
+        var x = -W / 2 + (i + 0.5) * W / n;
+        g.add(deitado(0.42, D * 0.88, x, 0.58, 0, MAD));
+        [-0.3, 0.3].forEach(function (k) { g.add(new Node(cached('aro_tonel', function () { return rotX(cylGeo(0.435, 0.435, 0.05, 10, 0, 1), Math.PI / 2); }), FERRO).at(x, 0.58, k * D)); });
+        g.add(box(0.05, 0.05, 0.12, null, 1, x, 0.38, D * 0.44 + 0.06, FERRO));
+        if (i % 2 === 0) { g.add(deitado(0.28, D * 0.6, x, 1.27, -0.05, MAD)); }
+      }
+    },
+    lareira: function (g, W, D, m, I) {
+      g.add(box(W, 0.15, D, 'pedra', 1, 0, 0.075, 0, 0x9a948a));
+      [-1, 1].forEach(function (s) { g.add(box(0.3, 1.3, D, 'pedra', 1, s * (W / 2 - 0.15), 0.8, 0)); });
+      g.add(box(W - 0.6, 1.3, 0.1, null, 1, 0, 0.8, -D / 2 + 0.05, 0x2a2420));
+      g.add(box(W + 0.2, 0.28, D + 0.1, 'pedra', 1, 0, 1.59, 0.05, 0xc4c0b4));
+      g.add(box(W * 0.85, I.teto - 1.73, D * 0.75, 'pedra', 1, 0, (I.teto + 1.73) / 2, -D * 0.125));
+      [[-0.12, 0.3], [0.12, -0.3]].forEach(function (p) { var t = box(0.7, 0.1, 0.12, null, 1, 0, 0.22, p[0], MADE); t.rotY = p[1]; g.add(t); });
+      g.add(acesa(box(W - 0.8, 0.03, D * 0.6, null, 1, 0, 0.17, 0, 0xd8581c)));
+      [[0, 0.42, 0, 0.3, 0xe86a1c], [-0.2, 0.34, 0.06, 0.2, 0xffc040], [0.2, 0.36, -0.04, 0.2, 0xe86a1c], [0.05, 0.6, 0.02, 0.14, 0xffc040]].forEach(function (f) {
+        g.add(acesa(box(f[3], f[3] * 1.3, f[3] * 0.7, null, 1, f[0], f[1], f[2], f[4])));
+      });
+    },
+    forja: function (g, W, D, m, I) {
+      g.add(box(W, 0.85, D, 'pedra', 1, 0, 0.425, 0));
+      g.add(box(W + 0.06, 0.08, D + 0.06, 'pedra', 1, 0, 0.87, 0, 0x8c8880));
+      g.add(acesa(box(W * 0.62, 0.05, D * 0.55, null, 1, 0, 0.91, 0.05, 0xd8581c))); g.add(acesa(box(W * 0.3, 0.06, D * 0.25, null, 1, 0.05, 0.93, 0.05, 0xffb040)));
+      g.add(cyl(0.3, W * 0.62, 1.1, 4, 'pedra', 1, Math.PI / 4).at(0, 2.05, -D * 0.1));
+      g.add(box(0.5, I.teto - 2.6, 0.5, 'pedra', 1, 0, (I.teto + 2.6) / 2, -D * 0.1));
+      g.add(box(0.6, 0.03, 0.04, null, 1, W * 0.25, 0.93, D * 0.38, FERRO)); g.add(box(0.5, 0.025, 0.04, null, 1, W * 0.25, 0.95, D * 0.42, FERRO));
+    },
+    fole: function (g, W, D) { // fole: a ponta (+z) vai para a forja
+      g.add(box(W * 0.6, 0.5, D * 0.8, 'tabuas', PX, 0, 0.25, 0, MADE));
+      g.add(box(W * 0.55, 0.05, D * 0.7, 'tabuas', PX, 0, 0.53, 0, MAD)); g.add(box(W * 0.5, 0.18, D * 0.6, null, 1, 0, 0.64, -0.02, 0x5a3a26));
+      g.add(box(W * 0.55, 0.05, D * 0.7, 'tabuas', PX, 0, 0.75, 0, MAD));
+      g.add(box(0.07, 0.07, 0.45, null, 1, 0, 0.62, D * 0.35 + 0.22, FERRO)); g.add(box(0.05, 0.05, 0.4, 'tabuas', PX, 0, 0.8, -D * 0.45, MADE));
+    },
+    bigorna: function (g) {
+      g.add(cyl(0.28, 0.32, 0.5, 8, 'tabuas', PX, 0, MADE).at(0, 0.25, 0));
+      g.add(box(0.3, 0.12, 0.22, null, 1, 0, 0.56, 0, FERRO)); g.add(box(0.18, 0.1, 0.14, null, 1, 0, 0.67, 0, FERRO));
+      g.add(box(0.56, 0.12, 0.22, null, 1, 0, 0.78, 0, 0x4a4a52)); g.add(box(0.2, 0.08, 0.12, null, 1, 0.36, 0.79, 0, 0x4a4a52));
+      g.add(box(0.05, 0.05, 0.26, 'tabuas', PX, -0.1, 0.87, 0.02, MADE)); g.add(box(0.14, 0.07, 0.07, null, 1, -0.1, 0.87, 0.16, FERRO));
+    },
+    armas: function (g, W, D) { // armeiro de parede: espadas de ponta para cima e machados
+      var z = -D / 2 + 0.16;
+      [-1, 1].forEach(function (s) { g.add(box(0.08, 1.75, 0.08, 'tabuas', PX, s * (W / 2 - 0.06), 0.875, -D / 2 + 0.08, MADE)); });
+      [0.4, 1.45].forEach(function (y) { g.add(box(W, 0.07, 0.07, 'tabuas', PX, 0, y, -D / 2 + 0.1, MADE)); });
+      var n = Math.max(2, Math.floor((W - 0.3) / 0.3));
+      for (var i = 0; i < n; i++) {
+        var x = -W / 2 + 0.3 + i * (W - 0.6) / (n - 1);
+        if (i % 3 === 2) { g.add(box(0.045, 1.0, 0.045, 'tabuas', PX, x, 0.62, z, MADE)); g.add(box(0.22, 0.16, 0.03, null, 1, x + 0.08, 1.04, z, ACO)); continue; }
+        g.add(box(0.035, 0.18, 0.035, null, 1, x, 0.38, z, 0x5a3a26)); g.add(box(0.22, 0.035, 0.05, null, 1, x, 0.49, z, FERRO));
+        g.add(box(0.055, 0.8, 0.015, null, 1, x, 0.9, z, ACO));
+      }
+    },
+    bancada: function (g, W, D) { // bancada com ferramentas e a tábua de ferramentas na parede
+      g.add(box(W, 0.1, D, 'tabuas', PX, 0, 0.82, 0, MADE)); pernas(g, W, D, 0.78, 0.1, MADE);
+      g.add(box(0.2, 0.18, 0.16, null, 1, W / 2 - 0.2, 0.96, 0, FERRO));
+      g.add(box(0.05, 0.04, 0.3, 'tabuas', PX, -0.3, 0.89, 0.1, MADE)); g.add(box(0.12, 0.07, 0.07, null, 1, -0.3, 0.9, 0.27, FERRO));
+      g.add(box(W * 0.9, 0.55, 0.03, 'tabuas', PX, 0, 1.6, -D / 2 + 0.015, MADE));
+      for (var i = 0; i < 5; i++) { var x = -W * 0.38 + i * W * 0.19; g.add(box(0.04, 0.34, 0.03, null, 1, x, 1.58, -D / 2 + 0.05, i % 2 ? ACO : FERRO)); g.add(box(0.12, 0.06, 0.04, null, 1, x, 1.76, -D / 2 + 0.05, FERRO)); }
+    },
+    carvao: function (g, W, D) {
+      [[-0.2, 0.3, 0.1], [0.22, 0.3, -0.08], [0, 0.82, 0]].forEach(function (p) { g.add(box(W * 0.48, 0.58, D * 0.42, null, 1, p[0] * W, p[1], p[2] * D, 0x5a5048)); });
+      g.add(box(W * 0.5, 0.12, D * 0.3, null, 1, 0.1, 0.06, D * 0.32, 0x22201e));
+    },
+    altar: function (g, W, D) {
+      g.add(box(W, 1.0, D, 'pedra', 1, 0, 0.5, 0, 0xd8d4ca)); g.add(box(W + 0.1, 0.08, D + 0.1, 'pedra', 1, 0, 1.04, 0, 0xc4c0b4));
+      g.add(box(W + 0.04, 0.02, D * 0.8, null, 1, 0, 1.09, 0, LINHO));
+      g.add(box(W * 0.5, 0.7, 0.02, null, 1, 0, 0.55, D / 2 + 0.01, VERM)); g.add(box(W * 0.5, 0.06, 0.025, null, 1, 0, 0.88, D / 2 + 0.015, OURO));
+      [-1, 1].forEach(function (s) { g.add(cyl(0.04, 0.04, 0.3, 6, null, 1, 0, CERA).at(s * (W / 2 - 0.25), 1.25, 0)); chama(g, s * (W / 2 - 0.25), 1.4, 0); });
+      g.add(box(0.04, 0.34, 0.03, null, 1, 0, 1.27, -D * 0.25, OURO)); g.add(box(0.18, 0.04, 0.03, null, 1, 0, 1.35, -D * 0.25, OURO));
+      g.add(box(0.3, 0.05, 0.22, null, 1, 0.35, 1.125, 0.05, VERM));
+    },
+    tablado: function (g, W, D) { g.add(box(W, 0.12, D, 'tabuas', PX, 0, 0.06, 0, MAD)); },
+    cruz: function (g, W, D, m, I) { // na parede: o móvel fica na face da parede, e a peça sai para +z
+      var y = Math.min(3.1, I.teto - 1.5);
+      g.add(box(0.2, 2.4, 0.08, 'tabuas', PX, 0, y, 0.04, MADE)); g.add(box(1.3, 0.2, 0.08, 'tabuas', PX, 0, y + 0.45, 0.04, MADE));
+      g.add(box(0.08, 2.2, 0.02, null, 1, 0, y, 0.09, OURO)); g.add(box(1.1, 0.08, 0.02, null, 1, 0, y + 0.45, 0.09, OURO));
+    },
+    vela: function (g) { // castiçal de ferro
+      g.add(cyl(0.15, 0.18, 0.05, 6, null, 1, 0, FERRO).at(0, 0.025, 0)); g.add(box(0.04, 1.25, 0.04, null, 1, 0, 0.65, 0, FERRO));
+      g.add(cyl(0.1, 0.06, 0.04, 6, null, 1, 0, FERRO).at(0, 1.29, 0)); g.add(cyl(0.035, 0.035, 0.22, 6, null, 1, 0, CERA).at(0, 1.42, 0)); chama(g, 0, 1.53, 0);
+    },
+    pia: function (g) {
+      g.add(cyl(0.2, 0.26, 0.7, 8, 'pedra', 1, 0, 0xd8d4ca).at(0, 0.35, 0)); g.add(cyl(0.42, 0.3, 0.25, 8, 'pedra', 1, 0, 0xd8d4ca).at(0, 0.82, 0));
+      g.add(cyl(0.36, 0.36, 0.01, 8, null, 1, 0, 0x5a7a8a).at(0, 0.95, 0));
+    },
+    tapete: function (g, W, D, m) {
+      var h = m.h || 0.012;
+      g.add(box(W + 0.12, 0.008, D + 0.12, null, 1, 0, 0.04, 0, OURO)); g.add(box(W, h, D, null, 1, 0, 0.04 + h / 2, 0, m.cor || VERM));
+    },
+    estandarte: function (g, W, D, m, I) { // na parede
+      var top = Math.min(I.teto - 0.5, 5);
+      g.add(box(W + 0.24, 0.06, 0.06, 'tabuas', PX, 0, top, 0.1, MADE));
+      g.add(box(W, 1.9, 0.03, null, 1, 0, top - 1, 0.07, m.cor || VERM)); g.add(box(W, 0.1, 0.035, null, 1, 0, top - 1.9, 0.07, OURO));
+      g.add(box(W * 0.7, W * 0.78, 0.01, 'brasao', 'fit', 0, top - 0.85, 0.09));
+    },
+    escudos: function (g, W, D, m) { // na parede: escudo redondo entre duas lanças
+      var y = m.h || 2.8;
+      [-1, 1].forEach(function (s) { g.add(box(0.04, 2, 0.04, 'tabuas', PX, s * 0.5, y, 0.05, MADE)); g.add(box(0.08, 0.22, 0.02, null, 1, s * 0.5, y + 1.1, 0.05, ACO)); });
+      g.add(new Node(cached('escudo', function () { return rotX(cylGeo(0.36, 0.36, 0.05, 10, 0, 1), Math.PI / 2); }), m.cor || VERM).at(0, y, 0.1));
+      g.add(new Node(cached('umbo', function () { return rotX(cylGeo(0.09, 0.11, 0.06, 8, 0, 1), Math.PI / 2); }), OURO).at(0, y, 0.14));
+    },
+    trono: function (g, W, D) {
+      g.add(box(W, 0.1, D * 0.8, 'tabuas', PX, 0, 0.5, 0.05, MADE)); pernas(g, W, D * 0.8, 0.45, 0.08, MADE);
+      g.add(box(W, 1.5, 0.1, 'tabuas', PX, 0, 1.25, -D / 2 + 0.08, MADE)); g.add(box(W * 0.7, 1.0, 0.02, null, 1, 0, 1.25, -D / 2 + 0.14, VERM));
+      g.add(box(W * 0.8, 0.05, D * 0.6, null, 1, 0, 0.57, 0.05, VERM));
+      [-1, 1].forEach(function (s) { g.add(box(0.1, 0.18, 0.1, null, 1, s * (W / 2 - 0.05), 2.06, -D / 2 + 0.08, OURO)); g.add(box(0.08, 0.3, D * 0.7, 'tabuas', PX, s * (W / 2 - 0.04), 0.7, 0.05, MADE)); });
+    },
+    cadeira: function (g, W, D) {
+      g.add(box(W * 0.9, 0.06, D * 0.9, 'tabuas', PX, 0, 0.45, 0, MAD)); pernas(g, W * 0.9, D * 0.9, 0.42, 0.06, MADE);
+      g.add(box(W * 0.9, 0.6, 0.06, 'tabuas', PX, 0, 0.78, -D * 0.45 + 0.03, MADE));
+    },
+    arca: function (g, W, D) {
+      g.add(box(W, 0.5, D, 'tabuas', PX, 0, 0.25, 0, MADE)); g.add(box(W + 0.04, 0.08, D + 0.04, 'tabuas', PX, 0, 0.54, 0, MAD));
+      [-1, 1].forEach(function (s) { g.add(box(0.06, 0.6, D + 0.05, null, 1, s * W * 0.3, 0.29, 0, FERRO)); });
+      g.add(box(0.1, 0.12, 0.03, null, 1, 0, 0.42, D / 2 + 0.02, OURO));
+    },
+    paes: function (g, W, D, m) {
+      var ys = estante(g, W, D, m.h || 1.8, 4);
+      ys.forEach(function (y, j) { for (var x = -W / 2 + 0.22; x < W / 2 - 0.15; x += 0.3) {
+        g.add(box(0.24, 0.11, D * 0.55, null, 1, x, y + 0.075, 0.02, j % 2 ? 0xb87a30 : 0xc88a3a)); g.add(box(0.17, 0.04, D * 0.42, null, 1, x, y + 0.14, 0.02, 0xdca85a));
+      } });
+    },
+    rolos: function (g, W, D, m) { // rolos de pano deitados nas prateleiras
+      var ys = estante(g, W, D, m.h || 2, 4), cores = [0x7a2522, 0x2c4a7a, 0x5a7a3a, 0xd8c8a0, 0x8a6a9a, 0x6a4a2a];
+      ys.forEach(function (y, j) { for (var i = 0, x = -W / 2 + 0.2; x < W / 2 - 0.15; x += 0.27, i++) {
+        g.add(box(0.22, 0.2, D * 0.8, null, 1, x, y + 0.12, 0.02, cores[(i + j * 2) % cores.length]));
+      } });
+    },
+    sacas: function (g, W, D) {
+      [[-0.22, 0.3, 0.08], [0.22, 0.3, -0.06], [0, 0.84, 0.02]].forEach(function (p) { g.add(box(W * 0.46, 0.6, D * 0.44, null, 1, p[0] * W, p[1], p[2] * D, 0xd8d0bd)); });
+      g.add(box(W * 0.3, 0.02, D * 0.2, null, 1, -0.1, 0.62, 0.15 * D, 0xf4f0e8));
+    },
+    lenha: function (g, W, D) {
+      for (var r = 0; r < 3; r++) { for (var x = -W / 2 + 0.14 + r * 0.085; x < W / 2 - 0.1 - r * 0.085; x += 0.17) { var t = tora(x, 0.08 + r * 0.145)[0]; t.pos[2] = 0; g.add(t); } }
+    },
+    forno_pao: function (g, W, D, m, I) { // forno de pão de tijolo, boca acesa virada para a sala
+      g.add(box(W, 0.8, D, 'pedra', 1, 0, 0.4, 0));
+      [[W * 0.46, W * 0.38, 0.32, 0.96], [W * 0.38, W * 0.26, 0.32, 1.28], [W * 0.26, W * 0.08, 0.24, 1.56]].forEach(function (c) { g.add(cyl(c[1], c[0], c[2], 12, 'tijolo', 1).at(0, c[3], -0.05)); });
+      g.add(box(W * 0.5, 0.56, 0.3, 'tijolo', 1, 0, 1.08, D / 2 - 0.2)); g.add(box(W * 0.62, 0.1, 0.34, 'pedra', 1, 0, 1.4, D / 2 - 0.2));
+      g.add(box(W * 0.3, 0.34, 0.02, null, 1, 0, 1.02, D / 2 - 0.04, 0x1c1410)); g.add(acesa(box(W * 0.24, 0.09, 0.02, null, 1, 0, 0.9, D / 2 - 0.025, 0xd8581c)));
+      g.add(box(W * 0.7, 0.08, 0.3, 'pedra', 1, 0, 0.84, D / 2 + 0.1));
+      g.add(box(0.45, I.teto - 1.7, 0.45, 'tijolo', 1, 0, (I.teto + 1.7) / 2, -D * 0.2));
+    },
+    masseira: function (g, W, D) {
+      g.add(box(W, 0.25, D, 'tabuas', PX, 0, 0.72, 0, MAD)); pernas(g, W, D, 0.6, 0.07, MADE);
+      g.add(box(W * 0.5, 0.1, D * 0.5, null, 1, 0, 0.88, 0, 0xe8dcc0)); g.add(box(W * 0.2, 0.06, D * 0.2, null, 1, W * 0.3, 0.88, 0.1, 0xe8dcc0));
+    },
+    mesa_corte: function (g, W, D) {
+      g.add(box(W, 0.07, D, 'tabuas', PX, 0, 0.84, 0, MAD)); pernas(g, W, D, 0.81, 0.08, MADE);
+      g.add(box(W * 0.62, 0.015, D * 0.8, null, 1, -W * 0.1, 0.885, 0, 0x2c4a7a)); g.add(box(W * 0.25, 0.02, D * 0.5, null, 1, W * 0.3, 0.885, -D * 0.1, 0xd8c8a0));
+      [-0.35, 0.35].forEach(function (a) { var t = box(0.26, 0.012, 0.03, null, 1, W * 0.25, 0.9, D * 0.25, ACO); t.rotY = a; g.add(t); });
+      g.add(box(0.9, 0.01, 0.04, 'tabuas', PX, -W * 0.1, 0.9, D * 0.4, MADE));
+      g.add(cyl(0.05, 0.06, 0.04, 6, null, 1, 0, FERRO).at(W / 2 - 0.15, 0.895, -D / 2 + 0.15)); g.add(cyl(0.035, 0.035, 0.2, 6, null, 1, 0, CERA).at(W / 2 - 0.15, 1.0, -D / 2 + 0.15)); chama(g, W / 2 - 0.15, 1.1, -D / 2 + 0.15);
+    },
+    cabide: function (g, W, D) { // varal de roupas prontas
+      [-1, 1].forEach(function (s) { g.add(box(0.06, 1.75, 0.06, 'tabuas', PX, s * (W / 2 - 0.03), 0.875, 0, MADE)); g.add(box(0.06, 0.06, D, 'tabuas', PX, s * (W / 2 - 0.03), 0.03, 0, MADE)); });
+      g.add(box(W, 0.05, 0.05, 'tabuas', PX, 0, 1.68, 0, MADE));
+      var cores = [0x6a3a5a, 0x2c4a7a, 0x8a6a4a, 0x5a7a3a, 0x7a2522, 0xd8c8a0];
+      for (var i = 0, x = -W / 2 + 0.22; x < W / 2 - 0.15; x += 0.24, i++) { g.add(box(0.07, 0.9 - (i % 3) * 0.12, Math.min(0.5, D * 0.9), null, 1, x, 1.2 + (i % 3) * 0.06, 0, cores[i % cores.length])); }
+    },
+    manequim: function (g) {
+      g.add(box(0.36, 0.06, 0.36, 'tabuas', PX, 0, 0.03, 0)); g.add(box(0.07, 0.95, 0.07, 'tabuas', PX, 0, 0.5, 0));
+      g.add(box(0.46, 0.62, 0.28, null, 1, 0, 1.28, 0, 0x2c4a7a)); g.add(box(0.36, 0.12, 0.24, null, 1, 0, 1.64, 0, 0x2c4a7a));
+      g.add(box(0.5, 0.36, 0.3, null, 1, 0, 0.9, 0, 0x5a3a26));
+    },
+    cesto: function (g, W) {
+      g.add(cyl(W * 0.42, W * 0.34, 0.36, 8, 'palha', 0.64, 0, 0xc8a870).at(0, 0.18, 0));
+      [[-0.08, 0.06, LINHO], [0.1, -0.04, 0xd8c8a0], [0, 0.1, 0x7a2522]].forEach(function (p) { g.add(box(0.16, 0.14, 0.16, null, 1, p[0], 0.38, p[1], p[2])); });
+    },
+    pilar: function (g, W, D, m, I) { g.add(box(W, I.teto, D, 'pedra', 2, 0, I.teto / 2, 0)); }
+  };
+  // tudo o que fica do lado de dentro, no referencial da construção (sem a posição no mundo)
+  var ALTO = { lareira: 1, forja: 1, forno_pao: 1, pilar: 1, rolos: 1, paes: 1, armas: 1, estante: 1 };
+  function sala(b, I, jan) {
+    var g = new Node(), C = cascaDim(b), a = C.a, c = C.c, T = I.teto, pw = I.porta[0], ph = I.porta[1];
+    g.add(new Node(casca(C, I.porta, false, I.pmap || 2.5), I.pcor === undefined ? 0xffffff : I.pcor, { tex: I.parede }).at(0, C.H / 2, 0));
+    g.add(new Node(planeGeo(a * 2, c * 2, I.piso === 'tabuas' ? PX * 2 : 1.5), 0xffffff, { tex: I.piso }).at(0, 0.035, 0));
+    g.add(new Node(planeGeo(pw, C.hz - c + 0.2, 1), 0xb4b0a6, { tex: 'pedra' }).at(0, 0.036, (C.hz + c) / 2));       // soleira
+    var forro = new Geo().quad([-a, 0, -c], [a, 0, -c], [a, 0, c], [-a, 0, c]).done(PX * 2);                      // teto, visto de baixo
+    g.add(new Node(forro, 0xa89478, { tex: 'tabuas' }).at(0, T, 0));
+    for (var z = -c + 0.8; z < c - 0.3; z += 1.6) { g.add(box(a * 2, 0.24, 0.22, 'tabuas', PX, 0, T - 0.12, z, MADE)); } // vigas
+    // porta aberta, encostada por dentro na parede da frente; a de duas folhas abre para os dois lados
+    var lf = pw > 2 ? pw / 2 : pw, lados = pw > 2 ? [-1, 1] : [I.folha || 1];
+    lados.forEach(function (s) { g.add(box(lf, ph, 0.07, 'porta', 'fit', s * (pw / 2 + lf / 2), ph / 2, c - 0.04)); });
+    // o vidro das janelas também por dentro, menos onde a folha da porta, uma lareira ou uma estante o tapariam
+    (jan || []).forEach(function (j) {
+      var x = j[0], y = j[1], z = j[2], side = j[3];
+      if (y + 0.5 > T - 0.05) { return; }
+      if (side) { x = (x > 0 ? 1 : -1) * (a - 0.02); if (Math.abs(z) > c - 0.5) { return; } }
+      else { z = (z > 0 ? 1 : -1) * (c - 0.02); if (Math.abs(x) > a - 0.5) { return; } }
+      if (!side && z > 0 && lados.some(function (s) { var d = x * s; return d > pw / 2 - 0.5 && d < pw / 2 + lf + 0.5 && y - 0.5 < ph; })) { return; }
+      if ((I.moveis || []).some(function (m) { return ALTO[m.k] && Math.abs(x - m.x) < m.w / 2 + 0.5 && Math.abs(z - m.z) < m.d / 2 + 0.5; })) { return; }
+      var v = side ? box(0.04, 1.0, 1.0, 'janela', 'fit', x, y, z) : box(1.0, 1.0, 0.04, 'janela', 'fit', x, y, z);
+      v.unlit = true; v.modo = 'janela'; g.add(v);
+    });
+    (I.moveis || []).forEach(function (m) {
+      var f = MOVEL[m.k]; if (!f) { return; }
+      var r = m.r || 0, vira = Math.abs(r) === 90, o = new Node().at(m.x, 0, m.z);
+      o.rotY = r * Math.PI / 180;
+      f(o, vira ? m.d : m.w, vira ? m.w : m.d, m, I);
+      g.add(o);
+    });
+    return g;
+  }
+  // luz de interior num ponto (para as figuras, que não têm sombra): ambiente + lareira e velas, sem a direção da face
+  function luzEm(S, amb, x, y, z) {
+    var o = [amb[0], amb[1], amb[2]];
+    [[S.l1, S.c1], [S.l2, S.c2]].forEach(function (L) {
+      var d = Math.hypot(L[0][0] - x, L[0][1] - y, L[0][2] - z), a = Math.max(0, 1 - d / (L[0][3] || 1)); a = a * a * 0.7;
+      for (var k = 0; k < 3; k++) { o[k] += L[1][k] * a; }
+    });
+    return o.map(function (v) { return Math.min(1, v * 1.15); });
+  }
+
   // ---------- peças fundidas ----------
   // cada Node custa uma chamada de desenho por quadro; a cidade tem milhares de peças fixas, então elas viram uma malha por textura
   // em cada setor do mapa: uma malha só atravessaria a cidade inteira e nunca sairia da tela
   var SETOR = 48;
   var CLARO = hex(0xf2f2f2);
   function Lote(setor) { this.fila = {}; this.setor = setor || SETOR; } // setor: lado em metros de cada pedaço da malha
-  Lote.prototype.get = function (tex, color, unlit) {
-    var k = [tex, color, unlit].join('|');
-    return this.fila[k] || (this.fila[k] = { tex: tex, color: color, unlit: unlit, v: [] });
+  // modo: 'janela' = vidro de interior, que brilha com a luz do céu (claro de dia, escuro à noite) e não com a da sala
+  Lote.prototype.get = function (tex, color, unlit, modo) {
+    var k = [tex, color, unlit, modo || ''].join('|');
+    return this.fila[k] || (this.fila[k] = { tex: tex, color: color, unlit: unlit, modo: modo || '', v: [] });
   };
   Lote.prototype.funde = function (n, pai) { // a peça montada com Node, com os filhos, entra no lote na posição em que está
     var m = pai ? mul(pai, local(n)) : local(n);
     if (n.geo) {
-      var v = this.get(n.tex, n.color, n.unlit).v, d = n.geo.data, q = normalMat(m);
+      var v = this.get(n.tex, n.color, n.unlit, n.modo).v, d = n.geo.data, q = normalMat(m);
       for (var i = 0; i < d.length; i += 8) {
         var p = xform(m, d[i], d[i + 1], d[i + 2]), a = d[i + 3], b = d[i + 4], c = d[i + 5];
         v.push(p[0], p[1], p[2], q[0] * a + q[3] * b + q[6] * c, q[1] * a + q[4] * b + q[7] * c, q[2] * a + q[5] * b + q[8] * c, d[i + 6], d[i + 7]);
@@ -610,7 +933,8 @@
     this.plano(v, x - c, z - s, x + c, z + s, y0, y1, u0, u1);
     this.plano(v, x + s, z - c, x - s, z + c, y0, y1, u0, u1);
   };
-  Lote.prototype.poe = function (R) {
+  // sala: o lote é o interior de uma construção; as malhas ganham as luzes dela (as janelas, não)
+  Lote.prototype.poe = function (R, sala) {
     var f = this.fila, S = this.setor;
     Object.keys(f).forEach(function (k) {
       var v = f[k].v, grupos = {};
@@ -622,6 +946,7 @@
       Object.keys(grupos).forEach(function (c) {
         var o = new Node({ data: new Float32Array(grupos[c]), count: grupos[c].length / 8 }, 0xffffff, { tex: f[k].tex, unlit: f[k].unlit });
         o.color = f[k].color; R.add(o);
+        if (sala && f[k].modo !== 'janela') { o.dentro = sala; }
       });
     });
   };
@@ -775,7 +1100,7 @@
     Object.keys(CHAO).forEach(function (k, i) { if (art.walls[CHAO[k][0]]) { self.r.addTexture('franja_' + k, texFranja(art.walls[CHAO[k][0]], i * 1.7 + 0.4), true); } });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {}; this.npcO = {}; this.held = null;
-    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1] };
+    this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1], amb: [0.6, 0.57, 0.52] };
     this.buildStatic(); this.buildDynamic(); this.buildAmbient(); this.buildCeu();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
     this.areaRing.visible = false;
@@ -959,14 +1284,21 @@
     });
 
     var PREDIO = { igreja: church, ferreiro: smith, bar: bar, casa_senhor: casaSenhor, padaria: padaria, forno: forno, moradia: moradia, alfaiate: alfaiate };
+    this.salas = {};
     V.buildings.forEach(function (b) {
-      var o = (PREDIO[b.type] || moradia)(b); // tipo novo sem desenho ainda: vira uma moradia, em vez de travar o jogo
+      var I = (V.interiores || {})[b.id], f = PREDIO[b.type] || moradia; // tipo novo sem desenho ainda: vira uma moradia, em vez de travar o jogo
+      if (I && f === moradia) { I = null; }
+      JAN = I ? [] : null;
+      var o = f(b, I), jan = JAN; JAN = null;
       o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; L.funde(o);
+      if (I) { self.salas[b.id] = self.montaSala(b, I, jan); }
     });
     L.poe(R);
     w.npcs.forEach(function (n) {
-      var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
+      var p = self.sprite(n.id, SIZE[n.id] || n.h || 1.9).at(n.x, n.y || 0, n.z); // y < 0: sentado atrás da mesa
       p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p); self.npcO[n.id] = p;
+      var S = self.salas[w.salaEm(n.x, n.z)];
+      if (S) { p.dentro = S; S.gente.push(p); }
     });
     w.props.forEach(function (p) {
       var o = p.id === 'quadro_missoes' ? quadroAvisos() : bauAberto();
@@ -974,6 +1306,29 @@
       o.userData.ref = { type: 'prop', id: p.id }; o.userData.box = p;
       R.add(o); self.pick.push(o);
     });
+  };
+  // o interior de uma construção: um lote só dele (para sumir inteiro quando a porta não está à vista) e as luzes no mundo
+  View.prototype.montaSala = function (b, I, jan) {
+    var o = sala(b, I, jan), rot = b.rot * Math.PI / 180, c = Math.cos(rot), s = Math.sin(rot), L = new Lote(), grupo = new Node();
+    function mundo(x, y, z) { return [b.x + c * x + s * z, y, b.z - s * x + c * z]; }
+    o.at(b.x, 0, b.z); o.rotY = rot; L.funde(o);
+    var S = { id: b.id, grupo: grupo, gente: [], l1: [0, 0, 0, 1], c1: [0, 0, 0], l2: [0, 0, 0, 1], c2: [0, 0, 0] };
+    (I.luzes || []).slice(0, 2).forEach(function (l, i) {
+      var p = mundo(l[0], l[1], l[2]); S['l' + (i + 1)] = [p[0], p[1], p[2], l[3]]; S['c' + (i + 1)] = l[4];
+    });
+    var pf = mundo(0, 0, b.d / 2); S.porta = [pf[0], pf[2]]; S.n = [s, c]; // centro da porta e a direção para fora
+    L.poe(grupo, S); this.root.add(grupo);
+    return S;
+  };
+  // o interior só é desenhado de dentro dele ou de onde a porta aparece (à frente da fachada, até onde a névoa deixa ver);
+  // as figuras lá dentro seguem a sala e ganham a luz dela
+  View.prototype.salaQuadro = function (eye) {
+    var aqui = this.w.salaEm(eye[0], eye[2]), amb = this.env.amb, ids = Object.keys(this.salas), lim = this.env.fog[1] * 0.6;
+    for (var i = 0; i < ids.length; i++) {
+      var S = this.salas[ids[i]], dx = eye[0] - S.porta[0], dz = eye[2] - S.porta[1];
+      S.grupo.visible = aqui === S.id || (dx * S.n[0] + dz * S.n[1] > -0.2 && dx * dx + dz * dz < lim * lim);
+      S.gente.forEach(function (p) { p.visible = p.visible && S.grupo.visible; p.brilho = luzEm(S, amb, p.pos[0], 1.2, p.pos[2]); });
+    }
   };
   View.prototype.buildDynamic = function () {
     var self = this, w = this.w;
@@ -1121,6 +1476,8 @@
     this.ceuMs = ms;
     var d = new Date(ms), h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600, m = NZ.ceu.momento(h), E = this.env, C = this.ceuN;
     E.sky = m.sky; E.gnd = m.gnd; E.sunCol = m.sun; E.sunDir = m.luz; E.fogCol = m.hor; E.tint = m.tint;
+    // luz de dentro das casas: a das janelas de dia, quase só lareira e velas à noite
+    E.amb = [0.6 - 0.45 * m.noite, 0.57 - 0.45 * m.noite, 0.52 - 0.43 * m.noite];
     C.domo.color = [m.zen[0] - m.hor[0], m.zen[1] - m.hor[1], m.zen[2] - m.hor[2]]; C.domo.emissive = m.hor; // cinza 0 vira horizonte; 1, zênite
     C.est.alpha = m.noite; C.est.visible = m.noite > 0.02; C.est.rotY = h / 24 * Math.PI * 2;
     C.nuv.color = m.nuvem; C.bruma.color = m.hor; C.sol.color = m.solCor;
@@ -1252,6 +1609,7 @@
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
     this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
     this.ambient(opts.now === undefined ? Date.now() : opts.now, st, prev, alpha, dt);
+    this.salaQuadro(eye);
     this.r.draw(this.root, this.cam, this.env);
     if (!opts.semArma) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };
