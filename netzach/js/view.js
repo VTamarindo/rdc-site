@@ -1303,8 +1303,9 @@
     w.npcs.forEach(function (n) {
       var p = self.sprite(n.id, SIZE[n.id] || n.h || 1.9).at(n.x, n.y || 0, n.z); // y < 0: sentado atrás da mesa
       p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p); self.npcO[n.id] = p;
+      p.userData.posto = [n.x, n.y || 0, n.z];
       var S = self.salas[w.salaEm(n.x, n.z)];
-      if (S) { p.dentro = S; S.gente.push(p); }
+      if (S) { p.dentro = S; p.userData.sala = S; S.gente.push(p); }
     });
     w.props.forEach(function (p) {
       var o = p.id === 'quadro_missoes' ? quadroAvisos() : bauAberto();
@@ -1333,7 +1334,7 @@
     for (var i = 0; i < ids.length; i++) {
       var S = this.salas[ids[i]], dx = eye[0] - S.porta[0], dz = eye[2] - S.porta[1];
       S.grupo.visible = aqui === S.id || (dx * S.n[0] + dz * S.n[1] > -0.2 && dx * dx + dz * dz < lim * lim);
-      S.gente.forEach(function (p) { p.visible = p.visible && S.grupo.visible; p.brilho = luzEm(S, amb, p.pos[0], 1.2, p.pos[2]); });
+      S.gente.forEach(function (p) { if (p.dentro !== S) { return; } p.visible = p.visible && S.grupo.visible; p.brilho = luzEm(S, amb, p.pos[0], 1.2, p.pos[2]); });
     }
   };
   View.prototype.buildDynamic = function () {
@@ -1423,6 +1424,18 @@
       // quem sumiu uma vez nunca mais voltava
       o.visible = !(mortos[id] && !(g && g.ko > 0)); // morto e o corpo já levado: o posto fica vazio
       self.deita(o, !!(g && g.ko > 0));
+      // na briga (e voltando depois dela) quem tem posto anda: desenhado onde a simulação diz, como os moradores;
+      // fora da sala dele perde a luz da sala (e salaQuadro deixa de escondê-lo com ela)
+      var P = o.userData.posto, S = o.userData.sala;
+      if (g && g.x !== undefined) {
+        var pv = prev && prev['p:' + id], x = g.x, z = g.z;
+        if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
+        var anda = !(g.ko > 0) && pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
+        o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
+        o.dentro = S && self.w.salaEm(x, z) === S.id ? S : null;
+      } else if (P) {
+        o.at(P[0], g && g.ko > 0 ? 0 : P[1], P[2]); o.dentro = S || null;
+      }
       piscar(self, o, id, dt || 0);
     });
     // vacas e ovelhas no relógio do jogo (o mesmo da macro, ver World.bichoEm), entre dois tiques pela fração alpha

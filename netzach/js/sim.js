@@ -468,8 +468,8 @@
   Sim.prototype.personPos = function (st, id) {
     var q = this.w.personById[id], g = st.gente[id];
     if (!q) { return null; }
-    if (q.fixed) { return q; }
-    return g && g.x !== undefined ? g : null;
+    if (g && g.x !== undefined) { return g; } // na briga (ou voltando ao posto depois dela), onde estiver
+    return q.fixed ? q : null;
   };
   Sim.prototype.hostileTo = function (st, id) { return !!(st.hostil && this.w.personById[id] && this.papel(id).luta && !this.isKo(st, id)); };
   // o primeiro golpe numa pessoa: a vila inteira entra em armas. pos = { id: [x, z] } de quem anda, tirada do desenho
@@ -482,8 +482,11 @@
     p.rep += A.repPorIncidente;
     w.people.forEach(function (q) {
       if (self.isMorto(st, q.id)) { return; }
-      var g = self.gente(st, q.id); g.atkCd = 0.4 + rnd(st) * 0.8; g.repath = rnd(st); g.path = null;
-      if (q.fixed) { return; }
+      var g = self.gente(st, q.id); g.atkCd = 0.4 + rnd(st) * 0.8; g.repath = rnd(st); g.path = null; g.volta = false;
+      if (q.fixed) { // quem tem posto (lojistas, o escudeiro) também larga o balcão: sai da célula do posto para a livre mais perto
+        if (g.x === undefined) { var c0 = w.nearestFree(q.x, q.z) || { x: q.x, z: q.z }; g.x = c0.x; g.z = c0.z; g.face = 0; }
+        return;
+      }
       var c = pos && pos[q.id], f = c && w.free(c[0], c[1], 0.15) ? { x: c[0], z: c[1] } : c ? w.nearestFree(c[0], c[1]) : null;
       f = f || w.nearestFree(w.plaza.x, w.plaza.z + 2) || { x: w.plaza.x, z: w.plaza.z };
       g.x = f.x; g.z = f.z; g.face = 0;
@@ -497,11 +500,14 @@
   };
   // fim do incidente: quem está de pé volta inteiro à rotina; quem desmaiou segue no chão até a hora dele
   Sim.prototype.calm = function (st, text) {
-    var p = st.player;
+    var p = st.player, self = this;
     st.hostil = null;
     this.w.people.forEach(function (q) {
       var g = st.gente[q.id]; if (!g) { return; }
-      if (g.ko > 0) { delete g.x; delete g.z; g.path = null; } else { delete st.gente[q.id]; }
+      if (st.mortos && st.mortos[q.id]) { g.path = null; return; } // o corpo fica onde caiu
+      if (g.ko > 0) { delete g.x; delete g.z; g.path = null; }
+      else if (q.fixed && g.x !== undefined) { g.volta = true; g.path = null; g.hp = self.papel(q.id).hp; } // volta andando ao posto
+      else { delete st.gente[q.id]; }
     });
     if (p.action && p.action.type === 'luta') { p.action = null; }
     if (p.macro.stop === this.w.game.aldeoes.textos.macro) { p.macro.stop = ''; } // o aviso da macro já não vale
@@ -644,15 +650,15 @@
         }
         continue;
       }
-      if (!H) { continue; }
+      if (!H) { if (g.volta) { this.voltaPosto(st, q, g, def, dt); } continue; }
       g.atkCd -= dt;
       if (def.luta) {
         if (!inVila) { continue; } // na borda da vila os guardas desistem e esperam
-        // o parado ocupa a célula inteira: sem a folga, quem tem espada bateria de fora do alcance dele
-        if (q.fixed) { if (dist(q.x, q.z, p.x, p.z) <= def.reach + 0.6 && g.atkCd <= 0) { var e = { x: q.x, z: q.z }; this.hitPlayer(st, e, def); g.atkCd = e.atkCd; } }
+        // posto sem posição (save de antes de os lojistas andarem): bate só de onde está, como antes
+        if (q.fixed && g.x === undefined) { if (dist(q.x, q.z, p.x, p.z) <= def.reach + 0.6 && g.atkCd <= 0) { var e = { x: q.x, z: q.z }; this.hitPlayer(st, e, def); g.atkCd = e.atkCd; } }
         else { this.chase(st, g, def, dt, true); this.afasta(st, q.id, g); }
         if (st.hostil !== H) { return; } // o jogador desmaiou: o incidente acabou no meio da volta
-      } else if (!q.fixed) {
+      } else if (g.x !== undefined) {
         var d = dist(g.x, g.z, p.x, p.z);
         if (d < A.fugaDist && d > 0.01) { this.foge(st, g, def, dt, A.fugaDist); this.afasta(st, q.id, g); }
         else { g.ref = null; g.path = null; }
@@ -664,6 +670,17 @@
     else { H.fora += dt; if (H.fora >= A.calmaSeg) { this.calm(st, A.textos.fimFuga); } }
   };
 
+  // depois da briga, quem tem posto volta a ele andando, pelo caminho; chegando (ou sem caminho, ou preso mais de 40 s),
+  // a simulação o devolve ao posto e ele volta a atender
+  Sim.prototype.voltaPosto = function (st, q, g, def, dt) {
+    var w = this.w, alvo = w.nearestFree(q.x, q.z) || { x: q.x, z: q.z };
+    g.vt = (g.vt || 0) + dt;
+    if (!g.path) { g.path = w.los(g.x, g.z, alvo.x, alvo.z) ? [alvo] : w.path(g.x, g.z, alvo.x, alvo.z); }
+    while (g.path && g.path.length && dist(g.x, g.z, g.path[0].x, g.path[0].z) < 0.3) { g.path.shift(); }
+    if (!g.path || !g.path.length || g.vt > 40 || dist(g.x, g.z, alvo.x, alvo.z) < 0.4) { delete st.gente[q.id]; this.emit(st, { type: 'posto', id: q.id }); return; }
+    var wp = g.path[0], d = dist(g.x, g.z, wp.x, wp.z), s = Math.min(def.speed * 0.45 * dt, d); // sem pressa: a briga acabou
+    g.x += (wp.x - g.x) / d * s; g.z += (wp.z - g.z) / d * s; g.face = Math.atan2(wp.x - g.x, wp.z - g.z);
+  };
   // substitutos: passado o tempo (e com a vila em paz), chega outra pessoa para a loja ou o posto de quem morreu.
   // Os nomes vêm em ordem de aldeoes.morte.substitutos[id]; acabando a lista, o último ganha um número
   Sim.prototype.repoeTick = function (st) {
@@ -1129,6 +1146,7 @@
     var q = w.personById[npc];
     if (q && this.isKo(st, npc)) { return G.aldeoes.textos.desacordado.replace('{alvo}', q.name); }
     if (q && st.hostil) { return (G.pessoas[npc] && G.pessoas[npc].recusa) || G.aldeoes.textos.recusa; }
+    if (q && st.gente[npc] && st.gente[npc].volta) { return G.aldeoes.textos.voltando.replace('{alvo}', q.name); }
     if (s.type === 'heal') {
       var ven = !!p.poison; p.hp = maxHp(w, p); p.poison = null; return ven ? 'Vida restaurada e veneno curado.' : 'Vida restaurada.';
     }
@@ -1457,7 +1475,8 @@
     Object.keys(st.gente).forEach(function (id) {
       var q = world.personById[id], g = st.gente[id];
       if (!q) { delete st.gente[id]; return; }
-      if (q.fixed) { delete g.x; delete g.z; g.path = null; }
+      if (q.fixed && !st.hostil && !(st.mortos && st.mortos[id])) { delete st.gente[id]; return; } // fora da briga, no posto
+      if (q.fixed) { g.path = null; if (g.x === undefined && !(g.ko > 0)) { var c1 = world.nearestFree(q.x, q.z) || q; g.x = c1.x; g.z = c1.z; } }
       else if (st.hostil && g.x === undefined && !(g.ko > 0)) { var c = world.nearestFree(world.plaza.x, world.plaza.z + 2); g.x = c.x; g.z = c.z; }
     });
     if (st.hostil) { world.people.forEach(function (q) {

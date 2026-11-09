@@ -453,7 +453,7 @@
     }
   },
   "aldeoes": {
-    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe; repPorInocente sai a cada pessoa que não é combatente (papel sem combatente: true) morta, e repPorSoldado a cada combatente morto, mesmo com a vila já em armas. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
+    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe; repPorInocente sai a cada pessoa que não é combatente (papel sem combatente: true) morta, e repPorSoldado a cada combatente morto, mesmo com a vila já em armas. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (quem tem posto, como lojistas e o escudeiro, larga o posto e persegue também, e volta andando quando a vila se acalma); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
     "repPorIncidente": -100,
     "repPorInocente": -100,
     "repPorSoldado": -100,
@@ -501,6 +501,7 @@
       "soldado": "Você matou {alvo}, um guarda da vila, numa briga que você começou: perdeu {rp} de reputação.",
       "levanta": "{alvo} se levantou, ainda tonto.",
       "desacordado": "{alvo} está morto.",
+      "voltando": "{alvo} ainda está voltando ao posto depois da briga.",
       "recusa": "Não negocio com quem levanta a mão contra a vila.",
       "hostil": "Você vai pagar por isso!",
       "medo": "Fique longe de mim!",
