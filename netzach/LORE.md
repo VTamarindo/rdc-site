@@ -246,6 +246,9 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
 - **Matilda viva ou morta na hora da ajuda:** ela morreu de doença, mas a moral dela pesa na decisão de aceitar a
   ajuda. Morreu antes (e pesa como lembrança) ou ainda estava viva?
 - **A Mãe Hilda viu "a fome de três invernos seguidos":** pode ser a fome da guerra.
+- **Qual dos dois reis é "o rei" das falas:** o senhor tem a terra "por concessão do rei", e o Wat fala do "ano em que
+  o rei morreu". É o rei da vila na guerra? Esse rei morreu e o atual é outro?
+- **Quando a vila foi remontada:** está registrado como "depois da guerra", mas isso foi dedução e falta confirmar.
 
 - **Nomes de lugares reais:** Winchester, Wessex, Flandres e "o rei" aparecem nas falas. Como a vila só se inspira na
   Inglaterra, dá para manter (o mundo se parece com o nosso) ou trocar por nomes inventados.
