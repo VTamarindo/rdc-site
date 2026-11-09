@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
-   - `js/ui.js`, linha 6: `var VERSION = '20261109-1'` → por exemplo `'20261109-2'`;
-   - `index.html`: todos os `?v=20261109-1` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `js/ui.js`, linha 6: `var VERSION = '20261109-2'` → por exemplo `'20261109-3'`;
+   - `index.html`: todos os `?v=20261109-2` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave no código.
@@ -82,14 +82,16 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Combate:** `js/sim.js`, `Sim.prototype.strike` (um golpe) e `swing`; contas do personagem em `stats`.
 - **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
 - **Animais e guardas perseguindo:** `js/sim.js`, `mobTick` (bichos), `genteTick` (moradores em briga), `chase` e
-  `hitPlayer` (perseguir e bater, comum a todos).
+  `hitPlayer` (perseguir e bater, comum a todos), `foge` (moradores fugindo por um caminho) e `afasta` (ninguém em cima de outro).
 - **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.
-- **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`.
+- **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`. Onde cada vaca e
+  ovelha está em cada instante: `World.bichoEm` em `js/sim.js` (pelo relógio do jogo, o mesmo para o desenho e a macro, que
+  usa a regra `fazenda`).
 - **Interiores:** `js/view.js`, `MOVEL` (móveis), `salaQuadro` (qual sala aparece), e a luz da sala no sombreador (`FS`).
 - **Lojas:** `js/sim.js`, `service` e `buyItem`; tela em `js/ui.js` (`sellBox`, `openSell`).
 - **Janela Personagem:** `js/ui.js`, seção "personagem" (`openChar`, `renderEquip`, `renderBagTab`, `renderAttr`).
 - **Ícones dos itens:** `js/ui.js`, `ITEM_ICONS`.
-- **Mapa:** `js/ui.js`, `drawMap`; zoom inicial do mapa grande `MAP_OPEN` (50) e do minimapa `MINI_ZOOM` (80).
+- **Mapa:** `js/ui.js`, `drawMap` (as salas e portas saem de `world.salas`); zoom inicial do mapa grande `MAP_OPEN` (50) e do minimapa `MINI_ZOOM` (80).
 - **Teclas:** `js/ui.js`, procure por `KeyM` (M mapa, G macro, R regras, I/B personagem, T postura, F poção, E interagir).
 - **Botões do controle:** `js/controle.js`, função `noJogo` (fora das janelas); velocidade da câmera em `OLHAR_X`/`OLHAR_Y`.
 - **Saves:** `js/ui.js`, seção "save" (3 espaços, chaves `zg-vila-proto-v1-1` a `-3`); conversão de saves antigos em

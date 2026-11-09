@@ -56,6 +56,7 @@
   {"name": "escorpiao", "x": 6816, "y": 0, "w": 96, "h": 48},
   {"name": "serpente", "x": 6912, "y": 0, "w": 128, "h": 48},
   {"name": "arbusto", "x": 7040, "y": 0, "w": 160, "h": 128},
-  {"name": "arbusto_seco", "x": 7200, "y": 0, "w": 160, "h": 128}
+  {"name": "arbusto_seco", "x": 7200, "y": 0, "w": 160, "h": 128},
+  {"name": "troll", "x": 7360, "y": 0, "w": 192, "h": 256}
  ],
  "_nota": "Arte provisória gerada por tools/gerar_arte.py (pixel art procedural). Cada sprite tem o seu quadro (x, y, w, h) em sprites.png; o pé da figura fica na base do quadro. Figuras sem contorno (borda só na cor do material). Paredes: quadros de 64x64 em walls.png; pedra, tijolo e porta vêm do zeitgeist1."}

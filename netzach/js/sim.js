@@ -65,6 +65,17 @@
     (vila.fields || []).forEach(function (f) { self.addCrops(f); });
     this.nodeById = {};
     this.nodes.forEach(function (n) { self.nodeById[n.id] = n; });
+    // vacas e ovelhas: passeiam pelo relógio do jogo (st.t), então a simulação (a macro) e o desenho as veem no mesmo lugar
+    this.rebanho = []; this.bichoById = {};
+    if (vila.cows) { vila.cows.herd.forEach(function (h, i) { self.rebanho.push({ id: 'vaca' + i, img: 'vaca', c: vila.cows, h: h }); }); }
+    var nOv = 0;
+    (vila.folds || []).forEach(function (f) {
+      var F = f.flock; if (!F) { return; }
+      // a área do passeio é o aprisco por dentro, longe da cerca
+      var c = { ciclo: F.ciclo, anda: F.anda, area: [f.x0 + 1.6, f.z0 + 1.6, f.x1 - 1.6, f.z1 - 1.6] };
+      F.herd.forEach(function (h) { self.rebanho.push({ id: 'ovelha' + nOv, img: 'ovelha', c: c, h: h }); nOv++; });
+    });
+    this.rebanho.forEach(function (b) { self.bichoById[b.id] = b; });
     // pessoa da planta sem ficha em game.json (o alfaiate antes de ganhar loja): entra com uma ficha mínima, sem serviços
     game.npcs = game.npcs || {};
     var PS = game.pessoas || {};
@@ -551,6 +562,53 @@
     }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
   };
+  // morador fugindo: escolhe um refúgio longe do jogador (e não atrás dele) e vai pelo caminho calculado, contornando
+  // casas e cercas; refaz a escolha a cada 1,5 s ou quando o jogador chega perto do refúgio. Sem caminho, foge em linha
+  Sim.prototype.foge = function (st, g, def, dt, raio) {
+    var w = this.w, p = st.player, d = dist(g.x, g.z, p.x, p.z), s = def.speed * dt;
+    g.rt = (g.rt || 0) - dt;
+    if (g.rt <= 0 || (g.ref && g.rt < 1.2 && dist(g.ref.x, g.ref.z, p.x, p.z) < raio * 0.5)) { // no máximo um caminho a cada 0,3 s
+      var ax = (g.x - p.x) / d, az = (g.z - p.z) / d, best = null, bs = -1e9;
+      for (var k = 0; k < 16; k++) {
+        var a = k / 16 * Math.PI * 2, ux = Math.sin(a), uz = Math.cos(a);
+        if (ux * -ax + uz * -az > 0.4) { continue; } // na direção do jogador, não
+        [7, 13].forEach(function (r) {
+          var cx = g.x + ux * r, cz = g.z + uz * r; if (!w.free(cx, cz, 0.3)) { return; }
+          var sc = dist(cx, cz, p.x, p.z) + (ux * ax + uz * az) * 2 + (w.los(g.x, g.z, cx, cz) ? 3 : 0);
+          if (sc > bs) { bs = sc; best = { x: cx, z: cz }; }
+        });
+      }
+      g.ref = best; g.rt = 1.5;
+      g.path = best ? (w.los(g.x, g.z, best.x, best.z) ? [best] : w.path(g.x, g.z, best.x, best.z)) : null;
+    }
+    while (g.path && g.path.length && dist(g.x, g.z, g.path[0].x, g.path[0].z) < 0.3) { g.path.shift(); }
+    if (g.path && g.path.length) {
+      var wp = g.path[0], dw = dist(g.x, g.z, wp.x, wp.z), st2 = Math.min(s, dw);
+      if (this.nudge(g, (wp.x - g.x) / dw * st2, (wp.z - g.z) / dw * st2, 0.15)) { g.face = Math.atan2(wp.x - g.x, wp.z - g.z); return; }
+      g.path = null; // preso no caminho: escolhe outro no próximo tique
+    }
+    var dx = (g.x - p.x) / d * s, dz = (g.z - p.z) / d * s;
+    if (!this.nudge(g, dx, dz, 0.15) && !this.nudge(g, -dz, dx, 0.15)) { this.nudge(g, dz, -dx, 0.15); }
+    g.face = Math.atan2(g.x - p.x, g.z - p.z);
+  };
+  // quem anda na briga não ocupa o lugar de outro nem o do jogador: a menos de 0,8 m, dá um passo para o lado
+  Sim.prototype.afasta = function (st, id, g) {
+    var w = this.w, p = st.player, self = this, eu = w.people.indexOf(w.personById[id]);
+    function longe(ox, oz, k0) {
+      var d = dist(g.x, g.z, ox, oz); if (d >= 0.8) { return; }
+      var k = (0.8 - d) * k0, a = eu * 2.4; // juntos no mesmo ponto: cada um sai para um lado
+      var ux = d > 0.01 ? (g.x - ox) / d : Math.cos(a), uz = d > 0.01 ? (g.z - oz) / d : Math.sin(a);
+      // e um pouco de lado (cada um para o seu), para cercar o jogador em vez de fazer fila atrás do primeiro
+      var lado = eu % 2 ? 1 : -1, tx = -uz * lado, tz = ux * lado;
+      self.nudge(g, (ux + tx) * k, (uz + tz) * k, 0.15);
+    }
+    for (var j = 0; j < w.people.length; j++) {
+      var o = w.people[j]; if (o.id === id) { continue; }
+      var h = st.gente[o.id]; if (!o.fixed && !h) { continue; } // morador fora da briga: está na trilha, não na simulação
+      longe(h && h.x !== undefined ? h.x : o.x, h && h.z !== undefined ? h.z : o.z, 0.8);
+    }
+    longe(p.x, p.z, 1);
+  };
   Sim.prototype.genteTick = function (st, dt) {
     var w = this.w, A = w.game.aldeoes, p = st.player, H = st.hostil, pl = w.plaza;
     var inVila = dist(p.x, p.z, pl.x, pl.z) <= A.raio;
@@ -572,16 +630,12 @@
         if (!inVila) { continue; } // na borda da vila os guardas desistem e esperam
         // o parado ocupa a célula inteira: sem a folga, quem tem espada bateria de fora do alcance dele
         if (q.fixed) { if (dist(q.x, q.z, p.x, p.z) <= def.reach + 0.6 && g.atkCd <= 0) { var e = { x: q.x, z: q.z }; this.hitPlayer(st, e, def); g.atkCd = e.atkCd; } }
-        else { this.chase(st, g, def, dt, true); }
+        else { this.chase(st, g, def, dt, true); this.afasta(st, q.id, g); }
         if (st.hostil !== H) { return; } // o jogador desmaiou: o incidente acabou no meio da volta
       } else if (!q.fixed) {
         var d = dist(g.x, g.z, p.x, p.z);
-        if (d < A.fugaDist && d > 0.01) {
-          var s = def.speed * dt, dx = (g.x - p.x) / d * s, dz = (g.z - p.z) / d * s;
-          // encurralado: tenta escapar de lado
-          if (!this.nudge(g, dx, dz, 0.15) && !this.nudge(g, -dz, dx, 0.15)) { this.nudge(g, dz, -dx, 0.15); }
-          g.face = Math.atan2(g.x - p.x, g.z - p.z);
-        }
+        if (d < A.fugaDist && d > 0.01) { this.foge(st, g, def, dt, A.fugaDist); this.afasta(st, q.id, g); }
+        else { g.ref = null; g.path = null; }
       }
     }
     // a vila se acalma depois de calmaSeg seguidos com o jogador longe
@@ -722,6 +776,17 @@
     });
     return best;
   };
+  // vaca ou ovelha pronta (com a ferramenta na bolsa) dentro da área, a mais perto
+  Sim.prototype.nearestFarm = function (st) {
+    var p = st.player, w = this.w, G = w.game, best = null, bd = 1e9, self = this;
+    if (bagCount(w, p) >= bagCap(w, p)) { return null; } // bolsa cheia: nem tenta (com a regra da bolsa desligada, não fica preso)
+    w.rebanho.forEach(function (b) {
+      var F = G.farm[b.img]; if (!F || (F.tool && !(p.inv[F.tool] > 0)) || self.farmLeft(st, b.id) > 0) { return; }
+      var q = w.bichoEm(b.id, st.t); if (!self.inArea(st, q.x, q.z)) { return; }
+      var d = dist(p.x, p.z, q.x, q.z); if (d < bd) { bd = d; best = b; }
+    });
+    return best;
+  };
 
   // escolhe o que fazer: a primeira regra ligada e verdadeira manda
   Sim.prototype.decide = function (st) {
@@ -747,6 +812,11 @@
           if (c && ks.indexOf(c.kind) >= 0 && st.nodes[c.id].alive) { return { act: 'gather', id: c.id }; }
           var n = this.nearestNode(st, ks);
           if (n) { return { act: 'gather', id: n.id }; }
+          break;
+        }
+        case 'farm_in_area': {
+          var fa = this.nearestFarm(st);
+          if (fa) { return { act: 'farm', id: fa.id }; }
           break;
         }
       }
@@ -800,6 +870,16 @@
           this.face(st, n.x, n.z);
           p.action.prog += dt;
           if (p.action.prog >= gatherSec(w, p, n.kind)) { this.finishGather(st, n); p.action = null; }
+        }
+        return;
+      }
+      case 'farm': {
+        var fk = this.farmKind(d.id), F = G.farm[fk], b = w.bichoEm(d.id, st.t);
+        p.action = { type: 'travel', label: fk === 'ovelha' ? 'indo tosquiar' : 'indo tirar leite' };
+        if (this.moveTo(st, b.x, b.z, F.range - 0.6, dt, d.id)) {
+          this.face(st, b.x, b.z);
+          this.farmUse(st, d.id);
+          p.action = null;
         }
         return;
       }
@@ -915,6 +995,22 @@
   };
 
   // ---------- curral: tirar leite e tosquiar ----------
+  // passeio de cada bicho: anda um pedaço da curva (anda = fração do ciclo), para e pasta; u avança 3 por ciclo
+  function ease(t) { return t * t * (3 - 2 * t); }
+  function bichoU(c, h, seg) {
+    var q = seg / c.ciclo + h[8], k = Math.floor(q), f = q - k, e = f < c.anda ? ease(f / c.anda) : 1;
+    return { u: (k + e) * 3, anda: f < c.anda };
+  }
+  function bichoXZ(c, h, u) {
+    var A = c.area;
+    return [Math.max(A[0], Math.min(A[2], h[0] + h[2] * Math.sin(u * h[4] + h[6]))), Math.max(A[1], Math.min(A[3], h[1] + h[3] * Math.sin(u * h[5] + h[7])))];
+  }
+  World.prototype.bichoEm = function (id, t) {
+    var b = this.bichoById[id]; if (!b) { return null; }
+    var m = bichoU(b.c, b.h, t), p = bichoXZ(b.c, b.h, m.u);
+    return { x: p[0], z: p[1], u: m.u, anda: m.anda };
+  };
+  World.prototype.bichoXZ = function (id, u) { var b = this.bichoById[id]; return b ? bichoXZ(b.c, b.h, u) : null; };
   // vacas e ovelhas só existem no desenho (andam pelo relógio, como os moradores). A simulação guarda só quando cada uma
   // fica pronta de novo (st.farm[id] = st.t em que volta, então o tempo fora também conta); quem chama confere a distância
   Sim.prototype.farmKind = function (id) { var k = String(id).replace(/\d+$/, ''); return this.w.game.farm[k] ? k : null; };
@@ -974,9 +1070,22 @@
     var p = st.player, w = this.w, r = w.game.settings.interactRange + 0.5, aqui = w.salaEm(p.x, p.z);
     return w.npcs.concat(w.props).some(function (x) { return (x.id === id || x.npc === id) && dist(p.x, p.z, x.x, x.z) <= r && w.salaEm(x.x, x.z) === aqui; });
   };
+  // perto, mas com uma parede no meio: diz para entrar (ou sair) pela porta. '' quando não é esse o caso
+  Sim.prototype.paredeEntre = function (st, id) {
+    var p = st.player, w = this.w, r = w.game.settings.interactRange + 0.5, aqui = w.salaDe(p.x, p.z), msg = '';
+    w.npcs.concat(w.props).some(function (x) {
+      if ((x.id !== id && x.npc !== id) || dist(p.x, p.z, x.x, x.z) > r) { return false; }
+      var la = w.salaDe(x.x, x.z); if (la === aqui) { return false; }
+      var nome = (w.personById[id] && w.personById[id].name) || x.name || 'quem você procura';
+      msg = la ? nome + ' está dentro: entre na ' + la.nome.toLowerCase() + ' pela porta.'
+        : 'Saia da ' + aqui.nome.toLowerCase() + ' para falar com ' + nome + '.';
+      return true;
+    });
+    return msg;
+  };
   Sim.prototype.service = function (st, npc, s, arg) {
     var w = this.w, G = w.game, p = st.player;
-    if (!this.nearNpc(st, npc)) { return 'Aproxime-se primeiro.'; }
+    if (!this.nearNpc(st, npc)) { return this.paredeEntre(st, npc) || 'Aproxime-se primeiro.'; }
     // o quadro e o baú são objetos e seguem abertos; as pessoas não atendem no meio da briga nem desacordadas
     var q = w.personById[npc];
     if (q && this.isKo(st, npc)) { return G.aldeoes.textos.desacordado.replace('{alvo}', q.name); }

@@ -18,6 +18,17 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   - **Arte:** alfaiate, lobo, veado, ovelhas, escorpião, serpente, arbustos, três árvores inglesas (carvalho, freixo, olmo)
     com tocos, roupas do século 12, machados e arcos na mão com animação própria, pedras naturais, bordas das regiões
     irregulares e um limite visível do mundo (árvores, sebe e serra).
+- **Feito em 9/11 (versão `20261109-2`):**
+  - **Mapa e minimapa** desenham o piso das salas, os móveis que ocupam o chão e o vão da porta com os batentes.
+  - **Falar através da parede:** de fora, o clique e a loja dizem "Fulano está dentro: entre na ferraria pela porta" (e de
+    dentro, "Saia da … para falar com …").
+  - **Marcas de missão** de quem está dentro de uma sala ficam acima da porta enquanto o jogador está fora.
+  - **Desacordado** fica deitado no chão (a mesma figura, de lado) até levantar; quem estava sentado cai no chão.
+  - **Fuga dos moradores:** escolhem um refúgio longe do jogador e vão por caminho, contornando casas e cantos.
+    **Guardas** e moradores não ficam um em cima do outro (0,8 m) e cercam o jogador lado a lado em vez de em fila.
+  - **Macro:** regra nova "Tirar leite e tosquiar dentro da área" (só com balde ou tesoura na bolsa). Vacas e ovelhas
+    agora passeiam pelo relógio do jogo, então a macro e o tempo fora sabem onde estão.
+  - **Ajuda** do Menu fala de animais, veneno, vacas, ovelhas, plantações e das regras novas da macro.
 
 ## Depende de decisão do usuário
 - **Anéis e colar:** os espaços existem, sem itens.
@@ -28,14 +39,7 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
 - **Padeira:** o lenço novo tem um nó em cima que pode parecer um coque de cabelo.
 
 ## Falta fazer
-- **Mapa e interiores:** o mapa e o minimapa não desenham a planta das salas nem as portas; a seta do jogador aparece certa.
-- **Falar através da parede:** clicar num lojista do lado de fora, se estiver perto, abre a janela, mas a loja recusa
-  ("Aproxime-se primeiro") sem dizer para entrar na construção.
-- **Marcas de missão** ("!") de quem está dentro flutuam no lugar do NPC, não acima da porta.
-- **Desacordado:** não existe figura deitada; quem cai some até levantar.
-- **Fuga dos moradores:** fogem em linha reta e podem travar em cantos; guardas não desviam uns dos outros.
-- **Macro:** não tira leite nem tosquia.
-- **Texto de ajuda** do Menu ainda fala só de coelhos; falta citar animais, vacas, ovelhas e plantações.
+- Nada da lista de 9/11 (ver "Feito em 9/11" acima).
 
 ## Não testado
 - Celular de verdade (toque, desempenho com interiores e o mundo maior, instalação como app, abrir sem internet).
@@ -44,4 +48,6 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   controles de jogo do Edge só liga pelo menu do navegador (segurar Menu).
 - Com a interface de verdade (os agentes testaram por código): "andar até aqui" no mapa entrando numa construção, a macro e o
   tempo fora com o personagem dentro de uma sala, o arco atirando de verdade, a perseguição de veado à mão.
+- 9/11: a macro no pasto e no aprisco, a mensagem da parede, a figura deitada, as marcas na porta e o mapa foram
+  vistos no navegador do PC; a fuga e o cerco dos guardas, só por código (simulação), não numa briga de verdade.
 - Desempenho: dentro das salas, 150 a 400 desenhos por quadro; na praça, 320 a 500 (antes, 230 a 370). Medido no PC.

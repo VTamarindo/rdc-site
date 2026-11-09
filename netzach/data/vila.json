@@ -168,7 +168,7 @@
   },
   "regions": [
     {"id": "vila", "kind": "vila", "name": "Vila", "rects": [[-66, -70, 66, 66]]},
-    {"id": "floresta", "kind": "floresta", "name": "Floresta", "rects": [[-120, -120, -66, 80], [-66, -120, -4, -70]], "spots": [{"kind": "coelhos", "name": "Toca dos coelhos", "x": -90, "z": 52, "r": 18}, {"kind": "lobos", "name": "Covil do norte", "x": -100, "z": -100, "r": 9}, {"kind": "lobos", "name": "Covil da serra", "x": -36, "z": -104, "r": 9}]},
+    {"id": "floresta", "kind": "floresta", "name": "Floresta", "rects": [[-120, -120, -66, 80], [-66, -120, -4, -70]], "spots": [{"kind": "coelhos", "name": "Toca dos coelhos", "x": -90, "z": 52, "r": 18}, {"kind": "lobos", "name": "Covil do norte", "x": -100, "z": -100, "r": 9}, {"kind": "lobos", "name": "Covil da serra", "x": -36, "z": -104, "r": 9}, {"kind": "trolls", "name": "Toca do troll", "x": -104, "z": -34, "r": 10}]},
     {"id": "pedregal", "kind": "rochas", "name": "Pedregal", "rects": [[-4, -120, 120, -70], [66, -70, 120, 24]], "spots": [{"kind": "escorpioes", "name": "Lajedo quente", "x": 96, "z": -24, "r": 16}, {"kind": "cobras", "name": "Grota das cobras", "x": 46, "z": -100, "r": 16}]},
     {"id": "campina", "kind": "campina", "name": "Campina", "rects": [[-120, 80, -66, 120], [-66, 66, 120, 120], [66, 24, 120, 66]], "spots": [{"kind": "cervos", "name": "Prado dos cervos", "x": 34, "z": 96, "r": 22}, {"kind": "cervos", "name": "Várzea leste", "x": 96, "z": 46, "r": 14}]}
   ],

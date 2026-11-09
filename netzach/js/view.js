@@ -134,6 +134,14 @@
     return { data: new Float32Array(d), count: 6, min: [-x, 0, -0.05], max: [x, h, 0.05], w: w, h: h };
   }
 
+  // a mesma figura deitada de lado no chão (desacordado): o quadro gira 90° no próprio plano, cabeça para +x;
+  // segue de frente para a câmera, então de qualquer ângulo parece alguém caído
+  function deitadoGeo(w, h) {
+    var x = h / 2, d = [-x, 0, 0, 0, 0, 1, 1, 1, x, 0, 0, 0, 0, 1, 1, 0, x, w, 0, 0, 0, 1, 0, 0,
+      -x, 0, 0, 0, 0, 1, 1, 1, x, w, 0, 0, 0, 1, 0, 0, -x, w, 0, 0, 0, 1, 0, 1];
+    return { data: new Float32Array(d), count: 6, min: [-x, 0, -0.05], max: [x, w, 0.05], w: h, h: w, deitado: true };
+  }
+
   // quadro de tela com o pivô (px, py) em fração do quadro, medido a partir do canto inferior esquerdo; v=0 no topo
   function screenGeo(px, py) {
     var x0 = -px, x1 = 1 - px, y0 = -py, y1 = 1 - py;
@@ -1042,11 +1050,11 @@
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
   var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4,
     arvore_2: 5.9, toco_2: 5.9, arvore_3: 5.9, toco_3: 5.9, alfaiate: 1.92,
-    lobo: 0.96, veado: 2.16, ovelha: 1.04, ovelha_tosquiada: 1.04, arbusto: 1.28, arbusto_seco: 1.28, escorpiao: 0.16, serpente: 0.24 };
+    lobo: 0.96, veado: 2.16, ovelha: 1.04, ovelha_tosquiada: 1.04, arbusto: 1.28, arbusto_seco: 1.28, escorpiao: 0.16, serpente: 0.24, troll: 2.56 };
   // bichos desenhados de lado, olhando para a esquerda (como a vaca): espelham quando andam para a direita da tela.
   // PULO: altura do saltinho ao andar (o coelho pula; escorpião e serpente rastejam)
   var DE_LADO = { lobo: 1, veado: 1, escorpiao: 1, serpente: 1 };
-  var PULO = { coelho: 0.15, lobo: 0.04, veado: 0.07 };
+  var PULO = { coelho: 0.15, lobo: 0.04, veado: 0.07, troll: 0.03 };
 
   // ---------- moradores e vacas: ambiente, só na tela ----------
   // a posição sai do relógio, nunca de tiques: nada disto entra na simulação, nas colisões ou no save
@@ -1068,16 +1076,6 @@
     var a = trilhaEm(T, s - 0.6), b = trilhaEm(T, s + 0.6), dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
     return [p[0] - dz / l * lado, p[1] + dx / l * lado];
   }
-  // a vaca oscila em volta do seu centro; u só avança na parte do ciclo em que ela anda, então ela para sem saltar
-  function vacaU(c, h, seg) {
-    var q = seg / c.ciclo + h[8], k = Math.floor(q), f = q - k, e = f < c.anda ? ease(f / c.anda) : 1;
-    return { u: (k + e) * 3, anda: f < c.anda };
-  }
-  function vacaEm(c, h, u) {
-    var A = c.area;
-    return [Math.max(A[0], Math.min(A[2], h[0] + h[2] * Math.sin(u * h[4] + h[6]))), Math.max(A[1], Math.min(A[3], h[1] + h[3] * Math.sin(u * h[5] + h[7])))];
-  }
-
   // placa do alfaiate enquanto a arte não traz 'placa_alfaiate': tábua com moldura escura e uma tesoura aberta, em pixels
   function placaTesoura(tab) {
     var S = tab.width, c = document.createElement('canvas'); c.width = c.height = S;
@@ -1118,6 +1116,14 @@
     var o = new Node(sGeo(this.dim(img), h), img === name ? 0xf2f2f2 : (TINTA_SUB[name] || 0xf2f2f2), { tex: 's:' + img, sprite: true, unlit: true });
     o.userData.img = img; o.userData.k = h / (SIZE[img] || h);
     return o;
+  };
+  // deita (ko = true) ou levanta a figura; o quadro em pé fica guardado para a volta
+  View.prototype.deita = function (o, ko) {
+    if (!!o.userData.deitado === ko) { return; }
+    // o sentado atrás da mesa (y < 0) cai no chão de verdade, e volta para a cadeira ao levantar
+    if (ko) { o.userData.emPe = o.geo; o.userData.y0 = o.pos[1]; o.pos[1] = 0; var g = o.geo; o.geo = cached('d' + g.w.toFixed(3) + 'x' + g.h.toFixed(3), function () { return deitadoGeo(g.w, g.h); }); }
+    else { o.geo = o.userData.emPe || o.geo; o.pos[1] = o.userData.y0 || 0; }
+    o.userData.deitado = ko;
   };
   View.prototype.dim = function (name) { return this.art.dims[name] || { w: 1, h: 1 }; };
   // troca a imagem da figura (ex.: árvore -> toco) e ajusta o quadro ao tamanho/proporção da nova imagem
@@ -1385,7 +1391,7 @@
     if (f > 0) { self.flash[id] = f - dt; }
   }
   // st: com a vila em armas, quem anda é desenhado onde a simulação diz (entre dois tiques, interpolado);
-  // desacordado some até levantar. Fora disso, a trilha manda
+  // desacordado fica deitado no chão até levantar. Fora disso, a trilha manda
   View.prototype.ambient = function (ms, st, prev, alpha, dt) {
     var self = this, seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     var gente = (st && st.gente) || {}, H = st && st.hostil, now = performance.now(), lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
@@ -1394,9 +1400,10 @@
       // o tempo segurado não conta para a trilha: ao soltar, ele segue do mesmo ponto
       if (w.last !== null && self.held === d.id) { w.off += seg - w.last; }
       w.last = seg;
-      w.o.visible = !(g && g.ko > 0);
-      if (!w.o.visible) { return; }
+      var ko = !!(g && g.ko > 0);
+      self.deita(w.o, ko);
       piscar(self, w.o, d.id, dt || 0);
+      if (ko) { w.o.at(g.x !== undefined ? g.x : w.o.pos[0], 0, g.z !== undefined ? g.z : w.o.pos[2]); return; } // caído onde a briga o deixou
       if (H && g && g.x !== undefined) {
         var pv = prev && prev['p:' + d.id], x = g.x, z = g.z;
         if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
@@ -1410,11 +1417,13 @@
     });
     Object.keys(this.npcO).forEach(function (id) {
       var o = self.npcO[id], g = gente[id];
-      o.visible = !(g && g.ko > 0);
+      self.deita(o, !!(g && g.ko > 0));
       piscar(self, o, id, dt || 0);
     });
+    // vacas e ovelhas no relógio do jogo (o mesmo da macro, ver World.bichoEm), entre dois tiques pela fração alpha
+    var tb = st && st.t !== undefined ? st.t + (alpha || 0) * this.w.game.settings.tickSec : seg;
     this.cows.forEach(function (v) {
-      var c = v.c, m = vacaU(c, v.h, seg), p = vacaEm(c, v.h, m.u), n = vacaEm(c, v.h, m.u + 0.05);
+      var m = self.w.bichoEm(v.id, tb), p = [m.x, m.z], n = self.w.bichoXZ(v.id, m.u + 0.05);
       if (v.img === 'ovelha') { // tosquiada até a lã voltar: a figura própria, ou, sem ela no atlas, uma tinta mais escura
         var nua = !!(st && st.farm && st.farm[v.id] > st.t);
         if (lado) { self.setImg(v.o, nua ? 'ovelha_tosquiada' : 'ovelha'); } else { v.o.color = hex(nua ? TINTA_SUB.ovelha_tosquiada : (self.art.sprites.ovelha ? 0xf2f2f2 : TINTA_SUB.ovelha)); }
@@ -1648,7 +1657,7 @@
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
     var lu = ((hx - o.pos[0]) * co - (hz - o.pos[2]) * s) * (o.scale[0] < 0 ? -1 : 1), lv = hy - o.pos[1];
-    var g = o.geo, a = this.art.alpha[o.userData.img];
+    var g = o.geo, a = g.deitado ? null : this.art.alpha[o.userData.img];
     if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
     var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
     var tol = Math.max(2, Math.round(H / g.h * 0.08)); // folga de ~8 cm em volta dos pixels desenhados
@@ -1669,7 +1678,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=9' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=10' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

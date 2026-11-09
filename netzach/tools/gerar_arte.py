@@ -2692,6 +2692,90 @@ def t_brasao(px):
         for y in (40, 41, 42): px[x, y] = ouro if y < 42 else sombra
 
 
+# ---------------- troll (desenho do usuário, 9/11/2026) ----------------
+MAT.update({
+    'troll': ramp('1a1e16', '2a3022', '3c4430', '505a3e', '66724e', '7e8a60'),        # couro verde-acinzentado
+    'troll_v': ramp('2a2824', '45423b', '625e54', '817c70', 'a09a8c', 'bab4a6'),      # calombos de pedra nos ombros
+    'unha': ramp('3a3226', '5e5440', '857a60', 'a89c7e', 'c4b898'),
+    'tanga': ramp('1a120c', '2c1f14', '43301e', '5a4229', '725636', '8a6a44'),
+})
+DITHER.update({'troll': 0.55, 'troll_v': 0.45, 'tanga': 0.5})
+
+
+def troll():
+    """troll de frente, corcunda, cabeça afundada entre os ombros cheios de calombos de pedra, barriga redonda,
+    tanga de couro, pés enormes; na mão esquerda (à esquerda da figura) um tronco quebrado de arma.
+    Quadro 192x256, 100 px por metro (2,5 m), pés na linha 253. Baseado no desenho a caneta do usuário."""
+    f = Fig(192, 256, seed=131); T = 'troll'; rng = np.random.RandomState(41)
+    # pernas: curtas e grossas, um pouco abertas
+    for x0, x1 in ((76, 70), (118, 124)):
+        f.cap(x0, 186, x1, 236, 17, 15, T, R=12, tex=.05, vgrad=.12)
+    f.crease([(66, 212), (80, 214)], .14); f.crease([(114, 214), (128, 212)], .14)   # joelhos
+    # pés enormes, chatos, com os dedos à mostra
+    for cx in (66, 128):
+        f.ell(cx, 244, 25, 11, T, R=8, tex=.05, bias=-.02)
+        for k in range(5):
+            tx = cx - 18 + k * 9; f.ell(tx, 250, 5, 4.4, T, R=3, edge=.12, bias=.02)
+            f.ell(tx, 251.5, 2.6, 1.8, 'unha', R=1.5, bias=.05)
+    # corpo: corcova larga que engole o pescoço, ombros caídos
+    corpo = (f.m_ell(96, 96, 70, 40) | f.m_ell(96, 70, 52, 26) | f.m_poly([(34, 100), (158, 100), (146, 150), (48, 150)]))
+    f.shape(corpo, T, R=26, tex=.05, vgrad=.12)
+    # braço esquerdo (da figura, à esquerda da tela): pendurado, segura o tronco
+    bl = f.m_cap(40, 98, 32, 140, 15, 13) | f.m_cap(32, 140, 38, 170, 13, 11); f.shape(bl, T, R=10, tex=.05, edge=.28); f.soft(bl, .22, sigma=2, off=(2, 1))
+    # tronco de arma: casca, quebrado em lascas para baixo e para a esquerda
+    tora = f.m_cap(50, 166, 20, 214, 10, 12)
+    f.shape(tora, 'casca', R=8, tex=.1, edge=.08)
+    for a, b in (((40, 178), (24, 206)), ((46, 176), (30, 206))): f.fold([a, b], .22)
+    lascas = [[(12, 206), (2, 236), (18, 214)], [(16, 212), (12, 246), (26, 218)], [(22, 218), (28, 250), (32, 216)],
+              [(28, 214), (42, 240), (34, 208)], [(10, 204), (-2, 214), (14, 200)], [(18, 220), (4, 252), (24, 222)]]
+    for k, L in enumerate(lascas): f.poly(L, 'cerne' if k % 2 else 'casca', R=3, tex=.08, edge=.12, bias=.05 if k % 2 else -.05)
+    f.ell(20, 213, 9, 6, 'cerne', R=4, tex=.1, bias=-.1)                               # o miolo da quebra
+    # mão fechada em volta do tronco
+    f.ell(42, 172, 12, 11, T, R=8, tex=.04, edge=.14)
+    for k in range(3): f.crease([(34 + k * 6, 166), (36 + k * 6, 178)], .12)
+    # barriga redonda, saltada, com o umbigo
+    barriga = f.m_ell(98, 138, 40, 34)
+    f.shape(barriga, T, R=22, tex=.04, edge=.1, bias=.04)
+    f.ell(100, 146, 2.2, 2.8, T, flat=.05)
+    f.crease([(66, 122), (82, 112), (100, 110), (120, 114), (132, 124)], .1)           # dobra sob o peito
+    # tanga de couro até o joelho, de barra rasgada
+    hem = [(56, 200)] + [(60 + k * 8, 206 + (6 if k % 2 else 0) + rng.randint(-2, 3)) for k in range(11)] + [(144, 198)]
+    tanga = f.m_poly([(60, 164), (138, 164), (146, 198)] + hem[::-1][:-1] + [(52, 198)])
+    f.shape(tanga, 'tanga', R=10, tex=.08, vgrad=.15, edge=.1)
+    for k in range(7): x = 66 + k * 11; f.fold([(x, 168), (x + rng.randint(-3, 4), 200)], .2, clip=tanga)
+    f.cap(58, 165, 140, 165, 3.4, 3.4, 'corda', R=2, bias=-.05)                        # a corda na cintura
+    # braço direito: dobrado, punho fechado na altura do quadril
+    br = f.m_cap(154, 96, 166, 136, 15, 13) | f.m_cap(166, 136, 158, 162, 13, 11); f.shape(br, T, R=10, tex=.05, edge=.28)
+    f.crease([(140, 100), (144, 128), (146, 150)], .2, sigma=1.4)
+    f.ell(156, 168, 13, 12, T, R=8, tex=.04, edge=.14)
+    for k in range(3): f.crease([(149 + k * 6, 162), (150 + k * 6, 174)], .12)
+    # cabeça pequena, baixa, metida na frente da corcova
+    cab = f.m_ell(100, 74, 19, 17) | f.m_poly([(84, 78), (116, 78), (112, 96), (88, 96)])
+    f.shape(cab, T, R=10, tex=.04, edge=.12, bias=.06)
+    f.cap(86, 66, 114, 66, 4, 4, T, R=3, bias=.1)                                         # testa pesada
+    f.soft(f.m_cap(86, 66, 114, 66, 4, 4), .25)
+    for ex, sgn in ((92, 1), (108, -1)):                                                  # olhinhos bravos sob a testa
+        f.ell(ex, 71.5, 3.2, 2, 'olho', flat=.05); f.px(ex + sgn, 71, 'ambar', .85)
+        f.line([(ex - 4 * sgn, 67), (ex + 3 * sgn, 69.5)], 'olho', .1)
+    f.ell(100, 79, 4.5, 3.4, T, R=3, bias=.12)                                            # nariz largo
+    f.px(98, 81, T, .1); f.px(102, 81, T, .1)
+    f.line([(91, 88), (96, 89.5), (104, 89.5), (109, 88)], 'olho', .12)                   # boca
+    f.px(93, 87, 'unha', .9); f.px(107, 87, 'unha', .9)                                   # presinhas
+    f.crease([(84, 94), (100, 99), (116, 94)], .1)                                        # papada
+    f.smudge(100, 96, 7, 3, .14, n=26, clip=cab)                                          # barba rala no queixo
+    # calombos de pedra espalhados pela corcova e ombros (os anéis do desenho)
+    pontos = [(60, 66), (74, 58), (90, 52), (110, 52), (126, 58), (140, 66), (48, 80), (152, 80), (64, 84), (136, 84),
+              (40, 98), (160, 98), (82, 58), (120, 62), (100, 50), (54, 70), (146, 72), (150, 112), (44, 114)]
+    for k, (x, y) in enumerate(pontos):
+        r = 4.2 + rng.uniform(0, 2.4)
+        m = f.m_ell(x, y, r, r * .85) & ~cab
+        if not m.any(): continue
+        f.shape(m, 'troll_v', R=r, tex=.06, edge=.18, shadow=.15)
+        f.adj(f.m_ell(x + .4, y + .3, r * .45, r * .4), -.22)                             # o oco no meio do calombo
+    pelagem(f, corpo & ~cab, 120, rng, .08)
+    return f
+
+
 def SPRITES():
     """(nome, função, rim) na ordem da folha. O padre foi aprovado como está: só perde o contorno,
     sem o escurecimento de borda (pixel a pixel igual por dentro)."""
@@ -2707,7 +2791,7 @@ def SPRITES():
              ('menina', menina), ('soldado_lanca', soldado_lanca), ('soldado_escudo', soldado_escudo), ('rapaz', rapaz), ('filha_senhor', filha_senhor),
              ('senhor', senhor), ('intendente', intendente), ('vaca', vaca),
              ('alfaiate', alfaiate), ('lobo', lobo), ('veado', veado), ('ovelha', ovelha), ('ovelha_tosquiada', ovelha_tosquiada),
-             ('escorpiao', escorpiao), ('serpente', serpente), ('arbusto', arbusto), ('arbusto_seco', arbusto_seco))
+             ('escorpiao', escorpiao), ('serpente', serpente), ('arbusto', arbusto), ('arbusto_seco', arbusto_seco), ('troll', troll))
     return [(n, fn, 0 if n == 'padre' else 0.12) for n, fn in lista]
 
 

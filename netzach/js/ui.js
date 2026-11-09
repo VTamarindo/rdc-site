@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261109-1', SAVE_VER = '20261105-3';
+  var VERSION = '20261109-2', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -632,6 +632,22 @@
         c.restore();
       }
       c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 0.9; c.strokeRect(x, z, w, h);
+    });
+    // construções com sala: o piso por dentro das paredes, os móveis que ocupam o chão e o vão da porta aberto na fachada
+    var N = world.N;
+    world.salas.forEach(function (S) {
+      if (!vis(S.b.x, S.b.z, Math.max(S.b.w, S.b.d))) { return; }
+      S.cel.forEach(function (i) {
+        var cx = i % N - B, cz = Math.floor(i / N) - B;
+        c.fillStyle = world.grid[i] ? 'rgba(122,72,34,.7)' : 'rgba(236,214,166,.95)';
+        c.fillRect(X(cx) - 0.3, Z(cz) - 0.3, k + 0.6, k + 0.6); // a folga fecha as frestas entre as células
+      });
+      var dw = S.I.porta[0] / 2, f = S.b.d / 2, a = S.mundo(-dw, f - 0.5), b2 = S.mundo(dw, f - 0.5), a2 = S.mundo(-dw, f + 0.3), b3 = S.mundo(dw, f + 0.3);
+      c.fillStyle = 'rgba(236,214,166,.95)'; c.beginPath();
+      c.moveTo(X(a.x), Z(a.z)); c.lineTo(X(b2.x), Z(b2.z)); c.lineTo(X(b3.x), Z(b3.z)); c.lineTo(X(a2.x), Z(a2.z)); c.closePath(); c.fill();
+      // batentes: dois traços de tinta, um de cada lado do vão
+      c.strokeStyle = INK; c.lineWidth = big ? 1.6 : 0.9; c.beginPath();
+      c.moveTo(X(a.x), Z(a.z)); c.lineTo(X(a2.x), Z(a2.z)); c.moveTo(X(b2.x), Z(b2.z)); c.lineTo(X(b3.x), Z(b3.z)); c.stroke();
     });
     // árvores e veios (só os que estão à vista)
     world.nodes.forEach(function (n) {
@@ -1285,11 +1301,18 @@
   function marks() {
     var qd = dailyBoard();
     mark(qd.id, dailyOpen() ? '!' : '', qd.x, 2.75, qd.z);
+    // quem está dentro de uma sala: com o jogador fora, a marca fica acima da porta (várias na mesma porta, lado a lado)
+    var aqui = world.salaEm(st.player.x, st.player.z), naPorta = {};
     world.npcs.forEach(function (n) {
       var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
       if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
       else if (q && q.state === 'available') { sym = '!'; }
       else if (q && q.state === 'ready') { sym = '?'; }
+      var S = world.salaDe(n.x, n.z);
+      if (S && sym && S.id !== aqui) {
+        var k = naPorta[S.id] = (naPorta[S.id] || 0) + 1, lx = (k - 1) * 0.5 * (k % 2 ? 1 : -1), pt = S.mundo(lx, S.b.d / 2 + 0.15);
+        mark(n.id, sym, pt.x, S.I.porta[1] + 0.55, pt.z); return;
+      }
       mark(n.id, sym, n.x, 2.25, n.z);
     });
   }
@@ -1584,10 +1607,12 @@
       var nm = personName(ref.id);
       if (sim.isKo(st, ref.id)) { toast(G.aldeoes.textos.desacordado.replace('{alvo}', nm)); return; }
       if (sim.hostileTo(st, ref.id)) { target(ref.id); return; } // quem vem para cima não conversa: o clique é golpe
+      var parede = sim.paredeEntre(st, ref.id); if (parede) { toast(parede); return; }
       if (d <= G.settings.interactRange + 0.5) { openPerson(ref.id); } else { toast('Aproxime-se de ' + nm + '.'); }
       return;
     }
     if (ref.type === 'prop') {
+      var parede2 = sim.paredeEntre(st, ref.id); if (parede2) { toast(parede2); return; }
       if (d <= G.settings.interactRange + 0.5) { openNpc(pos.npc); } else { toast('Aproxime-se: ' + pos.name + '.'); }
       return;
     }
