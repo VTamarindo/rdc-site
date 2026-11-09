@@ -581,24 +581,26 @@
       }
     }
   }
-  function trigal(L, f) {
-    var caule = L.get('trigo_caule', CLARO, true).v, espiga = L.get('trigo_espiga', CLARO, true).v, n = 0;
+  // LL(x, z) devolve o lote do retalho de colheita em que o pé cai: cada retalho vira malhas suas, que somem quando é colhido
+  function trigal(LL, f) {
+    var n = 0;
     for (var z = f.z0 + 0.5; z < f.z1; z += 1) {
       for (var x = f.x0 + 0.3; x < f.x1 - 0.2; x += 0.34) {
         n++;
         var a = sorte(n) * Math.PI, inv = sorte(n + 0.3) > 0.5, px = x + (sorte(n + 0.5) - 0.5) * 0.14, pz = z + (sorte(n + 0.7) - 0.5) * 0.2, h = 0.6 + sorte(n + 0.9) * 0.1;
-        L.pe(caule, px, pz, 0.64, 0, h, a, inv); L.pe(espiga, px, pz, 0.64, h, h + 0.64, a, inv);
+        var L = LL(px, pz);
+        L.pe(L.get('trigo_caule', CLARO, true).v, px, pz, 0.64, 0, h, a, inv); L.pe(L.get('trigo_espiga', CLARO, true).v, px, pz, 0.64, h, h + 0.64, a, inv);
       }
     }
   }
-  function canteiro(L, s, x0, x1) {
-    var d = PLANTA[s.kind], v = L.get(s.kind, CLARO, true).v, b = L.get('bulbos', hex(0xffffff), false).v, n = s.z0 * 977;
+  function canteiro(LL, s, x0, x1) {
+    var d = PLANTA[s.kind], n = s.z0 * 977;
     for (var z = s.z0 + 0.5; z < s.z1; z += 1) {
       for (var x = x0 + 0.4; x < x1 - 0.3; x += d.passo) {
         n++;
-        var k = 0.92 + sorte(n + 0.2) * 0.16, px = x + (sorte(n) - 0.5) * 0.08, pz = z + (sorte(n + 0.5) - 0.5) * 0.08;
-        L.pe(v, px, pz, d.w * k, 0, d.w * k, Math.PI / 4 + (sorte(n + 0.7) - 0.5) * 0.9, sorte(n + 0.3) > 0.5);
-        corpo(b, d, px, pz, k, sorte(n + 0.9) * 6);
+        var k = 0.92 + sorte(n + 0.2) * 0.16, px = x + (sorte(n) - 0.5) * 0.08, pz = z + (sorte(n + 0.5) - 0.5) * 0.08, L = LL(px, pz);
+        L.pe(L.get(s.kind, CLARO, true).v, px, pz, d.w * k, 0, d.w * k, Math.PI / 4 + (sorte(n + 0.7) - 0.5) * 0.9, sorte(n + 0.3) > 0.5);
+        corpo(L.get('bulbos', hex(0xffffff), false).v, d, px, pz, k, sorte(n + 0.9) * 6);
       }
     }
   }
@@ -640,7 +642,12 @@
 
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, alfaiate: 1.86, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4 };
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, alfaiate: 1.86, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4,
+    lobo: 0.85, veado: 1.4, ovelha: 0.9, ovelha_tosquiada: 0.9, escorpiao: 0.25, serpente: 0.2 };
+  // bichos desenhados de lado, olhando para a esquerda (como a vaca): espelham quando andam para a direita da tela.
+  // PULO: altura do saltinho ao andar (o coelho pula; escorpião e serpente rastejam)
+  var DE_LADO = { lobo: 1, veado: 1, escorpiao: 1, serpente: 1 };
+  var PULO = { coelho: 0.15, lobo: 0.04, veado: 0.07 };
 
   // ---------- moradores e vacas: ambiente, só na tela ----------
   // a posição sai do relógio, nunca de tiques: nada disto entra na simulação, nas colisões ou no save
@@ -700,11 +707,15 @@
   }
 
   // figura que a arte ainda não tem (ex.: o alfaiate antes do atlas novo): usa uma parecida, em vez de um quadro branco
-  var SUBSTITUTA = { alfaiate: 'taberneiro' };
+  // bicho novo sem figura no atlas: um parecido no tamanho dele, com uma tinta para não confundir (lobo cinza, veado pardo...)
+  var SUBSTITUTA = { alfaiate: 'taberneiro', lobo: 'vaca', veado: 'vaca', ovelha: 'vaca', ovelha_tosquiada: 'ovelha', escorpiao: 'coelho', serpente: 'coelho' };
+  var TINTA_SUB = { lobo: 0x8a8a94, veado: 0xc89a66, ovelha: 0xfff6e6, ovelha_tosquiada: 0xb8a48a, escorpiao: 0x7a4a30, serpente: 0x6e8a4a };
   View.prototype.sprite = function (name, h) {
-    if (!this.art.sprites[name]) { name = this.art.sprites[SUBSTITUTA[name]] ? SUBSTITUTA[name] : 'anselmo'; }
-    var o = new Node(sGeo(this.dim(name), h), 0xf2f2f2, { tex: 's:' + name, sprite: true, unlit: true });
-    o.userData.img = name; o.userData.k = h / (SIZE[name] || h);
+    var img = name;
+    while (!this.art.sprites[img] && SUBSTITUTA[img]) { img = SUBSTITUTA[img]; }
+    if (!this.art.sprites[img]) { img = 'anselmo'; }
+    var o = new Node(sGeo(this.dim(img), h), img === name ? 0xf2f2f2 : (TINTA_SUB[name] || 0xf2f2f2), { tex: 's:' + img, sprite: true, unlit: true });
+    o.userData.img = img; o.userData.k = h / (SIZE[img] || h);
     return o;
   };
   View.prototype.dim = function (name) { return this.art.dims[name] || { w: 1, h: 1 }; };
@@ -771,12 +782,33 @@
     });
 
     // plantações
+    // cada retalho de colheita (sim.js, World.addCrops) tem o seu lote, dentro de um nó que some quando é colhido:
+    // fica a terra arada à vista até voltar. O retalho também é uma caixa baixa para o clique e o nome ao passar o mouse
+    var crops = w.nodes.filter(function (n) { return n.rect; });
+    function loteDe(f) {
+      var mine = crops.filter(function (n) { return n.field === f.id; }), lotes = mine.map(function () { return new Lote(); });
+      return {
+        LL: function (x, z) {
+          for (var i = 0; i < mine.length; i++) { var r = mine[i].rect; if (x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1) { return lotes[i]; } }
+          return L; // pé fora de qualquer retalho (não acontece com a planta atual): fica fixo
+        },
+        poe: function () {
+          mine.forEach(function (n, i) {
+            var g = new Node(); lotes[i].poe(g); R.add(g); self.objs[n.id] = g;
+            var r = n.rect, b = new Node().at(n.x, 0, n.z);
+            b.userData.ref = { type: 'node', id: n.id }; b.userData.box = { x: n.x, z: n.z, w: r.x1 - r.x0, d: r.z1 - r.z0, h: 0.9 };
+            R.add(b); self.pick.push(b);
+          });
+        }
+      };
+    }
     V.fields.forEach(function (f) {
-      var hortas = f.strips || [f];
+      var hortas = f.strips || [f], C = loteDe(f);
       R.add(new Node(chao(hortas.map(function (s) { return { x0: f.x0, x1: f.x1, z0: s.z0, z1: s.z1 }; }), 2), f.kind === 'trigo' ? 0xf0e0b0 : 0xffffff, { tex: 'lavoura' }).at(0, 0.025, 0));
-      if (f.kind === 'trigo') { trigal(L, f); L.funde(espantalho((f.x0 + f.x1) / 2 + 3, (f.z0 + f.z1) / 2)); return; }
+      if (f.kind === 'trigo') { trigal(C.LL, f); C.poe(); L.funde(espantalho((f.x0 + f.x1) / 2 + 3, (f.z0 + f.z1) / 2)); return; }
       R.add(new Node(chao([{ x0: f.x0, x1: f.x1, z0: f.z0, z1: f.z1 }], 3), 0xffffff, { tex: 'terra' }).at(0, 0.02, 0));
-      hortas.forEach(function (s) { canteiro(L, s, f.x0, f.x1); }); // sem cercadura: a horta fica aberta
+      hortas.forEach(function (s) { canteiro(C.LL, s, f.x0, f.x1); }); // sem cercadura: a horta fica aberta
+      C.poe();
     });
 
     var PREDIO = { igreja: church, ferreiro: smith, bar: bar, casa_senhor: casaSenhor, padaria: padaria, forno: forno, moradia: moradia, alfaiate: alfaiate };
@@ -799,14 +831,15 @@
   View.prototype.buildDynamic = function () {
     var self = this, w = this.w;
     w.nodes.forEach(function (n) {
+      if (n.rect) { return; } // plantação: montada em buildStatic
       var tree = n.kind === 'arvore', jit = ((n.x * 7 + n.z * 3) % 5 + 5) % 5 * 0.07;
       var o = self.sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
       o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind;
       self.root.add(o); self.pick.push(o); self.objs[n.id] = o;
     });
-    w.spawns.forEach(function (s, i) {
-      var o = self.sprite('coelho', SIZE.coelho); o.userData.ref = { type: 'mob', id: 'coelho' + i };
-      self.root.add(o); self.pick.push(o); self.objs['coelho' + i] = o;
+    w.spawns.forEach(function (s) {
+      var o = self.sprite(s.kind, SIZE[s.kind] || 0.5); o.userData.ref = { type: 'mob', id: s.id }; o.userData.kind = s.kind;
+      self.root.add(o); self.pick.push(o); self.objs[s.id] = o;
     });
   };
 
@@ -821,17 +854,33 @@
     (V.walkers || []).forEach(function (w) {
       self.walkers.push({ d: w, T: T[w.trail], o: add(w.id, w.id, w.name, w.h), passo: 0.42 * w.h });
     });
-    if (V.cows) { V.cows.herd.forEach(function (h, i) { self.cows.push({ h: h, o: add('vaca' + i, 'vaca', V.cows.name, V.cows.h) }); }); }
+    // vacas e ovelhas: o mesmo passeio pelo relógio, mas com clique próprio ('farm': tirar leite, tosquiar; ver Sim.farmUse)
+    function bicho(id, img, name, h, c) {
+      var o = add(id, img, name, h); o.userData.ref = { type: 'farm', id: id };
+      self.cows.push({ id: id, c: c, h: c.herd[+id.replace(/\D+/, '')] || c.herd[0], o: o, img: img });
+    }
+    if (V.cows) { V.cows.herd.forEach(function (h, i) { bicho('vaca' + i, 'vaca', V.cows.name, V.cows.h, V.cows); }); }
+    var n = 0;
+    (V.folds || []).forEach(function (f) {
+      var F = f.flock; if (!F) { return; }
+      // a área do passeio é o aprisco por dentro, longe da cerca
+      var c = { ciclo: F.ciclo, anda: F.anda, area: [f.x0 + 1.6, f.z0 + 1.6, f.x1 - 1.6, f.z1 - 1.6], herd: [] };
+      F.herd.forEach(function (h) { c.herd[n] = h; bicho('ovelha' + n, 'ovelha', F.name, F.h, c); n++; });
+    });
   };
-  View.prototype.ambient = function (ms) {
-    var seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+  View.prototype.ambient = function (ms, st) {
+    var seg = ms / 1000, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw), self = this, lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
     this.walkers.forEach(function (w) {
       var d = w.d, s = seg * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
       var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
       w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
     });
     this.cows.forEach(function (v) {
-      var m = vacaU(c, v.h, seg), p = vacaEm(c, v.h, m.u), n = vacaEm(c, v.h, m.u + 0.05);
+      var c = v.c, m = vacaU(c, v.h, seg), p = vacaEm(c, v.h, m.u), n = vacaEm(c, v.h, m.u + 0.05);
+      if (v.img === 'ovelha') { // tosquiada até a lã voltar: a figura própria, ou, sem ela no atlas, uma tinta mais escura
+        var nua = !!(st && st.farm && st.farm[v.id] > st.t);
+        if (lado) { self.setImg(v.o, nua ? 'ovelha_tosquiada' : 'ovelha'); } else { v.o.color = hex(nua ? TINTA_SUB.ovelha_tosquiada : (self.art.sprites.ovelha ? 0xf2f2f2 : TINTA_SUB.ovelha)); }
+      }
       v.o.at(p[0], m.anda ? Math.abs(Math.sin(m.u * 40)) * 0.02 : 0, p[1]);
       var face = (n[0] - p[0]) * rx + (n[1] - p[1]) * rz;      // o desenho olha para a esquerda: indo para a direita da tela, espelha
       if (face) { v.o.scale[0] = face > 0 ? -1 : 1; }
@@ -972,17 +1021,20 @@
     var self = this, w = this.w, p = st.player;
     w.nodes.forEach(function (n) {
       var o = self.objs[n.id], alive = st.nodes[n.id].alive;
+      if (n.rect) { o.visible = alive; return; } // retalho colhido: só a terra
       var img = n.kind === 'arvore' ? (alive ? 'arvore' : 'toco') : (alive ? 'veio' : 'veio_vazio');
       self.setImg(o, img);
     });
-    var t = performance.now();
+    var t = performance.now(), rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     st.mobs.forEach(function (mb) {
-      var o = self.objs[mb.id]; o.visible = mb.alive;
+      var o = self.objs[mb.id]; if (!o) { return; } // combatente que outro sistema desenha
+      o.visible = mb.alive;
       if (!mb.alive) { return; }
       var pv = prev && prev[mb.id], x = mb.x, z = mb.z;
       if (pv) { x = pv.x + (mb.x - pv.x) * alpha; z = pv.z + (mb.z - pv.z) * alpha; }
       var moving = pv && (Math.abs(mb.x - pv.x) + Math.abs(mb.z - pv.z) > 0.01);
-      o.at(x, moving ? Math.abs(Math.sin(t / 110)) * 0.15 : 0, z);
+      o.at(x, moving ? Math.abs(Math.sin(t / 110)) * (PULO[mb.kind] || 0) : 0, z);
+      if (DE_LADO[mb.kind]) { var fc = Math.sin(mb.face) * rx + Math.cos(mb.face) * rz; if (Math.abs(fc) > 0.05) { o.scale[0] = fc > 0 ? -1 : 1; } }
       var f = self.flash[mb.id] || 0;
       o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
       if (f > 0) { self.flash[mb.id] = f - dt; }
@@ -1002,13 +1054,14 @@
     var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
     this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
-    this.ambient(opts.now === undefined ? Date.now() : opts.now);
+    this.ambient(opts.now === undefined ? Date.now() : opts.now, st);
     this.r.draw(this.root, this.cam, this.env);
     if (!opts.semArma) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };
 
   // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga).
-  // solid: ignora moradores e vacas, que só têm nome ao passar o mouse e não podem tapar o que está atrás
+  // solid: ignora os moradores, que só têm nome ao passar o mouse e não podem tapar o que está atrás
+  // (vacas e ovelhas, tipo 'farm', contam: o clique nelas tira leite ou tosquia)
   View.prototype.pickAt = function (nx, ny, solid) {
     var c = this.cam; if (!c) { return null; }
     var cy = Math.cos(c.pitch), f = [Math.sin(c.yaw) * cy, Math.sin(c.pitch), Math.cos(c.yaw) * cy];
