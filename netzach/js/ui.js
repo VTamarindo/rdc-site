@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261109-8', SAVE_VER = '20261105-3';
+  var VERSION = '20261109-9', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1152,7 +1152,13 @@
   // ---------- gente: menu Conversar / Negociar / Atacar / Fechar ----------
   // vale para os NPCs parados e para os moradores que andam, pelo id; o quadro e o baú são objetos e abrem direto (openNpc)
   function persona(id) { return G.pessoas[id] || {}; }
-  function sorteia(l, alt) { return l && l.length ? l[Math.floor(Math.random() * l.length)] : alt || ''; }
+  // falas em rodízio: cada pessoa (e cada assunto dela) diz a fala 1, depois a 2, e volta à 1. O contador fica no save
+  function alterna(chave, l, alt) {
+    if (!l || !l.length) { return alt || ''; }
+    var R = st.falas = st.falas || {}, k = R[chave] || 0;
+    R[chave] = (k + 1) % l.length;
+    return l[k % l.length];
+  }
   function personName(id) { return world.personById[id].name; }
   function personPos(id) {
     var q = world.personById[id]; if (!q) { return null; }
@@ -1184,20 +1190,20 @@
     if (hasTrade(id)) { opts.push({ text: 'Negociar', fn: function () { negotiate(id); } }); }
     opts.push({ text: 'Atacar', cls: 'opt perigo', fn: function () { askAttack(id); } });
     opts.push({ text: 'Fechar', fn: hide });
-    setTalk(said || (st.hostil ? angry(id) : sorteia(persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.')), opts);
+    setTalk(said || (st.hostil ? angry(id) : alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.')), opts);
   }
   function backTo(id) { return { text: 'Voltar', fn: function () { personMenu(id); } }; }
   // Negociar: a loja e os serviços de sempre, abaixo da fala; com a vila em armas, ninguém vende nada
   function negotiate(id) {
     var def = G.npcs[id];
     if (st.hostil) { setTalk(persona(id).recusa || G.aldeoes.textos.recusa, [backTo(id)]); return; }
-    setTalk(def.idle || sorteia(persona(id).ola), [backTo(id)]);
+    setTalk(def.idle || alterna('ola:' + id, persona(id).ola), [backTo(id)]);
     renderNpcActs(id);
   }
   // assuntos: cada pergunta tira uma das respostas, e as perguntas continuam ali
   function topics(id, text) {
     var T = persona(id).temas || [];
-    setTalk(text, T.map(function (t) { return { text: t.p, fn: function () { topics(id, sorteia(t.r)); } }; }).concat([backTo(id)]));
+    setTalk(text, T.map(function (t, i) { return { text: t.p, fn: function () { topics(id, alterna('tema:' + id + ':' + i, t.r)); } }; }).concat([backTo(id)]));
   }
   function askAttack(id) {
     if (st.hostil) { doAttack(id); return; }
@@ -1238,7 +1244,7 @@
       } }, back], progText(q.id));
     } else if (q && q.state === 'active') {
       setTalk(G.quests[q.id].active, [back], progText(q.id));
-    } else { topics(id, (def && def.after) || sorteia(persona(id).ola, (def && def.idle) || '')); }
+    } else { topics(id, (def && def.after) || alterna('ola:' + id, persona(id).ola, (def && def.idle) || '')); }
   }
   function dialogueNode(id, dlg, nodeId) {
     var node = dlg.nodes[nodeId];
