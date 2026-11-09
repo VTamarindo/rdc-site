@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
-   - `js/ui.js`, linha 6: `var VERSION = '20261108-1'` → por exemplo `'20261108-2'`;
-   - `index.html`: todos os `?v=20261108-1` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `js/ui.js`, linha 6: `var VERSION = '20261109-1'` → por exemplo `'20261109-2'`;
+   - `index.html`: todos os `?v=20261109-1` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave no código.
@@ -48,9 +48,13 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 - **Classes de arma** (`weaponClasses`): espada, machado, arco (arco usa flechas).
 - **Atributos** (`attributes`): o efeito de cada ponto (`per`), o limite (`cap`) e a descrição mostrada no jogo (`desc`).
 - **Combate** (`combat.armorK`): quanto a defesa reduz o dano. **Posturas** (`stances`): ofensiva e defensiva.
-- **Monstros** (`monsters`): vida, dano, velocidade, XP, o que deixam cair (`drops`), tempo para renascer (`respawn`).
+- **Monstros e animais** (`monsters`): vida, dano, velocidade, XP, o que deixam cair (`drops`), tempo para renascer
+  (`respawn`), em que ponto da região nascem (`spot`) e quantos (`count`), raio de ataque (`aggro`), veneno (`poison`),
+  fuga dos veados.
 - **Recursos** (`nodes`): árvores e veios: tempo de coleta e o que dão.
 - **NPCs** (`npcs`): nome, fala, e o que vendem e compram (`services`: `shop` = loja, `sell` = compra do jogador).
+- **Pessoas** (`pessoas`): papel, saudações (`ola`) e assuntos (`temas`) de cada um dos 22 moradores e lojistas.
+- **Hostilidade** (`aldeoes`): reputação perdida, multa, tempo para acalmar e levantar, e a força de cada papel na luta.
 - **Macro** (`macro`): as regras automáticas. **Diárias** (`daily`): missões do quadro, horário de reinício e recompensas.
 - **Missões** (`quests`) e **conversas** (`dialogues`, `_textos`).
 
@@ -64,7 +68,9 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - `pasture` (pasto das vacas) e `folds` (aprisco das ovelhas): as únicas cercas. `fields`: plantações.
 - `regions`: floresta, pedregal e campina, com pontos marcados (`spots`) para os animais.
 - `trees`, `rocks`, `boulders`, `bushes`, `rabbits`: árvores, veios, pedras grandes, arbustos e coelhos.
-- `walkers` (moradores que andam), `trails` (os caminhos deles), `cows` (vacas).
+- `walkers` (moradores que andam), `trails` (os caminhos deles), `cows` (vacas); as ovelhas ficam em `folds` → `flock`.
+- `interiores`: a sala de cada construção (porta, teto, paredes, luzes e móveis `moveis`). Os móveis são desenhados pela
+  tabela `MOVEL` em `js/view.js`.
   **Depois de mexer em ruas, construções ou caminhos, rode** `tools/verificar_trilhas.py` para ver se alguém atravessa parede.
 
 ### Código
@@ -74,7 +80,12 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Céu e horários:** `js/ceu.js`, tabela `HORAS` (cores por hora do dia); montanhas em `serra`.
 - **Distância da névoa:** `js/view.js`, `fog: [45, 150]` (começa a 45 m e fecha em 150 m).
 - **Combate:** `js/sim.js`, `Sim.prototype.strike` (um golpe) e `swing`; contas do personagem em `stats`.
-- **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide`.
+- **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
+- **Animais e guardas perseguindo:** `js/sim.js`, `mobTick` (bichos), `genteTick` (moradores em briga), `chase` e
+  `hitPlayer` (perseguir e bater, comum a todos).
+- **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.
+- **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`.
+- **Interiores:** `js/view.js`, `MOVEL` (móveis), `salaQuadro` (qual sala aparece), e a luz da sala no sombreador (`FS`).
 - **Lojas:** `js/sim.js`, `service` e `buyItem`; tela em `js/ui.js` (`sellBox`, `openSell`).
 - **Janela Personagem:** `js/ui.js`, seção "personagem" (`openChar`, `renderEquip`, `renderBagTab`, `renderAttr`).
 - **Ícones dos itens:** `js/ui.js`, `ITEM_ICONS`.
