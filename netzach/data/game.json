@@ -453,8 +453,9 @@
     }
   },
   "aldeoes": {
-    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
+    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe; repPorInocente sai a cada pessoa que não é combatente (papel sem combatente: true) derrubada, mesmo com a vila já em armas. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
     "repPorIncidente": -100,
+    "repPorInocente": -100,
     "raio": 72,
     "calmaSeg": 60,
     "desmaioSeg": 120,
@@ -462,20 +463,21 @@
     "multa": { "frac": 0.25, "min": 10 },
     "papelPadrao": "aldeao",
     "papeis": {
-      "soldado": { "luta": true, "hp": 70, "dmg": [4, 7], "interval": 1.1, "reach": 1.9, "def": 8, "speed": 3.6, "crit": 0.05 },
-      "escudeiro": { "luta": true, "hp": 55, "dmg": [4, 6], "interval": 1.1, "reach": 1.8, "def": 5, "speed": 3.5, "crit": 0.05 },
+      "soldado": { "luta": true, "combatente": true, "hp": 240, "dmg": [11, 16], "interval": 1.2, "reach": 2.1, "def": 18, "speed": 3.9, "crit": 0.08 },
+      "escudeiro": { "luta": true, "combatente": true, "hp": 160, "dmg": [8, 12], "interval": 1.2, "reach": 1.9, "def": 14, "speed": 3.8, "crit": 0.06 },
       "homem": { "luta": true, "hp": 35, "dmg": [2, 4], "interval": 1.3, "reach": 1.5, "def": 1, "speed": 3.3 },
       "aldeao": { "luta": false, "hp": 20, "def": 0, "speed": 3.4 },
       "crianca": { "luta": false, "hp": 12, "def": 0, "speed": 3.8 }
     },
     "textos": {
-      "confirmar": "Atacar {alvo}? A vila inteira vai se voltar contra você: soldados e homens vão lutar, mulheres e crianças vão fugir, e você perde 100 de reputação.",
+      "confirmar": "Atacar {alvo}? A vila inteira vai se voltar contra você: soldados e homens vão lutar, mulheres e crianças vão fugir, e você perde 100 de reputação, e mais 100 por inocente que derrubar.",
       "inicio": "Você atacou {alvo}! A vila pegou em armas: saia para longe da vila ou enfrente os guardas.",
       "linha": "A vila está em armas contra você",
       "fora": "Longe da vila: a calma volta em {s} s",
       "fimFuga": "A vila se acalmou. Ainda falam de você, mas já não o perseguem.",
       "fimDesmaio": "Os soldados o arrastaram até a praça. Você pagou {multa} de multa, e a vila se acalmou.",
       "ko": "{alvo} caiu desacordado.",
+      "inocente": "{alvo} não era soldado: você perdeu {rp} de reputação.",
       "levanta": "{alvo} se levantou, ainda tonto.",
       "desacordado": "{alvo} está desacordado.",
       "recusa": "Não negocio com quem levanta a mão contra a vila.",
