@@ -475,14 +475,87 @@
     g.add(new Node(cached('portao_telhado', function () { return gableGeo(x * 2 + 1.6, 0.7, 1, 1); }), 0xffffff, { tex: 'telha_escura' }).at(0, 4.05, 0));
     return g;
   }
-  // pedra solta do pedregal: blocos tortos uns sobre os outros
+  // rocha natural: meia esfera de faces tortas (7 gomos, 4 faixas), raio 1, achatada em cima e com o pé um pouco
+  // enterrado; cada variante k tem as suas saliências. As faces ficam planas: a luz marca as arestas, como pedra lascada
+  function rochaGeo(k) {
+    return cached('rocha' + k, function () {
+      var g = new Geo(), S = 7, E = [-0.12, 0.28, 0.62, 0.9], P = [];
+      for (var j = 0; j < E.length; j++) {
+        P.push([]);
+        for (var i = 0; i < S; i++) {
+          var a = (i + sorte(k * 7.1 + j * 3.3 + i) * 0.5) / S * Math.PI * 2, e = E[j] * Math.PI / 2;
+          var r = 0.82 + sorte(k * 13.7 + j * 5.1 + i * 1.9) * 0.36, c = Math.cos(e) * r;
+          P[j].push([Math.sin(a) * c, Math.max(-0.1, Math.sin(e) * r * 0.7), Math.cos(a) * c]);
+        }
+      }
+      var topo = [0.1 * (sorte(k) - 0.5), 0.72 + sorte(k + 0.5) * 0.12, 0.1 * (sorte(k + 0.7) - 0.5)];
+      for (j = 0; j + 1 < E.length; j++) {
+        for (i = 0; i < S; i++) {
+          var b0 = P[j][i], b1 = P[j][(i + 1) % S], t1 = P[j + 1][(i + 1) % S], t0 = P[j + 1][i];
+          g.tri(b0, b1, t1).tri(b0, t1, t0); // dois triângulos com normais próprias: a face quebra na diagonal
+        }
+      }
+      for (i = 0; i < S; i++) { g.tri(P[E.length - 1][i], P[E.length - 1][(i + 1) % S], topo); }
+      return g.done(1.6);
+    });
+  }
+  function rocha(k, sx, sy, sz, x, z, rot, cor) {
+    var n = new Node(rochaGeo(k % 6), cor, { tex: 'rocha' }).at(x, 0, z);
+    n.scale = [sx, sy, sz]; n.rotY = rot; return n;
+  }
+  var COR_ROCHA = 0xd2ccc0; // uma cor só: com cores diferentes cada pedra viraria outro lote (outra chamada de desenho)
+  // pedra solta do pedregal: um bloco grande e irregular com pedras menores encostadas
   function pedra(p, i) {
-    var s = p[2], g = new Node().at(p[0], 0, p[1]);
+    var s = p[2], g = new Node().at(p[0], 0, p[1]), k = Math.floor(sorte(i + 0.3) * 6);
     g.rotY = sorte(i + 0.1) * 6.28;
-    g.add(box(s, s * 0.62, s * 0.8, 'pedra', 1.2, 0, s * 0.31, 0, 0xd8d4ca));
-    var t = box(s * 0.7, s * 0.5, s * 0.6, 'pedra', 1.2, s * 0.12, s * 0.8, -s * 0.05, 0xe4e0d6); t.rotY = 0.5; g.add(t);
-    var u = box(s * 0.5, s * 0.34, s * 0.5, 'pedra', 1.2, -s * 0.45, s * 0.17, s * 0.3, 0xc8c4ba); u.rotY = -0.4; g.add(u);
+    g.add(rocha(k, s * 0.62, s * (0.5 + sorte(i + 0.2) * 0.25), s * 0.5, 0, 0, 0, COR_ROCHA));
+    g.add(rocha(k + 1, s * 0.34, s * 0.3, s * 0.3, s * 0.52, s * 0.18, 1.3, COR_ROCHA));
+    g.add(rocha(k + 2, s * 0.22, s * 0.16, s * 0.24, -s * 0.5, -s * 0.28, 2.2, COR_ROCHA));
+    if (sorte(i + 0.6) > 0.5) { g.add(rocha(k + 3, s * 0.14, s * 0.1, s * 0.14, s * 0.05, s * 0.6, 0.4, COR_ROCHA)); }
     return g;
+  }
+  // textura de rocha (sem argamassa, ao contrário de 'pedra'): granulado cinza-pardo, veios escuros e manchas de líquen
+  function texRocha() {
+    var S = 64, c = document.createElement('canvas'); c.width = c.height = S;
+    var g = c.getContext('2d'), im = g.createImageData(S, S), d = im.data;
+    function h(x, y, s) { return sorte(((x % S + S) % S) * 0.71 + ((y % S + S) % S) * 13.13 + s); }
+    function suave(x, y, p, s) { // ruído de valor periódico em p px
+      var X = Math.floor(x / p), Y = Math.floor(y / p), fx = x / p - X, fy = y / p - Y, n = S / p;
+      function v(a, b) { return sorte(((a % n + n) % n) * 7.31 + ((b % n + n) % n) * 1.97 + s); }
+      fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+      return (v(X, Y) * (1 - fx) + v(X + 1, Y) * fx) * (1 - fy) + (v(X, Y + 1) * (1 - fx) + v(X + 1, Y + 1) * fx) * fy;
+    }
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var n = suave(x, y, 16, 1) * 0.55 + suave(x, y, 8, 2) * 0.3 + h(x, y, 3) * 0.15;
+        var l = 150 + (n - 0.5) * 70, r = l * 1.0, gg = l * 0.97, b = l * 0.9;
+        var veio = Math.abs(suave(x, y, 32, 4) - 0.5) < 0.025 || Math.abs(suave(x + 7, y, 16, 5) - 0.5) < 0.018;
+        if (veio) { r *= 0.62; gg *= 0.62; b *= 0.64; }
+        if (suave(x, y, 8, 6) > 0.74 && h(x, y, 7) > 0.35) { r = r * 0.8 + 30; gg = gg * 0.8 + 38; b = b * 0.7; } // líquen
+        var i = (y * S + x) * 4; d[i] = r; d[i + 1] = gg; d[i + 2] = b; d[i + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  // franja do chão de uma região: a textura do chão repetida 4 vezes (12 m; 256 px, potência de 2, senão o WebGL não repete),
+  // com a borda recortada em dentes e pontos,
+  // ondulando devagar; v = 0 na linha da região (cheio) e v = 1 a 3 m para fora (vazio)
+  function texFranja(base, semente) {
+    var W = 256, H = 64, c = document.createElement('canvas'); c.width = W; c.height = H;
+    var g = c.getContext('2d');
+    for (var k = 0; k < 4; k++) { g.drawImage(base, k * 64, 0, 64, 64); }
+    var im = g.getImageData(0, 0, W, H), d = im.data;
+    for (var x = 0; x < W; x++) {
+      var u = x / W * Math.PI * 2, s = semente;
+      var lim = 0.42 + 0.16 * Math.sin(u * 2 + s) + 0.1 * Math.sin(u * 5 + s * 2.3) + 0.06 * Math.sin(u * 11 + s * 0.7);
+      for (var y = 0; y < H; y++) {
+        var t = y / H, r = sorte(x * 1.731 + y * 0.917 + s), cheio = t < lim + (r - 0.5) * 0.22 || (r > 0.965 - 0.05 * (1 - t) && t < lim + 0.3);
+        d[(y * W + x) * 4 + 3] = cheio ? 255 : 0;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return c;
   }
   // moita sem figura própria (até a arte ter 'arbusto'): três bolos de folhagem achatados
   function moita(p, i) {
@@ -510,7 +583,7 @@
   // em cada setor do mapa: uma malha só atravessaria a cidade inteira e nunca sairia da tela
   var SETOR = 48;
   var CLARO = hex(0xf2f2f2);
-  function Lote() { this.fila = {}; }
+  function Lote(setor) { this.fila = {}; this.setor = setor || SETOR; } // setor: lado em metros de cada pedaço da malha
   Lote.prototype.get = function (tex, color, unlit) {
     var k = [tex, color, unlit].join('|');
     return this.fila[k] || (this.fila[k] = { tex: tex, color: color, unlit: unlit, v: [] });
@@ -538,11 +611,11 @@
     this.plano(v, x + s, z - c, x - s, z + c, y0, y1, u0, u1);
   };
   Lote.prototype.poe = function (R) {
-    var f = this.fila;
+    var f = this.fila, S = this.setor;
     Object.keys(f).forEach(function (k) {
       var v = f[k].v, grupos = {};
       for (var i = 0; i < v.length; i += 24) { // 3 vértices de 8 números: o triângulo vai inteiro para o setor do seu centro
-        var c = Math.floor((v[i] + v[i + 8] + v[i + 16]) / 3 / SETOR) + ',' + Math.floor((v[i + 2] + v[i + 10] + v[i + 18]) / 3 / SETOR);
+        var c = Math.floor((v[i] + v[i + 8] + v[i + 16]) / 3 / S) + ',' + Math.floor((v[i + 2] + v[i + 10] + v[i + 18]) / 3 / S);
         var g = grupos[c] || (grupos[c] = []);
         for (var j = 0; j < 24; j++) { g.push(v[i + j]); }
       }
@@ -642,8 +715,9 @@
 
   // altura em metros do QUADRO de cada figura (o pé fica na base do quadro; a largura segue a proporção do quadro).
   // pessoas: quadro 192px, figura ~185px => ~1,8-1,9 m; coelho ~0,45 m; árvore ~5,5 m; veio ~1,6 m de rocha
-  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, alfaiate: 1.86, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4,
-    lobo: 0.85, veado: 1.4, ovelha: 0.9, ovelha_tosquiada: 0.9, escorpiao: 0.25, serpente: 0.2 };
+  var SIZE = { padre: 1.9, ferreiro: 1.97, taberneiro: 1.92, anselmo: 1.88, coelho: 0.48, arvore: 5.9, toco: 5.9, veio: 2.4, veio_vazio: 2.4,
+    arvore_2: 5.9, toco_2: 5.9, arvore_3: 5.9, toco_3: 5.9, alfaiate: 1.92,
+    lobo: 0.96, veado: 2.16, ovelha: 1.04, ovelha_tosquiada: 1.04, arbusto: 1.28, arbusto_seco: 1.28, escorpiao: 0.16, serpente: 0.24 };
   // bichos desenhados de lado, olhando para a esquerda (como a vaca): espelham quando andam para a direita da tela.
   // PULO: altura do saltinho ao andar (o coelho pula; escorpião e serpente rastejam)
   var DE_LADO = { lobo: 1, veado: 1, escorpiao: 1, serpente: 1 };
@@ -697,6 +771,8 @@
     var self = this;
     if (!art.walls.placa_alfaiate && art.walls.tabuas) { art.walls.placa_alfaiate = placaTesoura(art.walls.tabuas); }
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
+    this.r.addTexture('rocha', texRocha(), true);
+    Object.keys(CHAO).forEach(function (k, i) { if (art.walls[CHAO[k][0]]) { self.r.addTexture('franja_' + k, texFranja(art.walls[CHAO[k][0]], i * 1.7 + 0.4), true); } });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {}; this.npcO = {}; this.held = null;
     this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1] };
@@ -726,14 +802,84 @@
     o.geo = sGeo(this.dim(img), (SIZE[img] || 1.9) * (o.userData.k || 1));
   };
 
+  // árvore de cada nó: carvalho na metade delas, freixo e olmo no resto, pela posição (sempre a mesma), e só se a arte
+  // tiver a árvore e o toco daquela espécie
+  var ESPECIES = ['', '', '_2', '_3'];
+  function especie(art, x, z) {
+    var e = ESPECIES[Math.floor(sorte(x * 0.731 + z * 1.37 + 0.5) * ESPECIES.length)];
+    return art.sprites['arvore' + e] && art.sprites['toco' + e] ? e : '';
+  }
+  // limite do mundo: além de ±bounds (onde o jogador para) fica uma mata fechada de três fileiras; no pedregal, uma
+  // serra de rochas grandes; na campina, uma sebe de moitas na frente das árvores. Tudo entra no lote (planos em cruz e
+  // rochas fundidas), então custa poucas chamadas de desenho por setor, e só os setores à vista são desenhados
+  function limite(self, L, V) {
+    var B = V.bounds, art = self.art, n = 0, sebe = art.sprites.arbusto && self.dim('arbusto');
+    function regiao(x, z) {
+      x = Math.max(-B + 0.5, Math.min(B - 0.5, x)); z = Math.max(-B + 0.5, Math.min(B - 0.5, z));
+      var r = (V.regions || []).filter(function (g) { return g.rects.some(function (q) { return x >= q[0] && x <= q[2] && z >= q[1] && z <= q[3]; }); })[0];
+      return r ? r.kind : 'vila';
+    }
+    function arvore(x, z, k) {
+      var e = especie(art, x, z), d = self.dim('arvore' + e), h = SIZE.arvore * (0.95 + sorte(k + 0.3) * 0.4);
+      L.pe(L.get('s:arvore' + e, CLARO, true).v, x, z, h * d.w / d.h, 0, h, sorte(k + 0.9) * 3, sorte(k + 0.4) > 0.5);
+    }
+    // cada lado: posição ao longo (a) e distância para fora (o) -> ponto do mundo
+    [function (a, o) { return [a, -B - o]; }, function (a, o) { return [a, B + o]; }, function (a, o) { return [-B - o, a]; }, function (a, o) { return [B + o, a]; }].forEach(function (lado) {
+      for (var a = -B - 10; a <= B + 10; a += 3.4) {
+        for (var fila = 0; fila < 3; fila++) {
+          var k = ++n, o = 1.6 + fila * 3.6 + sorte(k + 0.1) * 1.6, p = lado(a + (fila % 2) * 1.7 + (sorte(k + 0.2) - 0.5) * 1.6, o);
+          var kind = regiao(p[0], p[1]);
+          if (kind === 'rochas') {
+            if (fila === 2 && sorte(k + 0.5) > 0.4) { arvore(p[0], p[1], k); continue; }
+            var s = 2.2 + sorte(k + 0.6) * 2.6;
+            L.funde(rocha(k, s * 0.7, s * (0.55 + sorte(k + 0.7) * 0.4), s * 0.6, p[0], p[1], sorte(k + 0.8) * 6.28, COR_ROCHA));
+          } else if (kind === 'campina' && fila === 0 && sebe) {
+            var h = 1.5 + sorte(k + 0.6) * 0.8;
+            L.pe(L.get('s:arbusto', CLARO, true).v, p[0], p[1], h * sebe.w / sebe.h * 1.3, 0, h, sorte(k + 0.9) * 3, sorte(k + 0.4) > 0.5);
+          } else { arvore(p[0], p[1], k); }
+        }
+      }
+    });
+  }
+  // franja de uma região: faixas de 3 m para fora de cada lado que dá para outra região (nunca entre dois retângulos
+  // da mesma região nem além do limite do mundo), com a textura 'franja_*' recortada: a divisa deixa de ser uma linha reta.
+  // Só uma das duas regiões avança sobre a outra (a de FRANJA maior; a vila nunca): 'acima' são os retângulos das que
+  // ganham desta, onde ela não entra
+  var FRANJA = { vila: 0, campina: 1, floresta: 2, rochas: 3 };
+  function franjas(rects, B, acima) {
+    var v = [], L = 3, PASSO = 3;
+    function dentro(x, z) { return rects.concat(acima).some(function (q) { return x > q[0] && x < q[2] && z > q[1] && z < q[3]; }); }
+    function poe(x0, z0, x1, z1, uv) { // retângulo no chão (anti-horário visto de cima); uv(x, z) -> [u, v]
+      var a = [x0, z1], b = [x1, z1], c = [x1, z0], d = [x0, z0];
+      [a, b, c, a, c, d].forEach(function (p) { var t = uv(p[0], p[1]); v.push(p[0], 0, p[1], 0, 1, 0, t[0], t[1]); });
+    }
+    rects.forEach(function (q) {
+      // cada lado: eixo ao longo ('x' ou 'z'), posição da linha, sentido para fora e o trecho
+      [['x', q[1], -1, q[0], q[2]], ['x', q[3], 1, q[0], q[2]], ['z', q[0], -1, q[1], q[3]], ['z', q[2], 1, q[1], q[3]]].forEach(function (s) {
+        var e = s[1], o = s[2];
+        if (Math.abs(e) >= B) { return; }
+        for (var a = s[3]; a < s[4] - 0.01; a += PASSO) {
+          var b = Math.min(s[4], a + PASSO), m = (a + b) / 2;
+          if (s[0] === 'x' ? dentro(m, e + o * 0.5) : dentro(e + o * 0.5, m)) { continue; }
+          var f = e + o * L;
+          if (s[0] === 'x') { poe(a, Math.min(e, f), b, Math.max(e, f), function (x, z) { return [x / 12, Math.abs(z - e) / L * 0.98]; }); }
+          else { poe(Math.min(e, f), a, Math.max(e, f), b, function (x, z) { return [z / 12, Math.abs(x - e) / L * 0.98]; }); }
+        }
+      });
+    });
+    return v.length ? { data: new Float32Array(v), count: v.length / 8 } : null;
+  }
+
   // chão de cada região: a mesma grama com outra tinta (floresta escura, campina clara) e terra acinzentada no pedregal
-  var CHAO = { vila: ['grama', 0xe6eccc], floresta: ['grama', 0xa4bc8c], rochas: ['terra', 0xf0e6d0], campina: ['grama', 0xf4f4c4] };
+  var CHAO ={ vila: ['grama', 0xe6eccc], floresta: ['grama', 0xa4bc8c], rochas: ['terra', 0xf0e6d0], campina: ['grama', 0xf4f4c4] };
   View.prototype.buildStatic = function () {
     var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2;
     R.add(new Node(planeGeo(S, S, 3), 0xffffff, { tex: 'grama' }));
     (V.regions || []).forEach(function (r) {
       var c = CHAO[r.kind]; if (!c) { return; }
       R.add(new Node(chao(r.rects.map(function (q) { return { x0: q[0], z0: q[1], x1: q[2], z1: q[3] }; }), 3), c[1], { tex: c[0] }).at(0, 0.01, 0));
+      var fr = r.kind === 'vila' ? null : franjas(r.rects, V.bounds, [].concat.apply([], (V.regions || []).filter(function (g) { return (FRANJA[g.kind] || 0) > FRANJA[r.kind]; }).map(function (g) { return g.rects; })));
+      if (fr && self.r.tex['franja_' + r.kind]) { R.add(new Node(fr, c[1], { tex: 'franja_' + r.kind }).at(0, 0.013, 0)); }
     });
     var rd = V.road; R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
     R.add(new Node(chao(V.streets, 3), 0xffffff, { tex: 'terra' }).at(0, 0.015, 0));
@@ -780,6 +926,7 @@
       if (!fig) { L.funde(moita(p, i)); return; }
       var h = 1.1 * p[2]; L.pe(mv, p[0], p[1], h * fig.w / fig.h, 0, h, sorte(i) * 3, sorte(i + 0.5) > 0.5);
     });
+    var LB = new Lote(120); limite(self, LB, V); LB.poe(R); // a mata do limite em pedaços maiores: menos chamadas de desenho
 
     // plantações
     // cada retalho de colheita (sim.js, World.addCrops) tem o seu lote, dentro de um nó que some quando é colhido:
@@ -833,8 +980,9 @@
     w.nodes.forEach(function (n) {
       if (n.rect) { return; } // plantação: montada em buildStatic
       var tree = n.kind === 'arvore', jit = ((n.x * 7 + n.z * 3) % 5 + 5) % 5 * 0.07;
-      var o = self.sprite(tree ? 'arvore' : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
-      o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind;
+      var esp = tree ? especie(self.art, n.x, n.z) : '';
+      var o = self.sprite(tree ? 'arvore' + esp : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
+      o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind; o.userData.esp = esp;
       self.root.add(o); self.pick.push(o); self.objs[n.id] = o;
     });
     w.spawns.forEach(function (s) {
@@ -995,18 +1143,30 @@
   };
   View.prototype.hit = function (id) {
     this.flash[id] = 0.18;
-    if (!(this.swing >= 0) || this.swing > SWING.T * 0.6) { this.swing = 0; } // golpe de espada (não reinicia no meio do corte)
+    var G = this.golpe || GOLPES.espada;
+    if (!(this.swing >= 0) || this.swing > G.T * 0.6) { this.swing = 0; } // golpe (não reinicia no meio do movimento)
   };
 
-  // ---------- espada em primeira pessoa ----------
-  // pose = deslocamento da mão (em unidades do tamanho da espada) e rotação (radianos, anti-horário) ao longo do golpe
-  var SWING = { T: 0.36, keys: [ // t (s), dx, dy, rot
-    [0.00, 0.00, 0.00, 0.00], [0.08, 0.06, 0.22, -0.50], [0.14, -0.24, 0.14, 0.40], [0.20, -0.56, -0.02, 1.00],
-    [0.27, -0.50, -0.06, 0.90], [0.36, 0.00, 0.00, 0.00]] };
+  // ---------- arma em primeira pessoa ----------
+  // pose = deslocamento da mão (em unidades do tamanho da figura) e rotação (radianos, anti-horário) ao longo do golpe.
+  // espada: corte rápido; machado: ergue mais, segura um instante e desce pesado; arco: puxa a corda (figura '<arco>_tenso',
+  // a mão recua um pouco) e solta com um tranco para a frente. corte: [início, fim] do rastro e do borrão;
+  // tenso: [início, fim] em que aparece a figura com a corda puxada e a flecha
+  var GOLPES = {
+    espada: { T: 0.36, corte: [0.12, 0.27], keys: [ // t (s), dx, dy, rot
+      [0.00, 0.00, 0.00, 0.00], [0.08, 0.06, 0.22, -0.50], [0.14, -0.24, 0.14, 0.40], [0.20, -0.56, -0.02, 1.00],
+      [0.27, -0.50, -0.06, 0.90], [0.36, 0.00, 0.00, 0.00]] },
+    machado: { T: 0.52, corte: [0.27, 0.37], keys: [
+      [0.00, 0.00, 0.00, 0.00], [0.15, 0.10, 0.30, -0.72], [0.23, 0.11, 0.32, -0.78], [0.29, -0.30, 0.04, 0.60],
+      [0.34, -0.50, -0.16, 1.15], [0.42, -0.46, -0.18, 1.08], [0.52, 0.00, 0.00, 0.00]] },
+    arco: { T: 0.6, tenso: [0.1, 0.34], keys: [
+      [0.00, 0.00, 0.00, 0.00], [0.12, 0.03, -0.03, 0.04], [0.32, 0.05, -0.05, 0.06], [0.35, -0.05, 0.04, -0.07],
+      [0.42, -0.03, 0.02, -0.03], [0.60, 0.00, 0.00, 0.00]] }
+  };
   function ease(t) { return t * t * (3 - 2 * t); }
-  function swingPose(t) {
-    var k = SWING.keys;
-    if (!(t >= 0) || t >= SWING.T) { return [0, 0, 0]; }
+  function swingPose(G, t) {
+    var k = G.keys;
+    if (!(t >= 0) || t >= G.T) { return [0, 0, 0]; }
     for (var i = 1; i < k.length; i++) {
       if (t <= k[i][0]) {
         var a = k[i - 1], b = k[i], e = ease((t - a[0]) / (b[0] - a[0]));
@@ -1026,29 +1186,31 @@
       this.sword = [0, 1, 2].map(function (i) { return new Node(null, 0xffffff, { unlit: true, alpha: i ? 0.38 - i * 0.12 : 1 }); });
       this.trail = new Node(screenGeo(0.5, 0.5), 0xffffff, { unlit: true, tex: 's:espada_rastro' });
     }
-    if (this.swing >= 0) { this.swing += dt; if (this.swing >= SWING.T) { this.swing = -1; } }
+    var fig = it.sprite && this.art.dims[it.sprite] ? it.sprite : 'espada';   // todas no quadro 160x160, mão no mesmo ponto
+    var G = this.golpe = GOLPES[fig === it.sprite ? it.class : 'espada'] || GOLPES.espada;
+    if (this.swing >= 0) { this.swing += dt; if (this.swing >= G.T) { this.swing = -1; } }
     var asp = this.aspect, U = Math.min(1, asp * 0.95);          // unidade em altura de tela (estreita em telas em pé)
     var size = 1.25 * U;                                          // altura do quadro da espada em unidades de NDC (tela = 2)
     // posição da mão em repouso (NDC): canto inferior direito; em pé, um pouco mais acima/à esquerda (botão Interagir)
     var hx = 1 - 0.22 * size / asp - (asp < 1 ? 0.12 : 0), hy = -1 + 0.23 * size + (asp < 1 ? 0.3 : 0);
     var bx = 0, by = 0;
     if (moving && !(this.swing >= 0)) { bx = Math.cos(this.bob * 0.5) * 0.012 * size; by = -Math.abs(Math.sin(this.bob)) * 0.02 * size; }
-    var tex = 's:' + (it.sprite && this.art.dims[it.sprite] ? it.sprite : 'espada');
     var out = [], self = this, t = this.swing;
+    if (G.tenso && t >= G.tenso[0] && t < G.tenso[1] && this.art.dims[fig + '_tenso']) { fig += '_tenso'; }
+    var tex = 's:' + fig;
     function place(n, pose) {
       var c = Math.cos(pose[2]), s = Math.sin(pose[2]), sx = size / asp, sy = size;
       var cx = hx + bx + pose[0] * size / asp, cy = hy + by + pose[1] * size;
       n.world = [c * sx, s * sy, 0, 0, -s * sx, c * sy, 0, 0, 0, 0, 1, 0, cx, cy, 0, 1];
       n.geo = self.swordGeo; n.tex = tex; out.push(n);
     }
-    var cutting = t >= 0.12 && t <= 0.27;
-    if (cutting) {                                                // rastro do corte e borrão da lâmina
+    if (G.corte && t >= G.corte[0] && t <= G.corte[1]) {          // rastro do corte e borrão da lâmina
       var tr = this.trail, ts = size * 1.15, ta = this.art.dims.espada_rastro, tw = ts * ta.w / ta.h;
       tr.world = [tw / asp, 0, 0, 0, 0, ts, 0, 0, 0, 0, 1, 0, hx - 0.62 * size / asp, hy + 0.30 * size, 0, 1];
       out.push(tr);
-      place(this.sword[2], swingPose(t - 0.05)); place(this.sword[1], swingPose(t - 0.025));
+      place(this.sword[2], swingPose(G, t - 0.05)); place(this.sword[1], swingPose(G, t - 0.025));
     }
-    place(this.sword[0], swingPose(t));
+    place(this.sword[0], swingPose(G, t));
     return out;
   };
 
@@ -1057,7 +1219,7 @@
     w.nodes.forEach(function (n) {
       var o = self.objs[n.id], alive = st.nodes[n.id].alive;
       if (n.rect) { o.visible = alive; return; } // retalho colhido: só a terra
-      var img = n.kind === 'arvore' ? (alive ? 'arvore' : 'toco') : (alive ? 'veio' : 'veio_vazio');
+      var img = n.kind === 'arvore' ? (alive ? 'arvore' : 'toco') + (o.userData.esp || '') : (alive ? 'veio' : 'veio_vazio');
       self.setImg(o, img);
     });
     var t = performance.now(), rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
@@ -1149,7 +1311,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=8' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=9' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {
