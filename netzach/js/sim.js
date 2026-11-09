@@ -47,6 +47,9 @@
       }
       return r;
     });
+    // construções com interior (vila.json → interiores): a sala por dentro das paredes e o vão da porta voltam a ser livres
+    this.sala = new Uint8Array(N * N); this.salas = [];
+    vila.buildings.forEach(function (b, k) { var I = (vila.interiores || {})[b.id]; if (I) { self.abreSala(b, I, self.buildings[k]); } });
 
     // recursos: centralizados na célula, que fica bloqueada
     this.nodes = [];
@@ -68,6 +71,7 @@
       }
       return { id: p.id, name: p.name, npc: p.npc, x: p.x, z: p.z, w: p.w, d: p.d, h: p.h, rot: p.rot || 0 };
     });
+    this.fechaSalas();
     this.plaza = vila.plaza;
   }
   World.prototype.idx = function (x, z) {
@@ -88,6 +92,49 @@
       if (!aberto('east', c)) { this.block(P.x1 - 1, c); }
     }
   };
+  // sala de uma construção, no referencial dela (x ao longo da fachada, z para a porta em +d/2; ver view.js → sala).
+  // As faces de dentro das paredes caem em ±(w/2 - 0,5) e ±(d/2 - 0,5), na borda das células: a célula de dentro é livre,
+  // a da parede não. A porta abre as células da parede da frente com o centro dentro do vão. Os móveis (menos os 'livre')
+  // bloqueiam as células que cobrem, encolhidos um pouco para um banco estreito não fechar duas; o que ficou sem saída
+  // para a porta (atrás do balcão, do altar) também fecha, para nenhum caminho nem save cair num canto preso
+  World.prototype.abreSala = function (b, I, r) {
+    var rot = b.rot * Math.PI / 180, c = Math.round(Math.cos(rot)), s = Math.round(Math.sin(rot));
+    var a = b.w / 2 - 0.5, cz = b.d / 2 - 0.5, dw = I.porta[0] / 2, n = this.salas.length + 1, cel = [], fila = [];
+    var moveis = (I.moveis || []).filter(function (m) { return !m.livre; }).map(function (m) {
+      var sx = Math.min(0.25, m.w / 2 - 0.05), sz = Math.min(0.25, m.d / 2 - 0.05);
+      return [m.x - m.w / 2 + sx, m.z - m.d / 2 + sz, m.x + m.w / 2 - sx, m.z + m.d / 2 - sz];
+    });
+    for (var x = Math.floor(r.x0); x < Math.ceil(r.x1); x++) {
+      for (var z = Math.floor(r.z0); z < Math.ceil(r.z1); z++) {
+        var dx = x + 0.5 - b.x, dz = z + 0.5 - b.z, lx = c * dx - s * dz, lz = s * dx + c * dz;
+        var dentro = Math.abs(lx) < a && Math.abs(lz) < cz, porta = Math.abs(lx) < dw && lz > cz && lz < cz + 1;
+        if (!dentro && !porta) { continue; }
+        var i = this.idx(x + 0.5, z + 0.5); if (i < 0) { continue; }
+        this.sala[i] = n; cel.push(i);
+        this.grid[i] = dentro && moveis.some(function (q) { return q[0] < lx + 0.5 && q[2] > lx - 0.5 && q[1] < lz + 0.5 && q[3] > lz - 0.5; }) ? 1 : 0;
+        if (porta) { fila.push(i); }
+      }
+    }
+    function mundo(lx, lz) { return { x: b.x + c * lx + s * lz, z: b.z - s * lx + c * lz }; }
+    // fora: logo na frente da porta, onde quem sai (ou quem estava preso na parede) fica
+    this.salas.push({ id: b.id, n: n, nome: I.nome || b.id, b: b, I: I, mundo: mundo, fora: mundo(0, b.d / 2 + 0.7), cel: cel, portas: fila });
+  };
+  // depois de pôr os NPCs: fecha as células da sala que não chegam à porta
+  World.prototype.fechaSalas = function () {
+    var self = this, N = this.N;
+    this.salas.forEach(function (S) {
+      var fila = S.portas.slice(), viu = {};
+      fila.forEach(function (i) { viu[i] = 1; });
+      while (fila.length) {
+        var k = fila.shift();
+        [k + 1, k - 1, k + N, k - N].forEach(function (j) { if (!viu[j] && self.sala[j] === S.n && !self.grid[j]) { viu[j] = 1; fila.push(j); } });
+      }
+      S.cel.forEach(function (i) { if (!viu[i]) { self.grid[i] = 1; } });
+    });
+  };
+  // id da construção cuja sala (ou vão da porta) contém o ponto; '' fora de qualquer sala
+  World.prototype.salaEm = function (x, z) { var i = this.idx(x, z), n = i < 0 ? 0 : this.sala[i]; return n ? this.salas[n - 1].id : ''; };
+  World.prototype.salaDe = function (x, z) { var i = this.idx(x, z), n = i < 0 ? 0 : this.sala[i]; return n ? this.salas[n - 1] : null; };
   World.prototype.block = function (x, z) { var i = this.idx(x, z); if (i >= 0) { this.grid[i] = 1; } };
   World.prototype.blocked = function (x, z) { var i = this.idx(x, z); return i < 0 || this.grid[i] === 1; };
   World.prototype.addNode = function (kind, id, p) {
@@ -663,8 +710,9 @@
   // ---------- serviços da vila (ações do jogador) ----------
   Sim.prototype.nearNpc = function (st, id) {
     // além das pessoas, objetos fixos abrem a mesma janela (props com o campo npc)
-    var p = st.player, r = this.w.game.settings.interactRange + 0.5;
-    return this.w.npcs.concat(this.w.props).some(function (x) { return (x.id === id || x.npc === id) && dist(p.x, p.z, x.x, x.z) <= r; });
+    // e no mesmo lugar: quem está dentro de uma sala só fala com quem está nela (as paredes não deixam passar a voz)
+    var p = st.player, w = this.w, r = w.game.settings.interactRange + 0.5, aqui = w.salaEm(p.x, p.z);
+    return w.npcs.concat(w.props).some(function (x) { return (x.id === id || x.npc === id) && dist(p.x, p.z, x.x, x.z) <= r && w.salaEm(x.x, x.z) === aqui; });
   };
   Sim.prototype.service = function (st, npc, s, arg) {
     var w = this.w, G = w.game, p = st.player;
@@ -981,7 +1029,9 @@
       if (p.action && (p.action.type === 'gather' || p.action.type === 'attack')) { p.action = null; }
     }
     if (!world.free(p.x, p.z, 0.3)) {
-      var f = world.nearestFree(p.x, p.z) || { x: world.plaza.x, z: world.plaza.z + 1 };
+      var f = world.nearestFree(p.x, p.z) || { x: world.plaza.x, z: world.plaza.z + 1 }, S = world.salaDe(f.x, f.z);
+      // preso numa parede de construção com sala (a planta mudou): sai pela porta, em vez de aparecer lá dentro
+      if (S && !world.salaEm(p.x, p.z)) { f = world.nearestFree(S.fora.x, S.fora.z) || f; }
       p.x = f.x; p.z = f.z; m.path = null; m.goal = null;
     }
     return st;

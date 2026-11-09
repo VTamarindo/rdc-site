@@ -269,6 +269,16 @@
         }
       ]
     },
+    "padeira": {
+      "name": "Padeira",
+      "idle": "O forno está quente desde antes do galo. Pão fresco não espera ninguém.",
+      "services": []
+    },
+    "senhor": {
+      "name": "Senhor da vila",
+      "idle": "Fale depressa, forasteiro. Esta casa tem muito o que governar.",
+      "services": []
+    },
     "quadro": {
       "name": "Missões diárias",
       "daily": "quadro",
