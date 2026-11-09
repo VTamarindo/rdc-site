@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
-   - `js/ui.js`, linha 6: `var VERSION = '20261109-6'` → por exemplo `'20261109-7'`;
-   - `index.html`: todos os `?v=20261109-6` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `js/ui.js`, linha 6: `var VERSION = '20261109-7'` → por exemplo `'20261109-8'`;
+   - `index.html`: todos os `?v=20261109-7` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave no código.

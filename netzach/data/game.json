@@ -453,9 +453,10 @@
     }
   },
   "aldeoes": {
-    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe; repPorInocente sai a cada pessoa que não é combatente (papel sem combatente: true) derrubada, mesmo com a vila já em armas. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
+    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe; repPorInocente sai a cada pessoa que não é combatente (papel sem combatente: true) morta, e repPorSoldado a cada combatente morto, mesmo com a vila já em armas. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
     "repPorIncidente": -100,
     "repPorInocente": -100,
+    "repPorSoldado": -100,
     "morte": {
       "_nota": "A morte é definitiva. O corpo fica no chão corpoSeg segundos. Quem está em substitutos ganha, depois de lojistaSeg (ou guardaSeg, para soldados e escudeiro) de jogo e com a vila em paz, um substituto com o próximo nome da lista; os outros moradores não voltam.",
       "corpoSeg": 120,
@@ -489,7 +490,7 @@
       "crianca": { "luta": false, "hp": 12, "def": 0, "speed": 3.8 }
     },
     "textos": {
-      "confirmar": "Atacar {alvo}? A vila inteira vai se voltar contra você: soldados e homens vão lutar, mulheres e crianças vão fugir, e você perde 100 de reputação, e mais 100 por inocente que matar. Quem morre não volta.",
+      "confirmar": "Atacar {alvo}? A vila inteira vai se voltar contra você: soldados e homens vão lutar, mulheres e crianças vão fugir, e você perde 100 de reputação, e mais 100 por pessoa que matar, seja inocente ou guarda. Quem morre não volta.",
       "inicio": "Você atacou {alvo}! A vila pegou em armas: saia para longe da vila ou enfrente os guardas.",
       "linha": "A vila está em armas contra você",
       "fora": "Longe da vila: a calma volta em {s} s",
@@ -497,6 +498,7 @@
       "fimDesmaio": "Os soldados o arrastaram até a praça. Você pagou {multa} de multa, e a vila se acalmou.",
       "ko": "{alvo} morreu.",
       "inocente": "{alvo} não era soldado: você matou um inocente e perdeu {rp} de reputação.",
+      "soldado": "Você matou {alvo}, um guarda da vila, numa briga que você começou: perdeu {rp} de reputação.",
       "levanta": "{alvo} se levantou, ainda tonto.",
       "desacordado": "{alvo} está morto.",
       "recusa": "Não negocio com quem levanta a mão contra a vila.",

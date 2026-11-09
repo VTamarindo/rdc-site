@@ -523,10 +523,12 @@
       this.log(st, A.textos.ko.replace('{alvo}', w.personById[id].name));
       this.emit(st, { type: 'ko', id: id });
       if (p.action && p.action.id === id) { p.action = null; }
-      // derrubar quem não é soldado pesa sempre, mesmo no meio da briga: cada inocente custa reputação
-      if (!def.combatente && A.repPorInocente) {
-        p.rep += A.repPorInocente;
-        var txt = A.textos.inocente.replace('{alvo}', w.personById[id].name).replace('{rp}', String(-A.repPorInocente));
+      // cada morte pesa, mesmo no meio da briga: o inocente (repPorInocente) e também o soldado, porque a briga
+      // com a vila sempre foi o jogador quem começou (repPorSoldado)
+      var perda = def.combatente ? A.repPorSoldado : A.repPorInocente;
+      if (perda) {
+        p.rep += perda;
+        var txt = A.textos[def.combatente ? 'soldado' : 'inocente'].replace('{alvo}', w.personById[id].name).replace('{rp}', String(-perda));
         this.log(st, txt); this.emit(st, { type: 'alert', text: txt });
       }
     }
