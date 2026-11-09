@@ -1417,6 +1417,9 @@
     });
     Object.keys(this.npcO).forEach(function (id) {
       var o = self.npcO[id], g = gente[id];
+      // volta a aparecer todo quadro: salaQuadro (depois daqui) esconde quem está numa sala fora de vista, e sem isto
+      // quem sumiu uma vez nunca mais voltava
+      o.visible = true;
       self.deita(o, !!(g && g.ko > 0));
       piscar(self, o, id, dt || 0);
     });
