@@ -1394,13 +1394,15 @@
   // desacordado fica deitado no chão até levantar. Fora disso, a trilha manda
   View.prototype.ambient = function (ms, st, prev, alpha, dt) {
     var self = this, seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
-    var gente = (st && st.gente) || {}, H = st && st.hostil, now = performance.now(), lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
+    var gente = (st && st.gente) || {}, mortos = (st && st.mortos) || {}, H = st && st.hostil, now = performance.now(), lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
     this.walkers.forEach(function (w) {
       var d = w.d, g = gente[d.id];
       // o tempo segurado não conta para a trilha: ao soltar, ele segue do mesmo ponto
       if (w.last !== null && self.held === d.id) { w.off += seg - w.last; }
       w.last = seg;
       var ko = !!(g && g.ko > 0);
+      w.o.visible = !(mortos[d.id] && !ko); // morto e o corpo já levado: não aparece mais
+      if (!w.o.visible) { return; }
       self.deita(w.o, ko);
       piscar(self, w.o, d.id, dt || 0);
       if (ko) { w.o.at(g.x !== undefined ? g.x : w.o.pos[0], 0, g.z !== undefined ? g.z : w.o.pos[2]); return; } // caído onde a briga o deixou
@@ -1419,7 +1421,7 @@
       var o = self.npcO[id], g = gente[id];
       // volta a aparecer todo quadro: salaQuadro (depois daqui) esconde quem está numa sala fora de vista, e sem isto
       // quem sumiu uma vez nunca mais voltava
-      o.visible = true;
+      o.visible = !(mortos[id] && !(g && g.ko > 0)); // morto e o corpo já levado: o posto fica vazio
       self.deita(o, !!(g && g.ko > 0));
       piscar(self, o, id, dt || 0);
     });

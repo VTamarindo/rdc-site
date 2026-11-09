@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
-   - `js/ui.js`, linha 6: `var VERSION = '20261109-5'` → por exemplo `'20261109-6'`;
-   - `index.html`: todos os `?v=20261109-5` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `js/ui.js`, linha 6: `var VERSION = '20261109-6'` → por exemplo `'20261109-7'`;
+   - `index.html`: todos os `?v=20261109-6` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave no código.
@@ -54,7 +54,8 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 - **Recursos** (`nodes`): árvores e veios: tempo de coleta e o que dão.
 - **NPCs** (`npcs`): nome, fala, e o que vendem e compram (`services`: `shop` = loja, `sell` = compra do jogador).
 - **Pessoas** (`pessoas`): papel, saudações (`ola`) e assuntos (`temas`) de cada um dos 22 moradores e lojistas.
-- **Hostilidade** (`aldeoes`): reputação perdida, multa, tempo para acalmar e levantar, e a força de cada papel na luta.
+- **Hostilidade** (`aldeoes`): reputação perdida (por incidente e por inocente morto), multa, tempo para acalmar e a força de cada papel na luta.
+  **Morte** (`aldeoes` → `morte`): quanto tempo o corpo fica, quando chegam os substitutos de lojistas e guardas, e os nomes deles.
 - **Macro** (`macro`): as regras automáticas. **Diárias** (`daily`): missões do quadro, horário de reinício e recompensas.
 - **Missões** (`quests`) e **conversas** (`dialogues`, `_textos`).
 

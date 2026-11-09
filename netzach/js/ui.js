@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261109-5', SAVE_VER = '20261105-3';
+  var VERSION = '20261109-6', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1305,6 +1305,7 @@
     var aqui = world.salaEm(st.player.x, st.player.z), naPorta = {};
     world.npcs.forEach(function (n) {
       var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
+      if (sim.isKo(st, n.id)) { mark(n.id, '', n.x, 2.25, n.z); return; } // morto não dá missão
       if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
       else if (q && q.state === 'available') { sym = '!'; }
       else if (q && q.state === 'ready') { sym = '?'; }

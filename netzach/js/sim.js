@@ -315,10 +315,12 @@
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
       gente: {}, hostil: null, // gente[id]: vida, desmaio e, com a vila em armas, a posição de quem anda; hostil: o incidente em curso
+      mortos: {}, nomes: {}, // mortos[id]: { volta: st.t em que chega o substituto, 0 = ninguém vem }; nomes[id]: nome de quem substituiu
       log: []
     };
     world.nodes.forEach(function (n) { st.nodes[n.id] = { alive: true, left: 0 }; });
     world.spawns.forEach(function (s) { st.mobs.push(newMob(G, s)); });
+    NZ.aplicaNomes(world, st);
     return st;
   }
   function newMob(G, s) {
@@ -459,7 +461,9 @@
     return A.papeis[q && q.papel] || A.papeis[A.papelPadrao];
   };
   Sim.prototype.gente = function (st, id) { return st.gente[id] || (st.gente[id] = { hp: this.papel(id).hp, ko: 0, atkCd: 0 }); };
-  Sim.prototype.isKo = function (st, id) { var g = st.gente[id]; return !!(g && g.ko > 0); };
+  // fora de ação: desmaiado (saves antigos) ou morto, com o corpo no chão ou já levado
+  Sim.prototype.isKo = function (st, id) { var g = st.gente[id]; return !!((g && g.ko > 0) || (st.mortos && st.mortos[id])); };
+  Sim.prototype.isMorto = function (st, id) { return !!(st.mortos && st.mortos[id]); };
   // onde a pessoa está para a simulação: os parados no posto; quem anda, só com a vila em armas (fora disso, a trilha é do desenho)
   Sim.prototype.personPos = function (st, id) {
     var q = this.w.personById[id], g = st.gente[id];
@@ -477,6 +481,7 @@
     st.hostil = { by: id, fora: 0 };
     p.rep += A.repPorIncidente;
     w.people.forEach(function (q) {
+      if (self.isMorto(st, q.id)) { return; }
       var g = self.gente(st, q.id); g.atkCd = 0.4 + rnd(st) * 0.8; g.repath = rnd(st); g.path = null;
       if (q.fixed) { return; }
       var c = pos && pos[q.id], f = c && w.free(c[0], c[1], 0.15) ? { x: c[0], z: c[1] } : c ? w.nearestFree(c[0], c[1]) : null;
@@ -511,7 +516,10 @@
     g.hp -= h.n; p.atkCd = s.interval; p.combatT = 0;
     this.emit(st, { type: 'hit', who: 'gente', id: id, x: pos.x, z: pos.z, n: h.n, crit: h.crit, ranged: s.ranged });
     if (g.hp <= 0) {
-      g.hp = 0; g.ko = A.desmaioSeg; g.path = null;
+      // a morte é definitiva: o corpo fica no chão corpoSeg e some; lojistas e guardas ganham um substituto depois (repoeTick)
+      var M = A.morte, sub = M.substitutos[id];
+      g.hp = 0; g.ko = M.corpoSeg; g.morto = true; g.path = null;
+      st.mortos = st.mortos || {}; st.mortos[id] = { volta: sub ? st.t + (def.combatente ? M.guardaSeg : M.lojistaSeg) : 0 };
       this.log(st, A.textos.ko.replace('{alvo}', w.personById[id].name));
       this.emit(st, { type: 'ko', id: id });
       if (p.action && p.action.id === id) { p.action = null; }
@@ -621,6 +629,10 @@
     for (var i = 0; i < w.people.length; i++) {
       var q = w.people[i], g = st.gente[q.id]; if (!g) { continue; }
       var def = this.papel(q.id);
+      if (this.isMorto(st, q.id)) { // o corpo fica no chão um tempo e depois é levado
+        if (g.ko > 0) { g.ko -= dt; if (g.ko <= 0) { delete st.gente[q.id]; this.emit(st, { type: 'up', id: q.id }); } }
+        continue;
+      }
       if (g.ko > 0) {
         g.ko -= dt;
         if (g.ko <= 0) {
@@ -648,6 +660,24 @@
     if (!H) { return; }
     if (inVila) { H.fora = 0; }
     else { H.fora += dt; if (H.fora >= A.calmaSeg) { this.calm(st, A.textos.fimFuga); } }
+  };
+
+  // substitutos: passado o tempo (e com a vila em paz), chega outra pessoa para a loja ou o posto de quem morreu.
+  // Os nomes vêm em ordem de aldeoes.morte.substitutos[id]; acabando a lista, o último ganha um número
+  Sim.prototype.repoeTick = function (st) {
+    if (!st.mortos || st.hostil) { return; }
+    var w = this.w, M = w.game.aldeoes.morte, self = this;
+    Object.keys(st.mortos).forEach(function (id) {
+      var m = st.mortos[id], q = w.personById[id], L = M.substitutos[id];
+      if (!q) { delete st.mortos[id]; return; }
+      if (!m.volta || st.t < m.volta || !L) { return; }
+      st.trocas = st.trocas || {}; var k = st.trocas[id] = (st.trocas[id] || 0) + 1;
+      var antigo = q.name, novo = L[Math.min(k, L.length) - 1] + (k > L.length ? ' ' + (k - L.length + 1) : '');
+      delete st.mortos[id]; delete st.gente[id];
+      st.nomes = st.nomes || {}; st.nomes[id] = novo; NZ.aplicaNomes(w, st);
+      var txt = M.textos.chegou.replace('{novo}', novo).replace('{antigo}', antigo);
+      self.log(st, txt); self.emit(st, { type: 'alert', text: txt }); self.emit(st, { type: 'up', id: id });
+    });
   };
 
   Sim.prototype.stopMacro = function (st, reason) {
@@ -1055,6 +1085,7 @@
     for (var i = 0; i < st.mobs.length; i++) { this.mobTick(st, st.mobs[i], dt); }
     // tempo fora: a briga e os desmaios ficam congelados até o jogador voltar (ninguém é preso ou foge sem estar olhando)
     if (!this.offline) { this.genteTick(st, dt); }
+    this.repoeTick(st);
 
     if (p.mode === 'macro' && p.macro.on) { this.macroTick(st, dt); }
     else { this.manualTick(st, dt); }
@@ -1428,7 +1459,7 @@
       else if (st.hostil && g.x === undefined && !(g.ko > 0)) { var c = world.nearestFree(world.plaza.x, world.plaza.z + 2); g.x = c.x; g.z = c.z; }
     });
     if (st.hostil) { world.people.forEach(function (q) {
-      if (q.fixed || st.gente[q.id]) { return; }
+      if (q.fixed || st.gente[q.id] || (st.mortos && st.mortos[q.id])) { return; }
       var c = world.nearestFree(world.plaza.x, world.plaza.z + 2), A = G.aldeoes;
       st.gente[q.id] = { hp: (A.papeis[q.papel] || A.papeis[A.papelPadrao]).hp, ko: 0, atkCd: 1, x: c.x, z: c.z };
     }); }
@@ -1438,7 +1469,20 @@
       if (S && !world.salaEm(p.x, p.z)) { f = world.nearestFree(S.fora.x, S.fora.z) || f; }
       p.x = f.x; p.z = f.z; m.path = null; m.goal = null;
     }
+    st.mortos = st.mortos || {}; st.nomes = st.nomes || {};
+    Object.keys(st.mortos).forEach(function (id) { if (!world.personById[id]) { delete st.mortos[id]; } });
+    NZ.aplicaNomes(world, st);
     return st;
+  };
+  // o mundo é um só para os três saves: o nome de cada pessoa é o original ou o do substituto deste save
+  NZ.aplicaNomes = function (world, st) {
+    var G = world.game;
+    world.people.forEach(function (q) {
+      if (q.nome0 === undefined) { q.nome0 = q.name; q.npc0 = G.npcs[q.id] && G.npcs[q.id].name; }
+      var n = st.nomes && st.nomes[q.id];
+      q.name = n || q.nome0;
+      if (G.npcs[q.id]) { G.npcs[q.id].name = n || q.npc0; }
+    });
   };
 
   NZ.World = World;
