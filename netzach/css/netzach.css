@@ -83,6 +83,8 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 #macro-line.on { border-color: var(--wax); color: #5a1208; }
 #macro-line { transition: opacity 1.2s; }
 #macro-line.fade { opacity: 0; }
+#macro-line.hostil { border-color: var(--wax); color: #9a0f06; font-weight: bold; }
+#hover.hostil { color: #a3100a; font-weight: bold; border-color: var(--wax); }
 #toast { left: 50%; top: 58%; transform: translateX(-50%); padding: 7px 16px; border-color: var(--wax); border-radius: 3px; pointer-events: none; text-align: center; max-width: 80%; font-size: 15px; z-index: 7; }
 #hurt { inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(178, 30, 20, 0); transition: box-shadow .35s; }
 #hurt.on { box-shadow: inset 0 0 120px rgba(178, 30, 20, .75); transition: none; }
@@ -344,6 +346,7 @@ body.touch #q-toggle { min-height: 34px; }
 #marks span.q { color: #f6ead0; }
 #npc-opts button { text-align: left; }
 #npc-opts button.opt::before { content: '› '; color: var(--wax); }
+#npc-opts button.perigo { color: var(--wax); }
 #npc-text { font-size: 17px; font-style: italic; }
 #npc-res { color: var(--wax); font-size: 14.5px; min-height: 1em; }
 

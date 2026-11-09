@@ -372,6 +372,261 @@
       }
     }
   },
+  "aldeoes": {
+    "_nota": "Gente da vila em luta. repPorIncidente sai uma vez por incidente (o golpe que começa a briga), não a cada golpe. raio: metros da praça que contam como vila; fora dele por calmaSeg seguidos, a vila se acalma. Desmaiar com a vila em armas: o jogador é levado à praça, paga a multa (frac das moedas, no mínimo min, nunca mais do que tem) e a vila se acalma. Quem cai desacordado levanta depois de desmaioSeg. Papéis: luta = ataca o jogador (os parados lutam só ao alcance, sem sair do lugar); quem não luta foge se o jogador chegar a menos de fugaDist. Perfil de golpe igual ao dos monstros (dmg, interval, reach, def, crit).",
+    "repPorIncidente": -100,
+    "raio": 72,
+    "calmaSeg": 60,
+    "desmaioSeg": 120,
+    "fugaDist": 16,
+    "multa": { "frac": 0.25, "min": 10 },
+    "papelPadrao": "aldeao",
+    "papeis": {
+      "soldado": { "luta": true, "hp": 70, "dmg": [4, 7], "interval": 1.1, "reach": 1.9, "def": 8, "speed": 3.6, "crit": 0.05 },
+      "escudeiro": { "luta": true, "hp": 55, "dmg": [4, 6], "interval": 1.1, "reach": 1.8, "def": 5, "speed": 3.5, "crit": 0.05 },
+      "homem": { "luta": true, "hp": 35, "dmg": [2, 4], "interval": 1.3, "reach": 1.5, "def": 1, "speed": 3.3 },
+      "aldeao": { "luta": false, "hp": 20, "def": 0, "speed": 3.4 },
+      "crianca": { "luta": false, "hp": 12, "def": 0, "speed": 3.8 }
+    },
+    "textos": {
+      "confirmar": "Atacar {alvo}? A vila inteira vai se voltar contra você: soldados e homens vão lutar, mulheres e crianças vão fugir, e você perde 100 de reputação.",
+      "inicio": "Você atacou {alvo}! A vila pegou em armas: saia para longe da vila ou enfrente os guardas.",
+      "linha": "A vila está em armas contra você",
+      "fora": "Longe da vila: a calma volta em {s} s",
+      "fimFuga": "A vila se acalmou. Ainda falam de você, mas já não o perseguem.",
+      "fimDesmaio": "Os soldados o arrastaram até a praça. Você pagou {multa} de multa, e a vila se acalmou.",
+      "ko": "{alvo} caiu desacordado.",
+      "levanta": "{alvo} se levantou, ainda tonto.",
+      "desacordado": "{alvo} está desacordado.",
+      "recusa": "Não negocio com quem levanta a mão contra a vila.",
+      "hostil": "Você vai pagar por isso!",
+      "medo": "Fique longe de mim!",
+      "macro": "A vila está em armas: a macro não trabalha agora."
+    }
+  },
+  "pessoas": {
+    "_nota": "Falas e papel de cada pessoa, pelo id (o mesmo em vila.json → npcs ou walkers, onde quer que a pessoa esteja). name: nome mostrado (para os NPCs parados vale o de npcs). papel: aldeoes.papeis. ola: saudações, uma sorteada. temas: p = pergunta do jogador, r = respostas, uma sorteada. hostil: fala de quem luta com a vila em armas; medo: de quem foge; recusa: de quem tem loja.",
+    "padre": {
+      "papel": "aldeao",
+      "ola": ["Que a paz do Senhor esteja contigo, filho.", "Os sinos tocam às vésperas. Não te atrases para a missa.", "Deus vê o trabalho honesto. E também o outro."],
+      "temas": [
+        { "p": "Como vai a paróquia?", "r": ["O dízimo veio magro este ano. A geada levou metade da cevada.", "O telhado da nave pinga em cima do altar. Eu rezo, e o balde enche."] },
+        { "p": "Algum conselho?", "r": ["Não andes pela floresta depois do sol posto. Nem todo uivo é de cão.", "Paga o que deves e confessa o que fizeste. Nessa ordem, de preferência."] }
+      ],
+      "medo": "Que Deus tenha piedade de ti, porque a vila não terá.",
+      "recusa": "Não há bênção nem poção para quem derrama sangue nesta vila."
+    },
+    "ferreiro": {
+      "papel": "homem",
+      "ola": ["Fale alto, a bigorna não deixa ouvir.", "Ferro bom não se apressa. Freguês apressado, sim.", "Se veio só olhar, olhe de longe das fagulhas."],
+      "temas": [
+        { "p": "Como anda o trabalho?", "r": ["Ferraduras, pregos, foices. Uma espada de vez em quando, quando o senhor paga.", "O carvão encareceu. O carvoeiro diz que é o frio; eu digo que é ganância."] },
+        { "p": "Ouviu alguma coisa?", "r": ["Dizem que há lobos para os lados da floresta. Bom para mim: todo mundo quer lança.", "O intendente veio cobrar a talha de novo. Esse homem conta moeda até dormindo."] }
+      ],
+      "hostil": "Chegue perto, que eu lhe ensino o que um martelo faz.",
+      "recusa": "Não forjo nada para quem ataca os meus vizinhos. Suma daqui."
+    },
+    "taberneiro": {
+      "papel": "homem",
+      "ola": ["Entre, que lá fora o vento corta.", "Cerveja nova no barril. A de ontem, não pergunte.", "Pague primeiro, conte a história depois."],
+      "temas": [
+        { "p": "Novidades?", "r": ["Um mascate passou dizendo que o rei vai cobrar mais escudagem este ano. Ninguém riu.", "Os soldados bebem fiado e pagam com promessas. Promessa não enche barril."] },
+        { "p": "Como vai a taverna?", "r": ["Cheia nas festas, vazia na colheita. Gente cansada bebe em casa e dorme cedo.", "Minha mulher faz o ensopado; eu só levo a fama."] }
+      ],
+      "hostil": "Fora da minha taverna, arruaceiro!",
+      "recusa": "Aqui não se serve quem ergue a mão contra a vila."
+    },
+    "alfaiate": {
+      "papel": "aldeao",
+      "ola": ["Godwin, às suas ordens. Essa túnica pede remendo, sabe?", "Lã de Flandres não chega aqui, mas a nossa ovelha não fica atrás.", "Cuidado com a lama. Barra de calça não se lava sozinha."],
+      "temas": [
+        { "p": "Como vai o ofício?", "r": ["A filha do senhor quer um manto azul. Azul! Sabe quanto custa o pastel dos tintureiros?", "Couro bom vem de pele bem curtida. Traga peles de coelho, que eu pago."] },
+        { "p": "Alguma fofoca?", "r": ["Dizem que o Cuthbert vive rondando a Casa do Senhor. Não fui eu que disse.", "A padeira e a Maud não se falam desde a Candelária. Ninguém lembra por quê."] }
+      ],
+      "medo": "Socorro! Guardas!",
+      "recusa": "Não costuro para bandido. Vá embora, por favor."
+    },
+    "anselmo": {
+      "papel": "escudeiro",
+      "ola": ["Senhor {nome}. Mantenha a espada limpa e o olho aberto.", "Sir Aymer quer a estrada vigiada. Eu vigio.", "Treino com o Brand ao amanhecer. Ele ainda ganha. Por enquanto."],
+      "temas": [
+        { "p": "O que faz um escudeiro?", "r": ["Cuido das armas e do cavalo do meu senhor, e aprendo a não morrer. Isso leva anos.", "Um dia serei armado cavaleiro. Até lá, carrego o escudo dos outros."] },
+        { "p": "Algum perigo por aqui?", "r": ["Os coelhos do campo andam mais bravos do que deviam. Não ria: já mordem.", "Do portão para fora, a lei do senhor fica mais fraca a cada passo."] }
+      ],
+      "hostil": "Em guarda! Pela vila e pelo meu senhor!"
+    },
+    "faz_velho": {
+      "name": "Velho Osric",
+      "papel": "aldeao",
+      "ola": ["Hein? Fale mais alto, a orelha já não é a mesma.", "Sessenta invernos nesta terra, e ela ainda me dá trabalho.", "No meu tempo, o nabo crescia do tamanho de uma cabeça."],
+      "temas": [
+        { "p": "Como vai a horta?", "r": ["Alho-poró, cebola e nabo. A lebre come metade, o senhor leva a outra.", "Terra boa é a que foi bem estercada. O resto é conversa de padre."] },
+        { "p": "Como era a vila antigamente?", "r": ["Antes da casa de pedra do senhor, isto aqui era só lama e porco.", "Vi três senhores passarem por aquela casa. Este, ao menos, não enforca ninguém às segundas."] }
+      ],
+      "medo": "Me deixe! Sou velho demais para isso!"
+    },
+    "faz_forte": {
+      "name": "Wulfric, o lavrador",
+      "papel": "homem",
+      "ola": ["Bom dia. O campo não se ara sozinho.", "Se quer conversar, ande comigo. Parado eu não fico.", "Braço forte, costas doendo. É a vida."],
+      "temas": [
+        { "p": "Como vai o trigo?", "r": ["Se não chover demais em agosto, comemos o inverno inteiro.", "Trabalho três dias na terra do senhor e o resto na minha. A minha cresce mais torta, não sei por quê."] },
+        { "p": "Algum boato?", "r": ["O moleiro rouba no peso. Todo mundo sabe, ninguém prova.", "Ouvi uivo do lado da floresta. Não deixo meus meninos irem lá."] }
+      ],
+      "hostil": "Você mexeu com a vila errada!"
+    },
+    "faz_gordo": {
+      "name": "Hob, o lavrador",
+      "papel": "homem",
+      "ola": ["Ah, um rosto novo! Já comeu? Eu já. Duas vezes.", "Hob, ao seu dispor. Se for para carregar peso, procure outro.", "Dizem que a taverna tem ensopado hoje. Dizem, e eu acredito."],
+      "temas": [
+        { "p": "O que se come por aqui?", "r": ["Pão escuro, sopa de nabo e, nos dias santos, um pedaço de toucinho. Abençoados os dias santos.", "O ensopado do taberneiro leva coelho quando há coelho. Quando não há, leva fé."] },
+        { "p": "Novidades?", "r": ["A padeira queimou a fornada na quinta. Foi o pão mais barato da semana.", "O intendente anda contando os porcos de todo mundo. Já escondi o meu."] }
+      ],
+      "hostil": "Agora você vai ver, desordeiro!"
+    },
+    "faz_jovem": {
+      "name": "Alric, o lavrador",
+      "papel": "homem",
+      "ola": ["Bom dia! Você é de fora, não é? Como é lá?", "Um dia ainda vou ver Winchester. Ou ao menos a feira de sábado.", "Se o senhor deixasse, eu iria com você caçar."],
+      "temas": [
+        { "p": "Quer sair da vila?", "r": ["Sou servo da gleba: a terra é do senhor, e eu sou da terra. Mas sonhar não paga talha.", "Dizem que quem vive um ano e um dia numa cidade fica livre. Um ano é muito tempo longe da minha mãe."] },
+        { "p": "Algum boato?", "r": ["O Cuthbert gosta da filha do senhor. Vai acabar no tronco, isso sim.", "Os soldados juram que viram um veado branco na campina. Os soldados juram muita coisa."] }
+      ],
+      "hostil": "Pela vila! Peguem o forasteiro!"
+    },
+    "mulher_cesta": {
+      "name": "Edith",
+      "papel": "aldeao",
+      "ola": ["Bom dia. Não posso parar muito, os ovos não se vendem sozinhos.", "Cuidado, a cesta está cheia. Se quebrar, você paga.", "Que Deus o guarde. E guarde também as minhas galinhas."],
+      "temas": [
+        { "p": "O que leva na cesta?", "r": ["Ovos, um queijo e um pouco de lã para fiar à noite.", "Pão para o meu marido no campo. Se eu demorar, ele come a terra."] },
+        { "p": "Alguma notícia?", "r": ["A Maud diz que viu luz na Casa do Senhor de madrugada. A Maud vê muita coisa.", "Vai ter casamento depois da colheita, se o padre aprovar os proclamas."] }
+      ],
+      "medo": "Socorro! Alguém chame os soldados!"
+    },
+    "mulher_tranca": {
+      "name": "Maud",
+      "papel": "aldeao",
+      "ola": ["Bom dia. Você é o forasteiro de quem todos falam?", "Ouvi dizer que você caça coelhos. Ainda bem: comeram minhas couves.", "Pare um instante e conte uma novidade. Aqui nada acontece."],
+      "temas": [
+        { "p": "Do que todos falam?", "r": ["De você, do tempo e do preço do sal. Nessa ordem, esta semana.", "A padeira diz que a farinha do moinho vem com areia. Eu digo que vem com mentira."] },
+        { "p": "Como é a vida aqui?", "r": ["Fiar, cozinhar, buscar água, cuidar dos meninos. E ouvir os homens reclamarem do cansaço.", "Na noite de São João tem fogueira e dança na praça. É a única noite em que o padre finge não ver."] }
+      ],
+      "medo": "Fique longe de mim! Socorro!"
+    },
+    "mulher_velha": {
+      "name": "Mãe Hilda",
+      "papel": "aldeao",
+      "ola": ["Ah, criança. Venha cá, deixe eu ver esses olhos.", "Erva-de-são-joão na porta afasta o mau-olhado. Já pôs a sua?", "Fale baixo, meus ossos ouvem tudo e reclamam."],
+      "temas": [
+        { "p": "Conhece remédios?", "r": ["Casca de salgueiro para a febre, mel para a ferida, e reza para o resto.", "As poções do padre são boas. Mas quem ensinou a ele fui eu, e ele não conta."] },
+        { "p": "Já viu muita coisa?", "r": ["Vi a fome de três invernos seguidos. Quem viu aquilo não reclama de pão escuro.", "A floresta guarda o que os homens esquecem. Não vá lá de mãos vazias."] }
+      ],
+      "medo": "Deus me proteja de gente como você!"
+    },
+    "padeira": {
+      "name": "Agnes, a padeira",
+      "papel": "aldeao",
+      "ola": ["Pão quente, pão escuro, pão de ontem. Escolha o seu.", "O forno é do senhor e serve a todos, mas quem acende sou eu.", "Bom dia! Cheira bem, não é? É a fornada da manhã."],
+      "temas": [
+        { "p": "Como funciona o forno?", "r": ["Todo mundo assa no forno do senhor e paga um pão de cada vinte. É a lei, não fui eu que fiz.", "Acordo antes do galo. O galo, aliás, acorda por minha causa."] },
+        { "p": "Alguma fofoca?", "r": ["A Maud anda dizendo que minha farinha tem areia. Areia tem é na língua dela.", "O Hob compra pão duas vezes por dia e jura que é para a família."] }
+      ],
+      "medo": "Me solte! Socorro!",
+      "recusa": "Para você não tem pão. Nem o de ontem."
+    },
+    "menino_a": {
+      "name": "Tom",
+      "papel": "crianca",
+      "ola": ["Você tem espada! Deixa eu segurar? Só um pouquinho?", "Aposto que eu corro mais que você!", "Minha mãe diz para não falar com estranho. Mas você nem parece tão estranho."],
+      "temas": [
+        { "p": "Do que vocês brincam?", "r": ["De cavaleiro e dragão. O Wat é sempre o dragão porque é o menor.", "De pular a vala da Casa do Senhor. Mas não conte pro soldado."] },
+        { "p": "Sabe algum segredo?", "r": ["O Godric cochila encostado no escudo quando o sol esquenta.", "Tem um buraco na cerca do aprisco. As ovelhas ainda não descobriram."] }
+      ],
+      "medo": "Mãe! Mãããe!"
+    },
+    "menino_b": {
+      "name": "Wat",
+      "papel": "crianca",
+      "ola": ["Hoje eu não sou o dragão! Hoje sou o cavaleiro!", "Você já matou um lobo? Um de verdade?", "O Tom é mais velho, mas eu sou mais esperto."],
+      "temas": [
+        { "p": "O que quer ser quando crescer?", "r": ["Soldado, igual ao Brand. Ou padeiro, porque o padeiro come quando quer.", "Escudeiro, igual ao Anselmo. Ele me deixou segurar o elmo uma vez."] },
+        { "p": "Sabe alguma história?", "r": ["Dizem que na floresta tem um lobo do tamanho de um boi. O Tom diz que é mentira, mas o Tom tem medo.", "Meu avô viu uma estrela de cauda uma vez. Disse que foi por isso que o rei morreu."] }
+      ],
+      "medo": "Socorro! Socorro!"
+    },
+    "menina": {
+      "name": "Elsie",
+      "papel": "crianca",
+      "ola": ["Oi! Eu colhi margaridas, quer uma?", "Os meninos não me deixam ser cavaleiro. Então eu sou a rainha.", "Você tem cara de quem viajou muito."],
+      "temas": [
+        { "p": "O que está fazendo?", "r": ["Contando as voltas na praça. Já foram cento e... perdi a conta.", "Vigiando os meninos. Minha mãe mandou, e eles não sabem."] },
+        { "p": "Conhece todo mundo?", "r": ["A Mãe Hilda faz um chá que tira dor de barriga. É ruim, mas funciona.", "A filha do senhor sorriu para mim na missa. Ela tem fitas no cabelo."] }
+      ],
+      "medo": "Não! Me deixe!"
+    },
+    "soldado_lanca": {
+      "name": "Brand, o soldado",
+      "papel": "soldado",
+      "ola": ["Circulando. A estrada é do senhor, e eu sou os olhos dele.", "Arma na bainha dentro da vila. É a regra.", "Hum. Forasteiro. Estou de olho em você."],
+      "temas": [
+        { "p": "Como é a patrulha?", "r": ["Do portão à Casa do Senhor e de volta, vinte vezes por dia. Meus pés sabem o caminho de cor.", "O ladrão de galinhas foi o pior inimigo que tivemos este ano. E ele fugiu."] },
+        { "p": "Há perigos lá fora?", "r": ["Bandidos na estrada do sul, dizem. Lobos na floresta, isso eu sei.", "Se for sair pelo portão, leve poção. O padre vende."] }
+      ],
+      "hostil": "Em nome do senhor, renda-se!"
+    },
+    "soldado_escudo": {
+      "name": "Godric, o soldado",
+      "papel": "soldado",
+      "ola": ["Bom dia. Não, eu não estava dormindo. Estava vigiando de olhos fechados.", "O Brand fala pelos dois. Eu só seguro o escudo.", "Paz, forasteiro. Por enquanto."],
+      "temas": [
+        { "p": "Gosta de ser soldado?", "r": ["Melhor que arar. A comida é a mesma, mas o escudo não dá erva daninha.", "O senhor paga em pão, cerveja e um par de botas por ano. As botas deste ano ainda não vieram."] },
+        { "p": "Algum boato?", "r": ["O intendente guarda mais moeda do que diz. Não fui eu que disse, e eu nego.", "O escudeiro Anselmo treina sozinho de madrugada. Vai acabar melhor que nós dois."] }
+      ],
+      "hostil": "Escudo erguido! Daqui você não passa!"
+    },
+    "rapaz": {
+      "name": "Cuthbert",
+      "papel": "homem",
+      "ola": ["Ei. Você viu a filha do senhor passar por aqui?", "Não estou rondando nada. Estou só... andando.", "Dizem que você luta bem. Eu também lutaria, se tivesse espada."],
+      "temas": [
+        { "p": "Por que anda tanto?", "r": ["Pensando. Um homem pensa melhor andando. E a Casa do Senhor fica no caminho.", "Meu pai quer que eu case com a filha do moleiro. Não quero casar com moinho nenhum."] },
+        { "p": "Algum boato?", "r": ["O senhor vai a Winchester depois da colheita e deixa o intendente mandando. Coitados de nós.", "Dizem que tem um tesouro enterrado perto do pedregal. Dizem também que quem procura não volta."] }
+      ],
+      "hostil": "Agora é comigo, forasteiro!"
+    },
+    "filha_senhor": {
+      "name": "Dona Isolda",
+      "papel": "aldeao",
+      "ola": ["Bom dia. Meu pai diz que não devo falar com viajantes. Meu pai diz muita coisa.", "Que tecido é esse da sua capa? Não é daqui.", "Ando em volta da casa todos os dias. É o mais longe que me deixam ir."],
+      "temas": [
+        { "p": "Como é a vida na Casa do Senhor?", "r": ["Bordar, rezar e ouvir o intendente ler as contas. Às vezes eu queria ser a padeira.", "Meu pai quer me casar com um barão de Wessex. Nunca vi o barão. Dizem que ainda tem dentes."] },
+        { "p": "Conhece o Cuthbert?", "r": ["Quem? Não. Quer dizer... ele cumprimenta. É educado. Por que pergunta?", "Não diga ao meu pai que você perguntou isso."] }
+      ],
+      "medo": "Guardas! Protejam a casa do meu pai!"
+    },
+    "senhor": {
+      "name": "Sir Aymer, senhor da vila",
+      "papel": "aldeao",
+      "ola": ["Hum. O forasteiro. Dizem que é útil. Prove.", "Esta terra é minha por concessão do rei, e quem nela vive me deve respeito.", "Fale depressa. Tenho as contas da colheita para ouvir."],
+      "temas": [
+        { "p": "Como vão as terras?", "r": ["A colheita será boa se os servos trabalharem e o céu ajudar. Do céu cuida o padre; dos servos, o intendente.", "O rei pede escudagem, o bispo pede dízimo, e todos pedem a mim."] },
+        { "p": "Precisa de ajuda?", "r": ["O quadro da praça diz o que a vila precisa. Quem ajuda a vila ajuda a mim.", "Mantenha a estrada livre de bandidos e talvez eu lembre o seu nome."] }
+      ],
+      "medo": "Soldados! Prendam esse homem!"
+    },
+    "intendente": {
+      "name": "Mestre Ralf, o intendente",
+      "papel": "homem",
+      "ola": ["Nome? Ofício? Deve alguma coisa ao senhor? Todo mundo deve.", "Três porcos, duas vacas, um ganso... ah, desculpe, estava contando.", "Se veio reclamar da talha, a fila começa no padre e termina em mim."],
+      "temas": [
+        { "p": "O que faz um intendente?", "r": ["Cobro a renda, conto a colheita, vigio o forno e o moinho. Ninguém me convida para as festas.", "Escrevo tudo neste rolo. O que está no rolo é verdade; o que não está não aconteceu."] },
+        { "p": "Alguma novidade?", "r": ["O senhor quer um celeiro novo. Madeira e pedra, muita. O quadro de avisos explica.", "Alguém anda escondendo porcos. Eu vou descobrir quem. Eu sempre descubro."] }
+      ],
+      "hostil": "Isso vai lhe custar caro, forasteiro! Peguem-no!"
+    }
+  },
   "daily": {
     "_nota": "Reiniciam todo dia às resetHour:resetMinute do relógio de quem joga. O baú aceita entregas parciais: a recompensa inteira sai ao completar, e à meia-noite a missão incompleta paga só o que foi entregue.",
     "resetHour": 0,

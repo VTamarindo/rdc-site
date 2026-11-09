@@ -691,7 +691,7 @@
     if (!art.walls.placa_alfaiate && art.walls.tabuas) { art.walls.placa_alfaiate = placaTesoura(art.walls.tabuas); }
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
-    this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {};
+    this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {}; this.npcO = {}; this.held = null;
     this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1] };
     this.buildStatic(); this.buildDynamic(); this.buildAmbient(); this.buildCeu();
     this.areaRing = this.root.add(new Node(ringGeo(0.96, 1, 48), 0xe8c45a, { alpha: 0.6, unlit: true }));
@@ -787,7 +787,7 @@
     L.poe(R);
     w.npcs.forEach(function (n) {
       var p = self.sprite(n.id, SIZE[n.id] || 1.9).at(n.x, 0, n.z);
-      p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p);
+      p.userData.ref = { type: 'npc', id: n.id }; R.add(p); self.pick.push(p); self.npcO[n.id] = p;
     });
     w.props.forEach(function (p) {
       var o = p.id === 'quadro_missoes' ? quadroAvisos() : bauAberto();
@@ -812,23 +812,58 @@
 
   View.prototype.buildAmbient = function () {
     var self = this, V = this.w.vila, T = {}; this.amb = {}; this.walkers = []; this.cows = [];
-    function add(id, img, name, h) {
-      var o = self.sprite(img, h); o.userData.ref = { type: 'amb', id: id };
+    // moradores são gente (clicáveis: abrem o menu de interação); vacas seguem só com nome ao passar o mouse
+    function add(id, img, name, h, type) {
+      var o = self.sprite(img, h); o.userData.ref = { type: type || 'amb', id: id };
       self.root.add(o); self.pick.push(o); self.amb[id] = { o: o, name: name };
       return o;
     }
     Object.keys(V.trails || {}).forEach(function (k) { T[k] = trilha(V.trails[k]); });
     (V.walkers || []).forEach(function (w) {
-      self.walkers.push({ d: w, T: T[w.trail], o: add(w.id, w.id, w.name, w.h), passo: 0.42 * w.h });
+      var q = self.w.personById[w.id];
+      self.walkers.push({ d: w, T: T[w.trail], o: add(w.id, w.id, q ? q.name : w.name, w.h, 'gente'), passo: 0.42 * w.h, off: 0, last: null });
     });
     if (V.cows) { V.cows.herd.forEach(function (h, i) { self.cows.push({ h: h, o: add('vaca' + i, 'vaca', V.cows.name, V.cows.h) }); }); }
   };
-  View.prototype.ambient = function (ms) {
-    var seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+  // segura um morador parado (menu de interação aberto com ele); null solta. Ele volta a andar de onde parou
+  View.prototype.segura = function (id) { this.held = id || null; };
+  // onde cada morador está agora no desenho: a simulação parte daqui quando a vila entra em armas
+  View.prototype.walkerPos = function () {
+    var o = {}; this.walkers.forEach(function (w) { o[w.d.id] = [w.o.pos[0], w.o.pos[2]]; }); return o;
+  };
+  function piscar(self, o, id, dt) {
+    var f = self.flash[id] || 0;
+    o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
+    if (f > 0) { self.flash[id] = f - dt; }
+  }
+  // st: com a vila em armas, quem anda é desenhado onde a simulação diz (entre dois tiques, interpolado);
+  // desacordado some até levantar. Fora disso, a trilha manda
+  View.prototype.ambient = function (ms, st, prev, alpha, dt) {
+    var self = this, seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+    var gente = (st && st.gente) || {}, H = st && st.hostil, now = performance.now();
     this.walkers.forEach(function (w) {
-      var d = w.d, s = seg * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
+      var d = w.d, g = gente[d.id];
+      // o tempo segurado não conta para a trilha: ao soltar, ele segue do mesmo ponto
+      if (w.last !== null && self.held === d.id) { w.off += seg - w.last; }
+      w.last = seg;
+      w.o.visible = !(g && g.ko > 0);
+      if (!w.o.visible) { return; }
+      piscar(self, w.o, d.id, dt || 0);
+      if (H && g && g.x !== undefined) {
+        var pv = prev && prev['p:' + d.id], x = g.x, z = g.z;
+        if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
+        var anda = pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
+        w.o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
+        return;
+      }
+      var s = (seg - w.off) * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
       var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
       w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
+    });
+    Object.keys(this.npcO).forEach(function (id) {
+      var o = self.npcO[id], g = gente[id];
+      o.visible = !(g && g.ko > 0);
+      piscar(self, o, id, dt || 0);
     });
     this.cows.forEach(function (v) {
       var m = vacaU(c, v.h, seg), p = vacaEm(c, v.h, m.u), n = vacaEm(c, v.h, m.u + 0.05);
@@ -1002,13 +1037,13 @@
     var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
     this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
-    this.ambient(opts.now === undefined ? Date.now() : opts.now);
+    this.ambient(opts.now === undefined ? Date.now() : opts.now, st, prev, alpha, dt);
     this.r.draw(this.root, this.cam, this.env);
     if (!opts.semArma) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };
 
   // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga).
-  // solid: ignora moradores e vacas, que só têm nome ao passar o mouse e não podem tapar o que está atrás
+  // solid: ignora as vacas, que só têm nome ao passar o mouse e não podem tapar o que está atrás (moradores são clicáveis)
   View.prototype.pickAt = function (nx, ny, solid) {
     var c = this.cam; if (!c) { return null; }
     var cy = Math.cos(c.pitch), f = [Math.sin(c.yaw) * cy, Math.sin(c.pitch), Math.cos(c.yaw) * cy];
