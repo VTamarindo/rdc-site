@@ -8,6 +8,7 @@
   try { navigator.gamepadInputEmulation = 'gamepad'; } catch (e) { /* navegador sem esse ajuste */ }
 
   // ordem padrão dos botões no Gamepad API
+  // eslint-disable-next-line no-unused-vars -- a lista completa dos botões, mesmo os que não são usados
   var A = 0, B = 1, X = 2, Y = 3, LB = 4, RB = 5, LT = 6, RT = 7, VIEW = 8, MENU = 9, L3 = 10, R3 = 11, CIMA = 12, BAIXO = 13, ESQ = 14, DIR = 15;
   var MORTA = 0.18;                                     // abaixo disso o analógico conta como solto: controle gasto não anda sozinho
   var OLHAR_X = 2.6, OLHAR_Y = 1.7;                     // radianos por segundo com o analógico no fim

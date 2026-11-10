@@ -1,5 +1,5 @@
 /* Netzach · testes automáticos
-   Rodam no navegador (o computador de trabalho não tem Node): abra testes/index.html pelo servidor de teste.
+   Rodam no navegador (abra testes/index.html pelo servidor de teste) e pelo Node (npm run testar, tools/testar.mjs).
    Duas partes: DADOS (tudo o que um arquivo cita existe nos outros) e SIMULAÇÃO (js/sim.js joga sozinho e confere as contas).
    Para um teste novo: teste('nome', function () { ... }) dentro de uma das partes; falhar = lançar erro (use confere).
    window.RESULTADO fica com { ok, falhas, total } no fim, para quem roda os testes por código. */

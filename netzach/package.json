@@ -1,0 +1,14 @@
+{
+  "name": "netzach-ferramentas",
+  "private": true,
+  "description": "Ferramentas do Netzach que precisam do Node (não vão para o jogo). Instalar: npm install, na pasta netzach.",
+  "type": "module",
+  "scripts": {
+    "verificar": "eslint .",
+    "testar": "node tools/testar.mjs"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0"
+  }
+}

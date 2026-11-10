@@ -1579,7 +1579,7 @@
   // st: com a vila em armas, quem anda é desenhado onde a simulação diz (entre dois tiques, interpolado);
   // desacordado fica deitado no chão até levantar. Fora disso, a trilha manda
   View.prototype.ambient = function (ms, st, prev, alpha, dt) {
-    var self = this, seg = ms / 1000, c = this.w.vila.cows, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+    var self = this, seg = ms / 1000, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     var gente = (st && st.gente) || {}, mortos = (st && st.mortos) || {}, H = st && st.hostil, now = performance.now(), lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
     this.walkers.forEach(function (w) {
       var d = w.d, g = gente[d.id];

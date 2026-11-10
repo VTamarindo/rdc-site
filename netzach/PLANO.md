@@ -155,7 +155,9 @@ Assim você trabalha "um em cada" e o jogo continua leve.
     não quebra, os erros só não são guardados;
   - save com migração (`FORMATO_SAVE` e `MIGRACOES` em `js/sim.js`); o recomeço do zero a cada versão foi desligado
     (`resetSaveOnNewVersion: false`); save de versão mais nova é recusado em vez de estragado.
-- **Ainda das boas práticas, para depois:** verificador de código (ESLint precisa do Node, que este computador não tem),
-  dividir os arquivos grandes (melhor junto com as Fases 1 e 2, que mexem neles), contador de desempenho.
+- **10/11 · Node 26 e Python 3.13 instalados** (winget). Verificador de código (ESLint) ligado e limpo; os testes rodam
+  também pelo Node (`npm run testar`); o `publicar.ps1` roda os dois e não publica se falharem.
+- **Ainda das boas práticas, para depois:** dividir os arquivos grandes (melhor junto com as Fases 1 e 2, que mexem neles),
+  contador de desempenho.
 - **Próximo:** Fase 1 (arte no Aseprite). O Aseprite 1.3.18 está em `D:\SteamLibrary\steamapps\common\Aseprite` e roda pela
   linha de comando (`Aseprite.exe -b`), então o montador do atlas pode exportar os arquivos `.aseprite` sozinho.

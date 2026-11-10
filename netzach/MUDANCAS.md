@@ -11,3 +11,4 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Testes automáticos dos dados e da simulação (`testes/`).
 - Registro dos erros que acontecem no jogo dos jogadores (`js/erros.js`; falta criar a tabela no Supabase).
 - Ramo `dev`, script de versão e de publicação.
+- Verificador de código (ESLint) e testes pelo Node, rodando antes de cada publicação.

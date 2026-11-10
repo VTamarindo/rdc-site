@@ -3,3 +3,5 @@ netzach/cenas/
 netzach/projeto.json
 netzach/variaveis.json
 netzach/README.md
+# ferramentas do Node (netzach): instaladas com npm install, não vão para o git
+netzach/node_modules/

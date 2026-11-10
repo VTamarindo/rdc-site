@@ -29,6 +29,12 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 **Testes automáticos:** com o servidor ligado, abra `http://localhost:8080/netzach/testes/`. Em segundos eles conferem os dados
 (todo item, missão, conversa, figura e cena citados existem) e a simulação (jogo novo, save que abre igual, save antigo que
 converte, 20 minutos jogando sozinho, compra, venda, missão, nível, poção). Verde = pode publicar. Teste novo: `testes/testes.js`.
+Sem navegador, na pasta `netzach` (precisa do Node; `npm install` na primeira vez):
+- `npm run testar`: os mesmos testes, em 2 segundos;
+- `npm run verificar`: o verificador de código (ESLint, regras em `eslint.config.js`) procura erro de digitação, variável que
+  não existe e código que nunca roda.
+O `publicar.ps1` roda os dois e não publica se algum falhar. As ferramentas de Python (`tools/*.py`) rodam com o Python 3.13
+instalado em 10/11 (com Pillow, numpy e scipy).
 
 **Erros dos jogadores:** `js/erros.js` manda cada erro de código que acontece no jogo de alguém para a tabela `erros` do
 Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. A tabela é criada por `supabase/erros.sql`.

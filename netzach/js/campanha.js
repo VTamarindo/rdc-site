@@ -64,7 +64,7 @@
         case '+=': return (+a || 0) + (+b || 0); case '-=': return (+a || 0) - (+b || 0);
         case '*=': return (+a || 0) * (+b || 0); case '=': return b;
         case '>=': return a >= b; case '<=': return a <= b; case '>': return a > b; case '<': return a < b;
-        case '==': return a == b; case '!=': return a != b; // eslint-disable-line eqeqeq (o roteirizador pode gravar "5" ou 5)
+        case '==': return a == b; case '!=': return a != b; // == de propósito: o roteirizador pode gravar "5" ou 5
       }
       return b;
     }

@@ -16,6 +16,15 @@ G merge -q --ff-only origin/dev   # o outro computador pode ter enviado algo
 $novos = G log --oneline origin/main..dev
 if (-not $novos) { Write-Output 'Nada novo no dev para publicar.'; exit 0 }
 Write-Output "Vai para o site:"; $novos | ForEach-Object { Write-Output "  $_" }
+
+# trava: o verificador de código e os testes automáticos precisam passar (Node; npm install na primeira vez)
+Push-Location netzach
+try {
+  if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { throw 'Falta o Node (winget install OpenJS.NodeJS.LTS).' }
+  if (-not (Test-Path node_modules)) { npm install --no-audit --no-fund | Out-Null }
+  npm run --silent verificar; if ($LASTEXITCODE) { throw 'O verificador de código achou erros (acima). Nada foi publicado.' }
+  npm run --silent testar; if ($LASTEXITCODE) { throw 'Algum teste falhou (acima). Nada foi publicado.' }
+} finally { Pop-Location }
 if ($Testar) { exit 0 }
 
 # versão nova, para todo navegador baixar os arquivos novos

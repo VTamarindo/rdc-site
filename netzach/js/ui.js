@@ -26,7 +26,7 @@
   function semMacro() { return campanha() && !camp.fim(); }
   var DT, CAP, THRESH;
   var lastReal = clockNow(), acc = 0, prev = null, away = null;
-  var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null, ctrl = null;
+  var keys = {}, pad = {}, lookHold = 0, drag = null, ctrl = null;
   var newVersion = false;
   var dailyNext = 0; // quando as missões diárias reiniciam (ms do relógio real)
   var LINE_MS = 10000, lineTxt = null, lineEnd = 0, hintSeen = false;
@@ -717,7 +717,7 @@
     if (openWin === 'w-npc') { sellTick(); }
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
-    var busy = on || !!p.goto, now = performance.now();
+    var busy = on || !!p.goto; // now: o mesmo do começo da função
     // campanha antes do mundo aberto: sem dica de mapa; ela aparece uma vez, com a macro e a caminhada juntas, no fim do capítulo
     var hint = semMacro() ? '' : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
     var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
@@ -1127,9 +1127,9 @@
     if (big && mapHover && !nextMacro) { c.strokeStyle = WAX; c.lineWidth = 1.5; c.beginPath(); c.arc(X(mapHover.x), Z(mapHover.z), 6, 0, 7); c.stroke(); }
     // destino: um X de lacre
     var gt = st.player.goto;
-    if (gt) { var gx = X(gt.x), gz = Z(gt.z), q = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - q, gz - q); c.lineTo(gx + q, gz + q); c.moveTo(gx + q, gz - q); c.lineTo(gx - q, gz + q); c.stroke(); c.lineCap = 'butt'; }
+    if (gt) { var gx = X(gt.x), gz = Z(gt.z), xq = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - xq, gz - xq); c.lineTo(gx + xq, gz + xq); c.moveTo(gx + xq, gz - xq); c.lineTo(gx - xq, gz + xq); c.stroke(); c.lineCap = 'butt'; }
     // jogador: seta vermelho-lacre
-    var p = st.player, px = X(p.x), pz = Z(p.z), y = view ? view.yaw : p.yaw, r2 = big ? 10 * u : 6.5;
+    var px = X(p.x), pz = Z(p.z), y = view ? view.yaw : p.yaw, r2 = big ? 10 * u : 6.5;
     c.fillStyle = WAX; c.strokeStyle = '#f6ead0'; c.lineWidth = big ? 1.6 : 1.1; c.lineJoin = 'round';
     c.beginPath();
     c.moveTo(px + Math.sin(y) * r2, pz + Math.cos(y) * r2);
@@ -2127,7 +2127,7 @@
     b.disabled = !fullCan();
   }
   function toggleFull() {
-    var d = document.documentElement, r;
+    var r;
     if (fullEl()) { fullAuto = false; r = (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
     else { fullAuto = true; r = pedeCheia(); }
     if (r && r.catch) { r.catch(function () { toast('O navegador recusou a tela cheia.'); }); }
