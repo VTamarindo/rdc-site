@@ -11,7 +11,7 @@
     var cenas = C.cenas || {}, inicial = (C.projeto && C.projeto.cena_inicial) || Object.keys(cenas)[0];
     var $ = function (id) { return document.getElementById(id); };
     var st = null, p = null;
-    var trava = false, deit = 0, deitAnim = null, fila = [], parado = 0, ultimo = null, fugindo = false;
+    var trava = false, deit = 0, deitAnim = null, giro = null, fila = [], parado = 0, ultimo = null, fugindo = false;
     var campo = (world.vila.fields || []).filter(function (f) { return f.id === CF.campo; })[0];
 
     // ---------- atores do capítulo (só desenho: view.ator / view.carroca) ----------
@@ -28,7 +28,7 @@
     function S() { return st.camp; }
     function novo(s) {
       s.modo = 'campanha';
-      s.camp = { cena: inicial, passo: '', n: 0, vars: {}, fim: false, missao: null, feitos: {} };
+      s.camp = { cena: inicial, passo: '', n: 0, vars: {}, fim: false, missao: null, feitos: {}, semVolta: CF.campo }; // semVolta: o campo do capítulo não volta a crescer até o fim dele (js/sim.js)
       var P = s.player, V = C.projeto && C.projeto.variaveis || {};
       P.x = CF.inicio.x; P.z = CF.inicio.z; P.yaw = CF.inicio.yaw * Math.PI / 180;
       P.inv = JSON.parse(JSON.stringify(CF.itens || {}));
@@ -38,7 +38,8 @@
     }
     // abre o save (ou o jogo novo) no ponto da história em que parou; volta = save carregado, não cena nova
     function abre(s, volta) {
-      st = s; p = s ? s.player : null; fila = []; trava = false; deit = 0; deitAnim = null; parado = 0; ultimo = null; fugindo = false;
+      st = s; p = s ? s.player : null; fila = []; trava = false; deit = 0; deitAnim = null; giro = null; parado = 0; ultimo = null; fugindo = false;
+      if (s && s.camp && !s.camp.fim) { s.camp.semVolta = CF.campo; } // saves de antes: o campo também para de crescer de novo
       preto(0, '', 0); dica(null); fechaCaixa(); esconde();
       if (!ativa()) { return; }
       var c = S();
@@ -175,6 +176,12 @@
     // ---------- tempo: passos da cena em sequência (segundos do jogo na tela, não salvos) ----------
     function depois(seg, fn) { fila.push({ t: seg, fn: fn }); }
     function olha(x, z) { view.yaw = Math.atan2(x - p.x, z - p.z); view.pitch = -0.05; }
+    // vira para (x, z) de forma rápida mas contínua (o puxão no ombro): começa rápido e assenta no fim
+    function vira(x, z, seg) {
+      var alvo = Math.atan2(x - p.x, z - p.z), d = alvo - view.yaw;
+      while (d > Math.PI) { d -= Math.PI * 2; } while (d < -Math.PI) { d += Math.PI * 2; }
+      giro = { de: view.yaw, d: d, p0: view.pitch, t: 0, seg: seg || 0.6 };
+    }
     function levanta(seg, fim) { deitAnim = { de: deit, para: 0, t: 0, seg: seg, fim: fim }; }
     function noCampo(folga) {
       var f = folga === undefined ? CF.folga : folga;
@@ -185,14 +192,18 @@
       setTimeout(function () {
         if (!ativa()) { return; }
         p.x = CF.inicio.x; p.z = CF.inicio.z; p.action = null; p.goto = null; olha(CF.figura.x, CF.figura.z);
-        preto(0, '', 0.9); trava = false; fugindo = false; if (msg) { api.toast(msg, 3); }
+        preto(0, '', 0.9); trava = false; fugindo = false; if (msg) { aviso(msg); }
       }, 900);
     }
+    // caixinha de texto sem quem fala (narração): um botão Continuar, que fecha e segue (fim)
+    function aviso(texto, fim) { caixa('', fill(texto), [{ text: 'Continuar', cls: 'main', fn: function () { fechaCaixa(); if (fim) { fim(); } } }]); }
     function textoColheita() { var e = api.entrada(); return CF.dicaColher[e] || CF.dicaColher.teclado; }
     function prog(n, de) { return Math.min(n, de) + '/' + de; }
 
     // ---------- o capítulo do trigo ----------
-    var N1 = CF.colher[0], N2 = CF.colher[1];
+    var N1 = CF.colher;
+    // retalhos do campo do capítulo ainda de pé (cada um dá um feixe)
+    function dePe() { return world.nodes.filter(function (n) { return n.field === CF.campo && st.nodes[n.id].alive; }).length; }
     function puxao(correu) {
       return {
         entra: function (c, voltou) {
@@ -203,9 +214,9 @@
           trava = true;
           if (correu) { view.vai('figura', CF.figura.x + 26, CF.figura.z - 4, 4.5); view.some('figura', 1.1); } else { view.some('figura', 2.2); }
           depois(correu ? 0.9 : 1.8, function () {
-            var q = atras(); view.poeAtor('faz', q.x, q.z); view.shake = 0.22; olha(q.x, q.z);
+            var q = atras(); view.poeAtor('faz', q.x, q.z); view.shake = 0.08; vira(q.x, q.z, CF.puxaoSeg);
           });
-          depois(0.6, function () { trava = false; conversa(); });
+          depois(CF.puxaoSeg + 0.15, function () { trava = false; conversa(); });
         }
       };
     }
@@ -239,6 +250,8 @@
             S().passo = 'colher'; dica(textoColheita()); missao(CF.missoes.colher, prog(S().n, N1)); fazNaCarroca(true); api.save();
           };
           if (voltou && S().passo === 'colher') { fazNaCarroca(false); comeca(); return; }
+          // voltando da fuga: o fazendeiro já falou e o protagonista também; segue colhendo, sem repetir as falas
+          if (S().puxado) { delete S().puxado; fazNaCarroca(false); comeca(); return; }
           falas(c.falas, comeca);
         },
         tick: function (c) {
@@ -250,10 +263,12 @@
       },
       c01_trigo_tentar_fugir: {
         entra: function (c, voltou) {
+          S().puxado = true; // a cena do tutorial, ao voltar, não repete as falas
           if (voltou) { segue(c, 0); return; }
           dica(null); trava = true; fugindo = true; preto(1, '', 0.8);
           depois(1.0, function () { p.x = CF.inicio.x; p.z = CF.inicio.z; p.action = null; p.goto = null; olha(CR.x, CR.z); preto(0, '', 1); });
-          depois(1.1, function () { trava = false; fugindo = false; segue(c, 0); });
+          // a caixinha diz o que aconteceu; "Continuar" é a escolha da cena (Reiniciar), de volta à colheita
+          depois(1.1, function () { trava = false; fugindo = false; aviso(CF.naoFuja, function () { segue(c, 0); }); });
         }
       },
       c01_trigo_colher_o_trigo: {
@@ -290,15 +305,17 @@
         adia: true, // os efeitos (moedas e experiência) só valem quando o trigo chega à carroça
         entra: function (c, voltou) {
           fazNaCarroca(false); poeCarroca(true);
-          if (!voltou) { S().n = 0; S().passo = 'colher'; }
+          // "terminar o campo" é o campo todo: a meta é o que ainda está de pé (o campo não volta a crescer no capítulo)
+          if (!voltou) { S().n = 0; S().meta = dePe(); S().passo = S().meta ? 'colher' : 'carroca'; }
           if (S().passo === 'fim') { falas(c.falas, fimCapitulo); return; }
           if (S().passo === 'carroca') { missao(CF.missoes.carroca2); return; }
-          missao(CF.missoes.terminar, prog(S().n, N2));
+          missao(CF.missoes.terminar, prog(S().meta - dePe(), S().meta));
         },
         colheu: function () {
           if (S().passo !== 'colher') { return; }
-          S().n++; missao(CF.missoes.terminar, prog(S().n, N2));
-          if (S().n >= N2) { S().passo = 'carroca'; missao(CF.missoes.carroca2); api.toast(CF.missoes.carroca2 + '.', 3); }
+          var falta = dePe();
+          missao(CF.missoes.terminar, prog(S().meta - falta, S().meta));
+          if (!falta) { S().passo = 'carroca'; missao(CF.missoes.carroca2); api.toast(CF.missoes.carroca2 + '.', 3); }
           api.save();
         },
         tick: function () { if (S().passo === 'colher' && !fugindo && !noCampo()) { volta(CF.naoFuja); } },
@@ -320,6 +337,11 @@
       // parado: o personagem não andou (o tempo só conta com o jogo à vista, sem janela aberta)
       if (ultimo && Math.hypot(p.x - ultimo[0], p.z - ultimo[1]) < 0.02 && !trava && !api.janelaAberta()) { parado += dt; } else if (!ultimo || Math.hypot(p.x - ultimo[0], p.z - ultimo[1]) >= 0.02) { parado = 0; }
       ultimo = [p.x, p.z];
+      if (giro) {
+        giro.t += dt; var kg = Math.min(1, giro.t / giro.seg), eg = 1 - Math.pow(1 - kg, 3);
+        view.yaw = giro.de + giro.d * eg; view.pitch = giro.p0 + (-0.05 - giro.p0) * eg;
+        if (kg >= 1) { giro = null; }
+      }
       if (deitAnim) {
         var A = deitAnim; A.t += dt; var k = Math.min(1, A.t / A.seg), e = k * k * (3 - 2 * k);
         deit = A.de + (A.para - A.de) * e;

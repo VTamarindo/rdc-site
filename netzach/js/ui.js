@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-8', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-11', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -21,6 +21,9 @@
   // a hora fixa do céu na campanha e na tela inicial (game.json → campanha.hora); no modo livre o céu segue o relógio
   function horaFixa() { var d = new Date(clockNow()); d.setHours(0, 0, 0, 0); return d.getTime() + G.campanha.hora * 3600000; }
   function campanha() { return !!(st && st.modo === 'campanha'); }
+  // campanha antes do mundo aberto (até o fazendeiro dizer "me encontre perto do pasto"): a macro ainda não existe.
+  // Some da tela (body.sem-macro esconde o que tem a classe macro-ui), do mapa e dos atalhos; volta sozinha no fim do capítulo
+  function semMacro() { return campanha() && !camp.fim(); }
   var DT, CAP, THRESH;
   var lastReal = clockNow(), acc = 0, prev = null, away = null;
   var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null, ctrl = null;
@@ -558,10 +561,10 @@
     var p = s.potions - a.potions; if (p) { li.push(p + ' poç' + (p > 1 ? 'ões bebidas' : 'ão bebida')); }
     var r = s.retreats - a.retreats; if (r) { li.push(r + ' recuo' + (r > 1 ? 's' : '') + ' para descansar na praça'); }
     var f = s.faints - a.faints; if (f) { li.push(f + ' desmaio' + (f > 1 ? 's' : '')); }
-    if (!li.length) { li.push(snap.on ? 'Nada aconteceu.' : 'Nada: a macro estava parada.'); }
+    if (!li.length) { li.push(semMacro() ? 'Nada aconteceu.' : snap.on ? 'Nada aconteceu.' : 'Nada: a macro estava parada.'); }
     $('rep-time').textContent = 'Você ficou fora por ' + fmtTime(total) + (total > used + 1 ? ' (só ' + fmtTime(used) + ' contaram: o teto é de ' + G.settings.offlineCapHours + ' h).' : '.');
     $('rep-list').innerHTML = li.map(function (t) { return '<li>' + t + '</li>'; }).join('');
-    $('rep-status').textContent = st.player.macro.on ? 'A macro continua trabalhando.' : (st.player.macro.stop || 'A macro está parada.');
+    $('rep-status').textContent = semMacro() ? '' : st.player.macro.on ? 'A macro continua trabalhando.' : (st.player.macro.stop || 'A macro está parada.');
     show('w-report');
   }
 
@@ -685,6 +688,7 @@
   var hudT = 0;
   function hud() {
     var p = st.player, mh = calc.maxHp(world, p);
+    var sm = semMacro(); if (sm !== document.body.classList.contains('sem-macro')) { document.body.classList.toggle('sem-macro', sm); }
     $('hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
     $('hp-t').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh + (p.poison ? ' · envenenado' : '');
     var need = p.lv * G.player.xpPerLevel;
@@ -707,7 +711,7 @@
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     var busy = on || !!p.goto, now = performance.now();
-    var hint = isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
+    var hint = semMacro() ? (isTouch ? 'Toque no mapa pequeno, no canto, para andar' : 'Mapa (M): clique para andar') : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
     var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
     // vila em armas: a linha fica fixa, em vermelho, e conta o tempo que falta longe da vila
     var H = st.hostil, AT = G.aldeoes.textos;
@@ -761,10 +765,10 @@
   }
   function macroOn() { return st.player.mode === 'macro' && st.player.macro.on; }
   // o que o próximo clique no mapa vai fazer: o armado vale mais que o padrão
-  function mapNext() { return mapArmed || st.player.mapNav; }
+  function mapNext() { return semMacro() ? 'caminhada' : mapArmed || st.player.mapNav; }
   // estado dos controles da janela do mapa (botões Macro e Caminhada embaixo e os menus que eles abrem)
   function mapUi() {
-    var a = st.player.macro.area, on = macroOn(), nav = st.player.mapNav, mb = $('map-macro'), wb = $('map-walk');
+    var a = st.player.macro.area, on = macroOn(), nav = semMacro() ? 'caminhada' : st.player.mapNav, mb = $('map-macro'), wb = $('map-walk');
     var mOpen = mapMenu === 'macro', wOpen = mapMenu === 'caminhada', box = mOpen ? $('map-menu') : wOpen ? $('map-walk-menu') : null;
     var mapText = mapArmed === 'macro'
       ? 'Macro armada: clique onde o personagem deve trabalhar sozinho (o círculo dourado mostra a área).'
@@ -1100,7 +1104,7 @@
       c.lineWidth = 0.7; c.strokeRect(9.5, 9.5, S - 19, S - 19);
     }
     // área da macro
-    var a = macroOn() || st.player.mapNav === 'macro' ? st.player.macro.area : null; // a marca some ao só caminhar
+    var a = !semMacro() && (macroOn() || st.player.mapNav === 'macro') ? st.player.macro.area : null; // a marca some ao só caminhar
     if (a) {
       c.fillStyle = 'rgba(200,150,40,.12)'; c.beginPath(); c.arc(X(a.x), Z(a.z), a.r * k, 0, 7); c.fill();
       c.strokeStyle = macroOn() ? GOLD : 'rgba(168,115,15,.6)'; c.lineWidth = big ? 2.2 : 1.2; c.stroke();
@@ -2072,6 +2076,7 @@
     if (!st) { return; } // tela inicial: atalhos do jogo desligados
     if (c === 'title') { toTitle(); return; }
     if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(); } }
+    else if ((c === 'macro' || c === 'rules') && semMacro()) { return; } // a macro ainda não existe nesta parte da campanha
     else if (c === 'rules') { toggle('w-rules', renderRules); }
     else if (c === 'menu') { toggle('w-menu'); }
     else if (c === 'fullscreen') { toggleFull(); }

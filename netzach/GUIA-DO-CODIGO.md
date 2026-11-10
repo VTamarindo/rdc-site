@@ -108,6 +108,7 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   altura e ângulo em `DEITADO`, em `js/view.js`). O trigo balança com o vento no sombreador (`VS`, `vf`), no campo inteiro.
 - **Sons:** feitos por código em `js/som.js` (sem arquivos). A campanha pede pelo nome em `som()` (`SONS`, em `js/campanha.js`). O navegador só toca som depois do primeiro clique ou tecla, então a música da tela inicial começa aí.
 - **Fim do capítulo:** o save marca `st.camp.fim`; quem abre esse save depois começa na praça. A cena do pasto ainda vai ser ligada.
+- **Sem macro até o mundo aberto:** enquanto o capítulo não termina, a macro não existe: `semMacro()` em `js/ui.js` põe a classe `sem-macro` no `body`, que esconde tudo o que tem a classe `macro-ui` em `index.html` (botões Macro e Caminhada do mapa, ajuda e atalhos), e G, R e RB não fazem nada. Para esconder mais alguma coisa, dê a ela a classe `macro-ui`.
 - **Testar uma cena:** no console, `NZ.debug.state().camp` mostra a cena e o passo.
 
 ### Código

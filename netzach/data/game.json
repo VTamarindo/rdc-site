@@ -15,7 +15,8 @@
     "seguir": 2.5,
     "paradoSeg": 5,
     "alcance": 3.6,
-    "colher": [5, 15],
+    "colher": 5,
+    "puxaoSeg": 0.55,
     "acordou": "(Nome) acordou ao ouvir crianças rindo.",
     "missoes": {
       "figura": "Siga a figura misteriosa",
@@ -29,7 +30,7 @@
       "toque": "Para colher: chegue perto do trigo e toque nele (ou toque em Interagir). Ande com o analógico.",
       "controle": "Para colher: chegue perto do trigo, olhe para ele e aperte A. Ande com o analógico esquerdo."
     },
-    "naoFuja": "O fazendeiro chamou você de volta ao campo.",
+    "naoFuja": "O fazendeiro puxou você de volta para o campo de trigo.",
     "feito": "Missão completada",
     "ficaNoPasto": "c01_trigo_terminar_o_campo",
     "pasto": { "missao": "Encontre o fazendeiro perto do pasto", "prog": "em breve" },
@@ -276,7 +277,7 @@
       ]
     },
     "_plantacao": "Retalhos das plantações (vila.json → fields): cada faixa vira retalhos de ~8 m; colhido, o retalho fica de terra arada até voltar (respawn em s).",
-    "trigo": { "name": "Trigo", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "trigo", "n": 2, "chance": 1 }, { "item": "trigo", "n": 1, "chance": 0.5 }] },
+    "trigo": { "name": "Trigo", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "trigo", "n": 1, "chance": 1 }] },
     "cebola": { "name": "Cebolas", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "cebola", "n": 2, "chance": 1 }, { "item": "cebola", "n": 1, "chance": 0.5 }] },
     "nabo": { "name": "Nabos", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "nabo", "n": 2, "chance": 1 }, { "item": "nabo", "n": 1, "chance": 0.5 }] },
     "alho_poro": { "name": "Alho-poró", "gatherSec": 3, "respawn": 600, "drops": [{ "item": "alho_poro", "n": 2, "chance": 1 }] }

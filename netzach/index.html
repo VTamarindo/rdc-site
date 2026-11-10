@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-8">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-11">
 </head>
 <body>
 <div id="app">
@@ -82,14 +82,14 @@
     <header><h2>Mapa da vila</h2><button type="button" class="x" data-close>Fechar</button></header>
     <div class="mapbox">
       <canvas id="bigmap" width="560" height="560"></canvas>
-      <div id="map-menu" class="popmenu" role="menu" aria-label="Macro" hidden>
+      <div id="map-menu" class="popmenu macro-ui" role="menu" aria-label="Macro" hidden>
         <button type="button" role="menuitem" id="mm-pick">Escolher área</button>
         <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
         <button type="button" role="menuitem" id="mm-rules">Regras</button>
         <button type="button" role="menuitem" id="mm-pause">Pausar macro</button>
         <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mm-def" data-tip="Torna o macro como navegação no mapa como o padrão">Padrão</button>
       </div>
-      <div id="map-walk-menu" class="popmenu" role="menu" aria-label="Caminhada" hidden>
+      <div id="map-walk-menu" class="popmenu macro-ui" role="menu" aria-label="Caminhada" hidden>
         <button type="button" role="menuitem" id="mw-go">Caminhar</button>
         <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mw-def" data-tip="Torna a caminhada como navegação no mapa como o padrão">Padrão</button>
       </div>
@@ -102,8 +102,8 @@
       <small id="map-zval">1.0×</small>
     </div>
     <div class="maprow">
-      <button type="button" id="map-macro" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Macro (G)">Macro ▴</button>
-      <button type="button" id="map-walk" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Caminhada">Caminhada ▴</button>
+      <button type="button" id="map-macro" class="macro-ui" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Macro (G)">Macro ▴</button>
+      <button type="button" id="map-walk" class="macro-ui" aria-haspopup="menu" aria-expanded="false" aria-pressed="false" title="Caminhada">Caminhada ▴</button>
       <p id="map-hint" class="hint" aria-live="polite"></p>
     </div>
     <div id="map-cur" hidden></div><!-- cursor do controle: anda pela janela inteira, por cima de tudo -->
@@ -254,9 +254,9 @@
         <div class="only-pc">
           <p><b>Andar:</b> W e S, frente e trás · A e D, para os lados · ← e →, girar. Arraste o mouse sobre a tela para olhar.</p>
           <p><b>Interagir:</b> clique numa pessoa, árvore, veio, animal, plantação, vaca ou ovelha, no quadro de avisos ou no baú, ou aperte E para o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
-          <p><b>Mapa:</b> clique no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A barra de zoom aproxima e afasta o mapa grande, e arrastar com o mouse move o mapa. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</p>
-          <p><b>Macro:</b> aperte G: o mapa abre pronto, e o próximo clique marca a área onde ele trabalha sozinho. Com a macro trabalhando, G pausa, assim como andar com o teclado ou clicar numa árvore, veio ou animal. No botão Macro do mapa ficam Escolher área, Usar a área anterior e Regras. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
-          <p><b>Regras:</b> aperte R. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
+          <p><b>Mapa:</b> clique no mapa pequeno, no canto, ou aperte M. Clique num ponto: o personagem anda até lá sozinho. Andar com o teclado interrompe. A barra de zoom aproxima e afasta o mapa grande, e arrastar com o mouse move o mapa.<span class="macro-ui"> A opção Padrão, nos botões Macro e Caminhada, escolhe o que o clique no mapa faz.</span></p>
+          <p class="macro-ui"><b>Macro:</b> aperte G: o mapa abre pronto, e o próximo clique marca a área onde ele trabalha sozinho. Com a macro trabalhando, G pausa, assim como andar com o teclado ou clicar numa árvore, veio ou animal. No botão Macro do mapa ficam Escolher área, Usar a área anterior e Regras. Com a macro como padrão, o clique no mapa já marca a área, e um clique com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
+          <p class="macro-ui"><b>Regras:</b> aperte R. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
           <p><b>Personagem:</b> I abre no equipamento e B na bolsa; o botão fica na parte de baixo da tela. No Equipamento você veste e tira armas e roupas, troca a postura (T) e bebe poção (F). Em Atributos, cada nível dá pontos para distribuir.</p>
         </div>
         <div class="only-pad">
@@ -264,24 +264,24 @@
           <p><b>Interagir:</b> A usa o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
           <p><b>Janelas:</b> direcional ou analógico esquerdo mudam de botão, A confirma, B volta, e o analógico direito rola o texto. Nas barras, esquerda e direita mudam o valor. Num campo de texto, A abre o teclado.</p>
           <p><b>Mapa:</b> View abre. O analógico esquerdo leva o cursor por toda a janela do mapa, e A usa o que estiver embaixo dele: marca o ponto no mapa ou aperta o botão. Na barra de zoom, segure A e mova o cursor; LT e RT também mudam o zoom, e o analógico direito move o mapa.</p>
-          <p><b>Macro:</b> RB abre o mapa pronto para marcar a área e, com a macro trabalhando, pausa. As Regras ficam no botão Macro do mapa.</p>
+          <p class="macro-ui"><b>Macro:</b> RB abre o mapa pronto para marcar a área e, com a macro trabalhando, pausa. As Regras ficam no botão Macro do mapa.</p>
           <p><b>Atalhos:</b> Menu abre este menu · Y personagem · X poção · direcional para cima recolhe ou mostra as missões · clique no analógico direito troca a postura.</p>
         </div>
         <div class="only-touch">
           <p><b>Andar:</b> o padrão é o analógico virtual: empurre para andar para frente, para trás e para os lados. Arraste na tela para olhar. Se preferir botões em cruz, troque no menu, em Controles.</p>
           <p><b>Interagir:</b> toque numa pessoa, árvore, veio, animal, plantação, vaca ou ovelha, no quadro de avisos ou no baú, ou use o botão Interagir para o que estiver à sua frente. É preciso estar perto. O combate é automático quando o alvo está ao alcance.</p>
-          <p><b>Mapa:</b> toque no mapa pequeno, no canto, para abrir o mapa grande. Use a barra de zoom para aproximar e afastar, e arraste com o dedo para mover o mapa. Toque num ponto: o personagem anda até lá sozinho. Andar por conta própria interrompe. A opção Padrão, nos botões Macro e Caminhada, escolhe o que o toque no mapa faz.</p>
-          <p><b>Macro:</b> no mapa grande, toque em Macro e depois em Escolher área: o próximo toque marca onde ele trabalha sozinho. Usar a área anterior retoma o último lugar, e Pausar macro para o trabalho, assim como andar por conta própria ou tocar numa árvore, veio ou animal. Com a macro como padrão, o toque no mapa já marca a área, e um toque com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
-          <p><b>Regras:</b> ficam no botão Macro do mapa. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
+          <p><b>Mapa:</b> toque no mapa pequeno, no canto, para abrir o mapa grande. Use a barra de zoom para aproximar e afastar, e arraste com o dedo para mover o mapa. Toque num ponto: o personagem anda até lá sozinho. Andar por conta própria interrompe.<span class="macro-ui"> A opção Padrão, nos botões Macro e Caminhada, escolhe o que o toque no mapa faz.</span></p>
+          <p class="macro-ui"><b>Macro:</b> no mapa grande, toque em Macro e depois em Escolher área: o próximo toque marca onde ele trabalha sozinho. Usar a área anterior retoma o último lugar, e Pausar macro para o trabalho, assim como andar por conta própria ou tocar numa árvore, veio ou animal. Com a macro como padrão, o toque no mapa já marca a área, e um toque com ela trabalhando muda a área; para só andar, use Caminhada e depois Caminhar.</p>
+          <p class="macro-ui"><b>Regras:</b> ficam no botão Macro do mapa. A primeira regra ligada que for verdadeira decide o que ele faz. Como vêm de início, ele bebe poção e descansa na praça quando a vida baixa, e volta à praça e para quando a bolsa enche.</p>
           <p><b>Personagem:</b> o botão com o rosto, na parte de baixo da tela, abre o equipamento, a bolsa e os atributos. Lá você veste e tira armas e roupas, troca a postura, bebe poção e distribui os pontos de cada nível.</p>
         </div>
         <p><b>Animais:</b> coelhos só revidam quando atacados, e os veados correm de quem chega perto (cansam depois de um tempo). Lobos, escorpiões e serpentes atacam quem entra no território deles, e a picada da serpente e do escorpião envenena; o padre cura. Cada região tem os seus: floresta, pedregal e campina.</p>
         <p><b>Fazenda:</b> as vacas ficam no pasto e as ovelhas no aprisco, ao norte da vila. Com um balde (no ferreiro) você tira leite e com uma tesoura de tosquia (no alfaiate) tira lã; cada animal precisa de um tempo para dar de novo. Nas plantações dá para colher trigo, cebola, nabo e alho-poró. Leite, lã e colheita são vendidos na taverna, na padaria e com o alfaiate.</p>
-        <p><b>Regras da macro:</b> além de caçar, cortar e minerar, há regras para colher a plantação e para tirar leite e tosquiar dentro da área (esta só com o balde ou a tesoura na bolsa).</p>
+        <p class="macro-ui"><b>Regras da macro:</b> além de caçar, cortar e minerar, há regras para colher a plantação e para tirar leite e tosquiar dentro da área (esta só com o balde ou a tesoura na bolsa).</p>
         <p class="only-xbox"><b>No Xbox:</b> se o controle mover um cursor em vez do jogo, segure o botão Menu até abrir o menu do navegador e escolha a opção de controles de jogo. Com ela ligada, o ícone de controle na barra de endereço fica azul, sem o X vermelho.</p>
         <p><b>Missões diárias:</b> aceite no quadro de avisos e coloque o material no baú ao lado. Dá para entregar aos poucos: a recompensa do quadro sai ao completar a missão, e à meia-noite a missão incompleta paga só o que foi entregue. Reiniciam todo dia às 00:01.</p>
         <p><b>Tempo fora:</b> o jogo calcula o que aconteceu enquanto você não olhava, até 4 horas.</p>
-        <p class="small only-pc">M mapa · G macro · R regras · I equipamento · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
+        <p class="small only-pc">M mapa · <span class="macro-ui">G macro · R regras · </span>I equipamento · B bolsa · T postura · F poção · E interagir · Esc fecha janelas ou abre o menu</p>
       </div>
       <div class="menu-side">
         <h3>Tela</h3>
@@ -321,13 +321,13 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-8"></script>
-<script src="js/sim.js?v=20261110-8"></script>
-<script src="js/ceu.js?v=20261110-8"></script>
-<script src="js/view.js?v=20261110-8"></script>
-<script src="js/controle.js?v=20261110-8"></script>
-<script src="js/som.js?v=20261110-8"></script>
-<script src="js/campanha.js?v=20261110-8"></script>
-<script src="js/ui.js?v=20261110-8"></script>
+<script src="js/conta.js?v=20261110-11"></script>
+<script src="js/sim.js?v=20261110-11"></script>
+<script src="js/ceu.js?v=20261110-11"></script>
+<script src="js/view.js?v=20261110-11"></script>
+<script src="js/controle.js?v=20261110-11"></script>
+<script src="js/som.js?v=20261110-11"></script>
+<script src="js/campanha.js?v=20261110-11"></script>
+<script src="js/ui.js?v=20261110-11"></script>
 </body>
 </html>

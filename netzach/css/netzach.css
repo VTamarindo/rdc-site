@@ -494,3 +494,5 @@ body.touch #cena-dica { bottom: auto; top: 8px; max-width: 40%; font-size: 13px;
 #t-cfg label { color: var(--dim); font-size: 15px; font-variant: small-caps; letter-spacing: .04em; display: flex; justify-content: space-between; }
 #t-cfg input[type=range] { width: 100%; accent-color: var(--wax); }
 #t-cfg > button:last-child { margin-top: 6px; }
+/* campanha antes do mundo aberto: a macro não existe ainda (js/ui.js, semMacro) */
+body.sem-macro .macro-ui { display: none !important; }

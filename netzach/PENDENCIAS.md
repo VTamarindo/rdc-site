@@ -76,6 +76,8 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   - na campanha o personagem começa **sem a espada** e com 0 moedas e 2 poções (`game.json` → `campanha.semArma`, `itens`);
   - "Terminar o campo" dá as 15 moedas e 45 de experiência **de uma vez**, ao levar o trigo à carroça (o roteiro fala em
     1 moeda e 3 de experiência por fardo);
+  - "Terminar o campo" pede o campo todo: os 20 retalhos (5 × 4), cada um dá 1 feixe, e no capítulo o campo não volta a
+    crescer (volta depois do fim, em 10 min). A recompensa continua a do roteirizador, mesmo se o jogador colheu mais de 5 antes;
   - "Ficar parado" e "Seguir" mostram a mesma fala do roteirizador; "Colher o trigo" é escolhida ao começar a colher, e
     "Tentar fugir" ao sair do campo (com 5 m de folga). Fugir depois do tutorial só traz de volta, sem cena;
   - a figura misteriosa usa a figura do rapaz pintada de escuro, e o fazendeiro é o fazendeiro velho da horta;

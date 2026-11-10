@@ -1154,10 +1154,12 @@
     if (p.combatT > G.player.regenDelaySec && p.hp < maxHp(w, p)) { var s = stats(w, p); p.hp = Math.min(s.hp, p.hp + G.player.regenPerSec * s.regen * dt); }
 
     // recursos voltam
-    // pela lista fixa do mundo, não por for-in no save: com centenas de árvores, o recálculo do tempo fora pesa
+    // pela lista fixa do mundo, não por for-in no save: com centenas de árvores, o recálculo do tempo fora pesa.
+    // Campanha: o campo do capítulo (st.camp.semVolta) só volta a crescer depois do fim dele, para "termine o campo" ser o campo todo
+    var semVolta = st.camp && !st.camp.fim ? st.camp.semVolta : null;
     for (var k = 0, nd = w.nodes; k < nd.length; k++) {
       var ns = st.nodes[nd[k].id];
-      if (!ns.alive) { ns.left -= dt; if (ns.left <= 0) { ns.alive = true; this.emit(st, { type: 'regrow', id: nd[k].id }); } }
+      if (!ns.alive && (!semVolta || nd[k].field !== semVolta)) { ns.left -= dt; if (ns.left <= 0) { ns.alive = true; this.emit(st, { type: 'regrow', id: nd[k].id }); } }
     }
     for (var i = 0; i < st.mobs.length; i++) { this.mobTick(st, st.mobs[i], dt); }
     // tempo fora: a briga e os desmaios ficam congelados até o jogador voltar (ninguém é preso ou foge sem estar olhando)
