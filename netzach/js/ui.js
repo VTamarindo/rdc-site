@@ -415,19 +415,21 @@
     if (saved) { beginAway(lastReal); endAway(clockNow()); } else if (!campanha()) { toast('Bem-vindo à vila, ' + name + '.', 3); }
     save();
   }
-  // jogo novo: a tela inicial escurece até o preto (o mesmo do acordar da campanha) e o jogo começa no escuro.
-  // A campanha segue dali com o texto e o clarear dela; o modo livre clareia aqui (clareia). Usa o #cena-preto da campanha
+  // jogo novo: a janela da tela inicial some devagar sobre o fundo preto, junto com a música do menu, e o jogo começa no
+  // escuro. A campanha segue dali com o texto, as crianças e o clarear dela; o modo livre clareia aqui (clareia)
   var ESCURECE_SEG = 1.4, CLAREIA_SEG = 1.2, escurecendo = false;
   function escurece(fim) {
     if (escurecendo) { return; } // clique duplo no botão: um jogo só
     escurecendo = true;
-    var el = $('cena-preto'); clearTimeout(el._t);
-    $('cena-preto-t').textContent = '';
-    el.hidden = false; el.style.zIndex = 9; // acima da tela inicial
-    el.style.transition = 'none'; el.style.opacity = 0; void el.offsetWidth;
-    el.style.transition = 'opacity ' + ESCURECE_SEG + 's ease-in'; el.style.opacity = 1;
-    if (NZ.som) { NZ.som.musica(false); } // a música some junto com a imagem
-    setTimeout(function () { el.style.zIndex = ''; escurecendo = false; fim(); }, ESCURECE_SEG * 1000 + 60);
+    var el = document.querySelector('#w-title .win');
+    el.style.transition = 'opacity ' + ESCURECE_SEG + 's ease-in'; el.style.opacity = 0;
+    if (NZ.som) { NZ.som.musica(false, ESCURECE_SEG + 0.4); } // a música do menu termina junto com a janela
+    setTimeout(function () {
+      var pr = $('cena-preto'); clearTimeout(pr._t); $('cena-preto-t').textContent = '';
+      pr.style.transition = 'none'; pr.style.opacity = 1; pr.hidden = false; // o jogo começa no escuro
+      escurecendo = false; fim();
+      el.style.transition = 'none'; el.style.opacity = ''; // a janela volta inteira para a próxima vez que a tela inicial abrir
+    }, ESCURECE_SEG * 1000 + 60);
   }
   function clareia() {
     if (campanha()) { return; } // a campanha tem o próprio clarear (o acordar)
@@ -601,12 +603,12 @@
     return o;
   }
   // som do campo de trigo (js/som.js, campo): a distância até o trigo mais perto e de que lado ele está em relação à câmera,
-  // dez vezes por segundo. Andando dentro do trigo, o farfalhar cresce; numa casa, fica abafado. Na tela inicial também (o fundo
-  // dela é deitado no trigo, como o começo da campanha): o som continua sem corte do menu para o jogo
+  // dez vezes por segundo. Andando dentro do trigo, o farfalhar cresce; numa casa, fica abafado. Na tela inicial (a música de
+  // aventura) e no escuro do acordar da campanha (camp.escuro: as crianças rindo), nada: ele entra com a imagem
   var ambT = 0, ambPos = null, trigos = null;
   function ambiente(dt) {
-    var S = NZ.som, s = st || vitrine; if (!S || !S.campo) { return; }
-    if (!s) { if (ambPos) { S.campo(null); ambPos = null; } return; }
+    var S = NZ.som, s = st; if (!S || !S.campo) { return; }
+    if (!s || camp.escuro()) { if (ambPos) { S.campo(null); ambPos = null; } return; }
     ambT += dt; if (ambT < 0.1) { return; }
     var p = s.player, best = null, bd = 1e9, cl = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
     trigos = trigos || (world.vila.fields || []).filter(function (f) { return f.kind === 'trigo'; });
@@ -630,10 +632,8 @@
     if (aba.fechada) { return; } // passou o jogo para outra aba: nada roda nem desenha aqui
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
     ambiente(fdt);
-    if (!st) { // tela inicial: deitado no trigo, olhando o céu (o começo da campanha), e o controle só navega
+    if (!st) { // tela inicial: fundo preto (#w-title), com a música de aventura; o mundo não é desenhado, e o controle só navega
       ctrl.tick(fdt);
-      view.yaw = G.campanha.inicio.yaw * Math.PI / 180 + Math.sin(t / 7000) * 0.05; view.pitch = -0.04;
-      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow(), hora: horaFixa(), deitado: 1, semArma: true });
       return;
     }
     var now = clockNow(), gap = (now - lastReal) / 1000;

@@ -11,6 +11,7 @@
     var cenas = C.cenas || {}, inicial = (C.projeto && C.projeto.cena_inicial) || Object.keys(cenas)[0];
     var $ = function (id) { return document.getElementById(id); };
     var st = null, p = null;
+    var escuro = false; // o escuro do acordar: sem o vento no trigo ainda (js/ui.js, ambiente)
     var trava = false, deit = 0, deitAnim = null, giro = null, fila = [], parado = 0, ultimo = null, fugindo = false;
     var campo = (world.vila.fields || []).filter(function (f) { return f.id === CF.campo; })[0];
 
@@ -40,8 +41,9 @@
     function abre(s, volta) {
       st = s; p = s ? s.player : null; fila = []; trava = false; deit = 0; deitAnim = null; giro = null; parado = 0; ultimo = null; fugindo = false;
       if (s && s.camp && !s.camp.fim) { s.camp.semVolta = CF.campo; } // saves de antes: o campo também para de crescer de novo
-      preto(0, '', 0); dica(null); fechaCaixa(); esconde();
+      preto(0, '', 0); dica(null); fechaCaixa(); esconde(); escuro = false;
       if (!ativa()) { return; }
+      if (!S().fim && volta) { musica('campo'); } // save reaberto no capítulo do trigo: a música calma volta (no jogo novo, entra com a imagem do acordar)
       var c = S();
       if (c.fim) { // capítulo terminado: quem volta ao jogo depois começa na praça (a cena do pasto ainda vai ser ligada)
         if (volta) { var sp = world.vila.spawn; p.x = sp.x; p.z = sp.z; }
@@ -108,7 +110,7 @@
       falas(c.falas, botoes(c), c.titulo);
     }
     function fimCapitulo() {
-      fila = []; trava = false; dica(null); fechaCaixa();
+      fila = []; trava = false; dica(null); fechaCaixa(); musica(false);
       var ok = S().cena === CF.ficaNoPasto;
       S().fim = true; S().cena = 'pasto'; S().passo = '';
       S().missao = ok ? { t: CF.pasto.missao, p: CF.pasto.prog } : null;
@@ -193,6 +195,7 @@
     }
     // sons (js/som.js, feitos por código): o nome da cena pede o som; sem Web Audio, fica mudo
     var SONS = { missao: 'missao', criancas_rindo: 'criancas' };
+    function musica(nome) { if (NZ.som) { NZ.som.musica(nome, 4); } } // 'campo' ou false (apaga em 4 s)
     function som(nome) { var S = NZ.som, f = S && S[SONS[nome]]; if (f) { f(); } }
 
     // ---------- tempo: passos da cena em sequência (segundos do jogo na tela, não salvos) ----------
@@ -248,10 +251,12 @@
           view.poeAtor('figura', F.x, F.z); poeCarroca(false); S().n = 0;
           if (voltou && S().passo === 'figura') { missao(CF.missoes.figura); return; }
           p.x = CF.inicio.x; p.z = CF.inicio.z; view.yaw = CF.inicio.yaw * Math.PI / 180; view.pitch = -0.05;
-          S().passo = 'acordando'; trava = true; deit = 1;
-          preto(1, '', 0); // no escuro, só o vento e o trigo por somAntesSeg; depois o texto e as crianças rindo
-          depois(CF.somAntesSeg === undefined ? 2 : CF.somAntesSeg, function () { preto(1, fill(CF.acordou), 0); som('criancas_rindo'); });
-          depois(3.4, function () { preto(0, undefined, 2.6); });
+          S().passo = 'acordando'; trava = true; deit = 1; escuro = true;
+          // no escuro (a música do menu acabou de terminar): somAntesSeg de silêncio, o texto e as crianças rindo; com a imagem,
+          // entram a música calma do campo (em laço até o fim do capítulo) e o vento no trigo
+          preto(1, '', 0);
+          depois(CF.somAntesSeg === undefined ? 0.6 : CF.somAntesSeg, function () { preto(1, fill(CF.acordou), 0); som('criancas_rindo'); });
+          depois(3.4, function () { preto(0, undefined, 2.6); escuro = false; musica('campo'); });
           depois(2.8, function () { levanta(2.2); });
           depois(2.4, function () { trava = false; S().passo = 'figura'; parado = 0; ultimo = null; missao(CF.missoes.figura); api.save(); });
         },
@@ -423,6 +428,7 @@
       novo: novo, abre: abre, tick: tick, evento: evento, interage: interage, marcas: marcas, objetivo: objetivo, ativa: ativa,
       trava: function () { return ativa() && trava; },
       deitado: function () { return ativa() ? deit : 0; },
+      escuro: function () { return ativa() && escuro; },
       missao: function () { return ativa() ? S().missao : null; },
       fim: function () { return ativa() && S().fim; },
       perto: function () { // atores com quem o E/A conversa (os visíveis)

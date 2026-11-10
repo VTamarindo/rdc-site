@@ -1,5 +1,7 @@
 /* Netzach · sons feitos por código (Web Audio), provisórios, para testar a experiência:
-   - musica(true/false): a trilha da tela inicial, um ciclo de 24 s que se repete (acordes longos, caixinha de música, eco);
+   - musica('menu' | 'campo' | false): a trilha que toca (uma de cada vez, com troca suave). 'menu': a da tela inicial,
+     medieval e épica (coro grave, tambores de guerra, cordas e trompas; 40 s em laço). 'campo': a do começo da campanha,
+     calma (acordes longos, caixinha de música, eco; 24 s em laço). false: a música some devagar;
    - criancas(): crianças rindo ao longe (o acordar da campanha);
    - missao(): o toque de missão completada;
    - campo(...): o vento e o trigo farfalhando, com volume e lado pela distância até o campo (som 3D, ver "ambiente");
@@ -64,8 +66,11 @@
     if (escondido) { if (ctx.state === 'running') { ctx.suspend(); } } else { destrava(); }
   });
 
-  // ---------- trilha da tela inicial ----------
-  // 8 compassos de 3 s = 24 s. Cada um: o baixo, o acorde (notas MIDI) e a melodia da caixinha [segundo no compasso, nota]
+  // ---------- trilhas ----------
+  // cada trilha é uma lista de compassos (comp segundos cada) que se repete; o tocador marca os compassos uns segundos antes
+  // de tocarem (aos poucos, para não criar milhares de sons de uma vez) e troca de trilha apagando a anterior devagar
+
+  // 'campo': a calma do começo da campanha. 8 compassos de 3 s: o baixo, o acorde (notas MIDI) e a caixinha [segundo, nota]
   var CICLO = [
     { b: 41, a: [53, 57, 60, 64, 67], m: [[0, 76], [0.75, 79], [1.5, 84], [2.25, 83]] }, // Fá com sétima e nona
     { b: 40, a: [52, 55, 59, 62], m: [[0, 79], [1.5, 76]] },                           // Mi menor
@@ -76,8 +81,6 @@
     { b: 46, a: [58, 62, 65, 69], m: [[0, 82], [0.75, 77], [1.5, 74], [2.25, 77]] },   // Si bemol
     { b: 48, a: [55, 60, 65, 67], m: [[0, 79], [1.5, 77], [2.25, 76]] }                // Dó suspenso
   ];
-  var COMP = 3, DUR = CICLO.length * COMP;
-  var querMusica = false, musica = null; // musica: { bus, lfo, ate (até onde já está marcado), timer }
   function pad(bus, lfo, m, t, dur, vol) {
     (TOQUE ? [0] : [-7, 7]).forEach(function (cents) { // no celular, uma voz por nota (metade do trabalho)
       var o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
@@ -95,30 +98,118 @@
       o.connect(g); g.connect(bus); g.connect(eco); o.start(t); o.stop(t + h[2] + 0.05);
     });
   }
-  function marcaCiclo(M, t0) {
-    CICLO.forEach(function (c, i) {
-      var t = t0 + i * COMP;
-      c.a.forEach(function (m) { pad(M.bus, M.lfo, m, t, COMP, 0.03); });
-      var o = ctx.createOscillator(), g = ctx.createGain(); // baixo, bem macio
-      o.type = 'sine'; o.frequency.value = hz(c.b);
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.12, t + 0.6); g.gain.linearRampToValueAtTime(0.0001, t + COMP + 0.8);
-      o.connect(g); g.connect(M.bus); o.start(t); o.stop(t + COMP + 0.9);
-      c.m.forEach(function (n) { caixinha(M.bus, n[1], t + n[0] + (Math.random() - 0.5) * 0.03, 0.085); });
+  function compassoCampo(M, i, t) {
+    var c = CICLO[i], COMP = 3;
+    c.a.forEach(function (m) { pad(M.bus, M.lfo, m, t, COMP, 0.03); });
+    var o = ctx.createOscillator(), g = ctx.createGain(); // baixo, bem macio
+    o.type = 'sine'; o.frequency.value = hz(c.b);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.12, t + 0.6); g.gain.linearRampToValueAtTime(0.0001, t + COMP + 0.8);
+    o.connect(g); g.connect(M.bus); o.start(t); o.stop(t + COMP + 0.9);
+    c.m.forEach(function (n) { caixinha(M.bus, n[1], t + n[0] + (Math.random() - 0.5) * 0.03, 0.085); });
+  }
+
+  // 'menu': medieval e épica, em Ré menor, 96 batidas por minuto, 16 compassos de 4 tempos (40 s). Metade A: tambores de
+  // guerra, cordas graves martelando e o coro de vozes graves crescendo; metade B: as trompas com o tema. No fim de cada
+  // metade, um rufar de tímpanos puxa a volta. Melodia própria (no clima das trilhas nórdicas, sem copiar nenhuma)
+  var BAT = 60 / 96;
+  // acorde de cada compasso: o baixo (MIDI) e as notas do coro
+  var EPICO = [
+    [38, [50, 53, 57]], [38, [50, 53, 57]], [34, [50, 53, 58]], [36, [48, 52, 55]],   // Ré m · Ré m · Si♭ · Dó
+    [38, [50, 53, 57]], [38, [50, 53, 57]], [43, [50, 55, 58]], [45, [49, 52, 57]],   // Ré m · Ré m · Sol m · Lá
+    [38, [50, 53, 57]], [34, [50, 53, 58]], [41, [48, 53, 57]], [36, [48, 52, 55]],   // Ré m · Si♭ · Fá · Dó
+    [38, [50, 53, 57]], [34, [50, 53, 58]], [36, [48, 52, 55]], [45, [49, 52, 57]]    // Ré m · Si♭ · Dó · Lá
+  ];
+  // o tema das trompas (metade B, compassos 8 a 15): [tempo no compasso, nota MIDI, duração em tempos]
+  var TEMA = [
+    [[0, 62, 2], [2, 65, 1], [3, 69, 1]], [[0, 70, 3], [3, 69, 1]], [[0, 69, 2], [2, 67, 1], [3, 65, 1]], [[0, 64, 3], [3, 60, 1]],
+    [[0, 62, 2], [2, 65, 1], [3, 69, 1]], [[0, 74, 2], [2, 72, 1], [3, 70, 1]], [[0, 72, 2], [2, 70, 1], [3, 67, 1]], [[0, 69, 4]]
+  ];
+  var ruidoBuf = null;
+  function ruidoCurto() {
+    if (ruidoBuf) { return ruidoBuf; }
+    var n = Math.floor(ctx.sampleRate * 0.5); ruidoBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    var d = ruidoBuf.getChannelData(0); for (var i = 0; i < n; i++) { d[i] = Math.random() * 2 - 1; }
+    return ruidoBuf;
+  }
+  function tambor(bus, t, vol, grave) { // tambor de guerra: o couro (seno que cai de tom) e a pancada (ruído abafado)
+    var o = ctx.createOscillator(), g = ctx.createGain(), f0 = grave ? 62 : 96;
+    o.type = 'sine'; o.frequency.setValueAtTime(f0 * 1.6, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.09); o.frequency.exponentialRampToValueAtTime(f0 * 0.8, t + 0.6);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + (grave ? 0.75 : 0.4));
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.8);
+    var s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    s.buffer = ruidoCurto(); lp.type = 'lowpass'; lp.frequency.value = grave ? 420 : 900;
+    ng.gain.setValueAtTime(vol * 0.7, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    s.connect(lp); lp.connect(ng); ng.connect(bus); s.start(t, Math.random() * 0.3, 0.15);
+  }
+  function aro(bus, t, vol) { // a caixa de pele, seca, nos tempos 2 e 4
+    var s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = ruidoCurto(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.9;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    s.connect(bp); bp.connect(g); g.connect(bus); s.start(t, Math.random() * 0.3, 0.16);
+  }
+  function corda(bus, m, t, dur, vol) { // cordas graves em colcheias: serra abafada, ataque curto
+    var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.value = hz(m);
+    f.type = 'lowpass'; f.frequency.setValueAtTime(1300, t); f.frequency.exponentialRampToValueAtTime(500, t + dur); f.Q.value = 1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(vol * 0.35, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
+  }
+  // coro de vozes graves cantando "ah": um pulso rico passado por três formantes da vogal, com vibrato e entrada lenta
+  var VOGAL = [[730, 6, 1], [1090, 8, 0.5], [2440, 10, 0.18]];
+  function voz(bus, m, t, dur, vol, lfo) {
+    (TOQUE ? [0] : [-9, 9]).forEach(function (cents) {
+      var o = ctx.createOscillator(), soma = ctx.createGain(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = cents; lfo.connect(o.detune);
+      VOGAL.forEach(function (F) {
+        var bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = F[0]; bp.Q.value = F[1]; fg.gain.value = F[2];
+        o.connect(bp); bp.connect(fg); fg.connect(soma);
+      });
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.45); g.gain.setValueAtTime(vol, t + dur - 0.15); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.6);
+      soma.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.7);
     });
   }
+  function trompa(bus, m, t, dur, vol) { // metal: serra com o filtro abrindo devagar, oitava abaixo por baixo
+    [[0, 1], [-12, 0.45]].forEach(function (o8) {
+      var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = hz(m + o8[0]);
+      f.type = 'lowpass'; f.Q.value = 0.8; f.frequency.setValueAtTime(400, t); f.frequency.linearRampToValueAtTime(1900, t + 0.18); f.frequency.linearRampToValueAtTime(1300, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * o8[1], t + 0.09); g.gain.setValueAtTime(vol * o8[1] * 0.85, t + dur - 0.08); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.25);
+      o.connect(f); f.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.3);
+    });
+  }
+  function compassoMenu(M, i, t) {
+    var c = EPICO[i], B = i >= 8, fimMetade = i % 8 === 7, k;
+    // tambores de guerra: DUM . . DUM | DUM . DUM . (em colcheias); na metade B, mais forte
+    [[0, 1, true], [1.5, 0.7, true], [2, 0.85, true], [3, 0.6, false]].forEach(function (d) { tambor(M.bus, t + d[0] * BAT, (B ? 0.5 : 0.4) * d[1], d[2]); });
+    aro(M.bus, t + BAT, B ? 0.12 : 0.08); aro(M.bus, t + 3 * BAT, B ? 0.12 : 0.08);
+    if (fimMetade) { for (k = 0; k < 8; k++) { tambor(M.bus, t + 2 * BAT + k * BAT / 4, 0.12 + k * 0.05, k % 2 === 0); } } // o rufar
+    // cordas graves: oito colcheias, a fundamental e a oitava
+    for (k = 0; k < 8; k++) { corda(M.bus, c[0] + (k % 2 ? 12 : 0) + (k === 6 ? 7 : 0), t + k * BAT / 2, BAT / 2 * 0.9, B ? 0.075 : 0.06); }
+    // coro: a metade A começa só com a fundamental e a quinta e vai encorpando; a B canta o acorde inteiro
+    var notas = !B && i < 2 ? [c[1][0], c[1][2]] : c[1], vc = B ? 0.05 : 0.03 + i * 0.003;
+    notas.forEach(function (m) { voz(M.bus, m, t, 4 * BAT, vc, M.lfo); });
+    if (B) { TEMA[i - 8].forEach(function (n) { trompa(M.bus, n[1], t + n[0] * BAT, n[2] * BAT * 0.95, 0.07); }); }
+  }
+
+  var TRILHAS = {
+    menu: { comp: 4 * BAT, n: EPICO.length, compasso: compassoMenu, vol: 1, abafa: 5200, oscila: 0.9 },
+    campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9 }
+  };
+  var querMusica = null, musica = null; // musica: { nome, bus, lfo, osc, ate, i, timer }
   function tocaMusica() {
-    if (musica || !querMusica || !pronto()) { return; }
-    var bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 3200; // tudo um pouco abafado, como lembrança
+    if (!querMusica || (musica && musica.nome === querMusica) || !pronto()) { return; }
+    if (musica) { paraMusica(1.6); }
+    var T = TRILHAS[querMusica], bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = T.abafa; // a do campo, abafada como lembrança; a do menu, mais aberta
     bus.connect(lp); lp.connect(mestre); lp.connect(reverb);
-    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, VOL.musica * USER.musica), ctx.currentTime + 2.5);
-    lfo.frequency.value = 0.23; lg.gain.value = 9; lfo.connect(lg); lfo.start(); // "fita velha": a afinação oscila de leve
-    var M = musica = { bus: bus, lfo: lg, osc: lfo, ate: ctx.currentTime + 0.15 };
-    function adiante() { // marca o próximo ciclo 4 s antes do fim do atual, para não ter buraco
+    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, T.vol * USER.musica), ctx.currentTime + 2.5);
+    lfo.frequency.value = 0.23; lg.gain.value = T.oscila; lfo.connect(lg); lfo.start(); // a afinação oscila de leve (vibrato do coro, "fita velha" do campo)
+    var M = musica = { nome: querMusica, T: T, bus: bus, lfo: lg, osc: lfo, ate: ctx.currentTime + 0.15, i: 0 };
+    function adiante() { // marca os compassos dos próximos 4 s, um por um
       if (musica !== M) { return; }
-      while (M.ate < ctx.currentTime + 4) { marcaCiclo(M, M.ate); M.ate += DUR; }
+      while (M.ate < ctx.currentTime + 4) { T.compasso(M, M.i, M.ate); M.ate += T.comp; M.i = (M.i + 1) % T.n; }
     }
-    adiante(); M.timer = setInterval(adiante, 1000);
+    adiante(); M.timer = setInterval(adiante, 500);
   }
   function paraMusica(seg) {
     var M = musica; musica = null; if (!M) { return; }
@@ -231,14 +322,18 @@
   document.addEventListener('click', function (e) { var b = doMenu(e.target); if (b && !b.disabled) { clique(); } }, true);
 
   NZ.som = {
-    musica: function (on) { querMusica = !!on; if (on) { tocaMusica(); } else if (ctx) { paraMusica(2.5); } },
+    musica: function (nome, seg) { // 'menu', 'campo' (true = 'menu'), ou false para apagar devagar (seg segundos)
+      querMusica = nome === true ? 'menu' : (nome && TRILHAS[nome] ? nome : null);
+      if (querMusica) { tocaMusica(); } else if (ctx) { paraMusica(seg || 2.5); }
+    },
+    trilha: function () { return musica ? musica.nome : null; }, // para testes
     criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo,
     volume: function (k, v) {
       if (!(k in USER)) { return 0; }
       if (v === undefined) { return USER[k]; }
       USER[k] = Math.max(0, Math.min(1, +v || 0)); try { localStorage.setItem(KEY_VOL, JSON.stringify(USER)); } catch (e) { /* vale até fechar */ }
       if (ctx) {
-        var t = ctx.currentTime, g = k === 'musica' ? (musica && musica.bus.gain) : sfx.gain, alvo = k === 'musica' ? VOL.musica * USER.musica : VOL.sfx * USER.efeitos;
+        var t = ctx.currentTime, g = k === 'musica' ? (musica && musica.bus.gain) : sfx.gain, alvo = k === 'musica' ? (musica ? musica.T.vol : 1) * USER.musica : VOL.sfx * USER.efeitos;
         if (g) { g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(Math.max(0.0001, alvo), t + 0.15); }
       }
       return USER[k];

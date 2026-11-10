@@ -429,7 +429,7 @@ body.touch #q-toggle { min-height: 34px; }
 @media (max-width: 560px), (pointer: coarse) { .sell-back { align-items: flex-start; padding-top: 5vh; } }
 
 /* tela inicial: escurece a vila que gira atrás; o cartão é uma janela de pergaminho como as outras */
-#w-title { position: absolute; inset: 0; z-index: 8; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, rgba(10, 6, 2, .25), rgba(10, 6, 2, .72)); }
+#w-title { position: absolute; inset: 0; z-index: 8; overflow: hidden; background: #000; } /* tela inicial: fundo preto (a música de aventura toca) */
 #w-title .win { max-height: calc(100% - 16px); overflow-x: hidden; }
 /* aviso de jogo aberto em outra aba: cobre tudo, inclusive a tela inicial */
 #w-aba { position: absolute; inset: 0; z-index: 30; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, rgba(10, 6, 2, .55), rgba(10, 6, 2, .9)); }
