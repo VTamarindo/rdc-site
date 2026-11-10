@@ -31,7 +31,7 @@
     },
     "potionHeal": 20,
     "potionCooldown": 1.5,
-    "regenPerSec": 0.25,
+    "regenPerSec": 0.0833,
     "regenDelaySec": 5,
     "restRegenPerSec": 2.5,
     "faintHpFrac": 0.5,
