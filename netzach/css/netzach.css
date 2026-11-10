@@ -163,8 +163,21 @@ body.touch .only-pc { display: none; }
 #dev-tap { display: inline-block; touch-action: manipulation; }
 @media (max-width: 620px) { #w-menu .cols { grid-template-columns: 1fr; } .menu-side { position: static; order: -1; } }
 
-/* mapa: botões embaixo, menu da macro por cima do mapa */
-#w-map { --mapw: min(100%, calc(92vh - 224px), 560px); }
+/* mapa: o mapa à esquerda; no meio, as missões e os botões; na borda direita, a barra de zoom em pé (+ em cima, − embaixo).
+   O menu da macro fica por cima do mapa */
+#w-map { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 14px;
+  width: min(1000px, 96vw); --mapw: min(calc(92vh - 110px), 560px); }
+#w-map header { grid-column: 1 / -1; }
+#w-map .mapbox { grid-row: 2 / span 2; margin: 4px 0 0; }
+#w-map #map-missoes { grid-column: 2; grid-row: 2; min-height: 0; overflow: auto; margin-top: 4px; scrollbar-width: thin; scrollbar-color: rgba(74, 44, 20, .45) transparent; }
+#w-map .maprow { grid-column: 2; grid-row: 3; width: auto; margin: 8px 0 0; align-self: end; }
+#w-map .mapzoom { grid-column: 3; grid-row: 2 / span 2; width: auto; margin: 4px 0 0; flex-direction: column-reverse; justify-content: flex-start; gap: 6px; }
+#w-map .mapzoom [type=range] { flex: 1; width: 36px; height: auto; min-height: 80px; writing-mode: vertical-lr; direction: rtl; }
+#w-map .mapzoom [type=range]::-webkit-slider-runnable-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
+#w-map .mapzoom [type=range]::-moz-range-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
+#w-map .mapzoom [type=range]::-webkit-slider-thumb { width: 30px; height: 26px; margin-top: 0; margin-left: -10px; }
+#w-map .mapzoom [type=range]::-moz-range-thumb { width: 30px; height: 26px; }
+#w-map .popmenu::after { display: none; }
 .mapbox { position: relative; width: var(--mapw); margin: 4px auto 0; }
 #bigmap { display: block; width: 100%; height: auto; border: 3px double var(--edge); border-radius: 2px; cursor: crosshair; touch-action: none; background: var(--paper); box-shadow: 0 2px 8px rgba(40, 20, 5, .4); }
 #bigmap.armed { outline: 3px dashed #b07a10; outline-offset: 2px; }
@@ -180,23 +193,11 @@ body.touch .only-pc { display: none; }
 .maprow button.padrao::before { content: '★ '; color: var(--wax); }
 .maprow button.padrao[aria-pressed="true"]::before { color: inherit; }
 @media (max-width: 560px) { .maprow { column-gap: 8px; } .maprow button { padding: 8px 9px; font-size: 14px; } } /* os dois botões cabem na mesma linha */
-/* celular deitado: mapa à esquerda, controles à direita, para o mapa não ficar minúsculo */
+/* celular deitado: a janela quase do tamanho da tela, para o mapa não ficar minúsculo */
 @media (orientation: landscape) and (max-height: 520px) {
-  /* mapa à esquerda; no meio, as missões e os botões; na borda direita, a barra de zoom em pé (+ em cima, − embaixo) */
-  body.touch #w-map { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 12px; width: min(900px, 97vw); max-height: 96vh; padding: 6px 10px 10px 14px; --mapw: calc(96vh - 76px); }
-  body.touch #w-map header { grid-column: 1 / -1; }
-  body.touch #w-map .mapbox { grid-row: 2 / span 2; }
-  body.touch #w-map #map-missoes { grid-column: 2; grid-row: 2; min-height: 0; overflow: auto; margin-top: 4px; }
-  body.touch #w-map .maprow { grid-column: 2; grid-row: 3; width: auto; margin: 6px 0 0; align-self: end; }
-  body.touch #w-map .mapzoom { grid-column: 3; grid-row: 2 / span 2; width: auto; margin: 4px 0 0; flex-direction: column-reverse; justify-content: flex-start; gap: 6px; }
-  body.touch #w-map .mapzoom [type=range] { flex: 1; width: 36px; height: auto; min-height: 80px; writing-mode: vertical-lr; direction: rtl; }
-  body.touch #w-map .mapzoom [type=range]::-webkit-slider-runnable-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
-  body.touch #w-map .mapzoom [type=range]::-moz-range-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
-  body.touch #w-map .mapzoom [type=range]::-webkit-slider-thumb { width: 30px; height: 26px; margin-top: 0; margin-left: -10px; }
-  body.touch #w-map .mapzoom [type=range]::-moz-range-thumb { width: 30px; height: 26px; }
-  body.touch #w-map .popmenu::after { display: none; }
+  body.touch #w-map { column-gap: 12px; width: min(900px, 97vw); max-height: 96vh; padding: 6px 10px 10px 14px; --mapw: calc(96vh - 76px); }
 }
-/* missões no mapa (só no celular): a mesma lista de embaixo da barra de vida */
+/* missões no mapa: a mesma lista de embaixo da barra de vida; clicar numa abre a descrição e o botão de rastrear */
 #map-missoes h3 { margin: 0 0 4px; }
 #map-quests { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 #map-quests li { padding: 4px 0; border-bottom: 1px dotted rgba(74, 44, 20, .4); line-height: 1.35; }
@@ -539,3 +540,13 @@ body.touch #seta-obj svg { width: 27px; height: 27px; }
 #missao-nova.sai { opacity: 0; transition: opacity .6s; }
 body.touch #missao-nova { top: 52px; } /* no celular, abaixo da dica do tutorial (que fica no alto) */
 body.touch #missao-nova b { font-size: 18px; }
+/* missão na lista do mapa: o nome é um botão que abre a descrição e o botão de rastrear; o losango marca a rastreada */
+#map-quests li[data-m] { padding: 0; }
+#map-quests .m-tit { display: block; width: 100%; padding: 6px 4px; background: none; border: 0; box-shadow: none; border-radius: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#map-quests .m-tit:hover, #map-quests .m-tit:focus-visible { background: rgba(142, 28, 20, .07); }
+#map-quests .m-tit small { display: block; color: var(--dim); }
+#map-quests .m-tit i { font-style: normal; color: var(--gold); }
+#map-quests li.aberta .m-tit { font-weight: bold; }
+#map-quests .m-det { padding: 0 4px 8px; }
+#map-quests .m-det p { margin: 0 0 6px; font-size: 13.5px; color: var(--ink); }
+#map-quests .m-rast { padding: 5px 12px; font-size: 13.5px; }

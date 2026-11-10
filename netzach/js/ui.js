@@ -1200,7 +1200,7 @@
     var gt = st.player.goto;
     if (gt) { var gx = X(gt.x), gz = Z(gt.z), xq = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - xq, gz - xq); c.lineTo(gx + xq, gz + xq); c.moveTo(gx + xq, gz - xq); c.lineTo(gx - xq, gz + xq); c.stroke(); c.lineCap = 'butt'; }
     // objetivo da campanha: uma marca dourada no lugar dele; fora do que o mapa mostra, uma seta na borda apontando para ele
-    var ob = camp.objetivo();
+    var ob = alvoRastreado();
     if (ob && Math.hypot(ob.x - p.x, ob.z - p.z) >= (ob.perto || SETA.perto)) {
       var obx = X(ob.x), obz = Z(ob.z), mg = big ? 16 : 9, rr = big ? 6.3 : 4;
       c.strokeStyle = '#5a3a0a'; c.lineWidth = big ? 2 : 1.4; c.fillStyle = '#f0c64e';
@@ -1753,21 +1753,88 @@
     try { localStorage.setItem(QUESTS_KEY, questsClosed ? '1' : '0'); } catch (e) { /* sem armazenamento: vale até fechar */ }
     renderQuests();
   }
-  function renderQuests() {
-    if (!st) { return; }
-    var html = [], cm = camp.missao();
-    if (cm) { html.push('<li class="active camp">' + esc(cm.t) + (cm.p ? '<br><small>' + esc(cm.p) + '</small>' : '') + '</li>'); }
+  // ---------- missões: a lista, a descrição e o rastreio ----------
+  // ids: 'camp' (a campanha), 'q:<id>' (missão de um morador, game.json → quests), 'd:<id>' (missão do quadro, daily).
+  // st.rastreio: a missão que a seta e o mapa seguem. undefined = a primeira da lista (a campanha vem antes);
+  // null = nenhuma (o jogador desligou); um id que acabou volta para a primeira
+  function breve(t) { // a descrição curta: as primeiras frases, até uns 170 caracteres
+    var F = String(t || '').match(/[^.!?]+[.!?]+/g) || [String(t || '')], out = '';
+    for (var i = 0; i < F.length && (out + F[i]).length <= 170; i++) { out += F[i]; }
+    return (out || F[0]).trim();
+  }
+  function missoesAtivas() {
+    var L = [], cm = camp.missao();
+    if (cm) {
+      var D = G.campanha.missoesDesc || {}, k = Object.keys(G.campanha.missoes).filter(function (n) { return G.campanha.missoes[n] === cm.t; })[0];
+      L.push({ id: 'camp', cls: 'active camp', t: cm.t, p: cm.p || '', desc: (k && D[k]) || '' });
+    }
     sim.dailyActive(st).forEach(function (id) {
-      html.push('<li class="active">' + esc(G.daily.quests[id].title) + '<br><small>' + esc(dailyProg(id)) + '</small></li>');
+      var Q = G.daily.quests[id];
+      L.push({ id: 'd:' + id, cls: 'active', t: Q.title, p: dailyProg(id), desc: breve(Q.text) });
     });
     Object.keys(st.quests).forEach(function (id) {
       var s = sim.questState(st, id); if (s !== 'active' && s !== 'ready') { return; }
       var Q = G.quests[id];
-      html.push('<li class="' + s + '">' + esc(Q.title) + '<br><small>' +
-        (s === 'ready' ? 'entregar a ' + esc(G.npcs[Q.giver].name) : esc(objText(id))) + '</small></li>');
+      L.push({ id: 'q:' + id, cls: s, t: Q.title, p: s === 'ready' ? 'entregar a ' + G.npcs[Q.giver].name : objText(id), desc: breve(Q.offer) });
+    });
+    return L;
+  }
+  function rastreada(L) {
+    if (st.rastreio === null) { return null; }
+    L = L || missoesAtivas();
+    if (st.rastreio && L.some(function (m) { return m.id === st.rastreio; })) { return st.rastreio; }
+    return L.length ? L[0].id : null;
+  }
+  // onde fica o que a missão pede agora: o objetivo da cena (campanha); quem deu a missão, se já dá para entregar; a fonte
+  // mais perto do que falta (árvore, veio, bicho); o baú do quadro quando o material do celeiro já está na bolsa
+  function fonteDe(item) {
+    var p = st.player, best = null, bd = 1e9;
+    function ve(x, z) { var d = Math.hypot(x - p.x, z - p.z); if (d < bd) { bd = d; best = { x: x, z: z, y: 1.2 }; } }
+    function solta(D) { return (D || []).some(function (q) { return q.item === item; }); }
+    world.nodes.forEach(function (n) { var N = G.nodes[n.kind]; if (N && solta(N.drops) && st.nodes[n.id] && st.nodes[n.id].alive) { ve(n.x, n.z); } });
+    st.mobs.forEach(function (m) { var M = G.monsters[m.kind]; if (m.alive && M && solta(M.drops)) { ve(m.x, m.z); } });
+    return best;
+  }
+  function alvoMissao(id) {
+    if (id === 'camp') { return camp.objetivo(); }
+    var p = st.player, k = id.slice(2), q = null;
+    if (id.charAt(0) === 'd') {
+      var D = G.daily.quests[k], quadro = dailyBoard(), falta = D.n - sim.dailyGot(st, k), bq = quadro ? { x: quadro.x, z: quadro.z, y: 1.6 } : null;
+      return (p.inv[D.item] || 0) >= falta ? bq : (fonteDe(D.item) || bq);
+    }
+    var Q = G.quests[k], dono = personPos(Q.giver), bd = dono ? { x: dono.x, z: dono.z, y: 2.1 } : null;
+    if (sim.questState(st, k) === 'ready') { return bd; }
+    var o = Q.objectives.filter(function (b) { return sim.objProgress(st, k, b) < b.n; })[0];
+    if (o && o.type === 'collect') { q = fonteDe(o.item); }
+    if (o && o.type === 'kill') {
+      var md = 1e9;
+      st.mobs.forEach(function (m) { var d = Math.hypot(m.x - p.x, m.z - p.z); if (m.alive && m.kind === o.target && d < md) { md = d; q = { x: m.x, z: m.z, y: 1 }; } });
+    }
+    return q || bd;
+  }
+  var alvoMemo = { t: -1, id: null, a: null };
+  function alvoRastreado() { // o mesmo cálculo serve à seta e aos dois mapas no mesmo tique da simulação
+    var id = rastreada();
+    if (alvoMemo.t !== st.t || alvoMemo.id !== id) { alvoMemo = { t: st.t, id: id, a: id ? alvoMissao(id) : null }; }
+    return alvoMemo.a;
+  }
+  var missaoAberta = null; // a missão expandida na lista do mapa
+  function renderQuests() {
+    if (!st) { return; }
+    var L = missoesAtivas(), r = rastreada(L), html = L.map(function (m) {
+      return '<li class="' + m.cls + '">' + esc(m.t) + (m.p ? '<br><small>' + esc(m.p) + '</small>' : '') + '</li>';
     });
     $('quests').innerHTML = html.join('');
-    $('map-quests').innerHTML = html.join('') || '<li class="vazio">Nenhuma missão agora.</li>'; // a mesma lista no mapa (celular)
+    // no mapa: clicar no nome abre a descrição e o botão de rastrear (o losango marca a que a seta segue)
+    $('map-quests').innerHTML = L.map(function (m) {
+      var aberta = missaoAberta === m.id, segue = r === m.id;
+      return '<li class="' + m.cls + (aberta ? ' aberta' : '') + (segue ? ' segue' : '') + '" data-m="' + esc(m.id) + '">' +
+        '<button type="button" class="m-tit" aria-expanded="' + aberta + '">' + (segue ? '<i title="Rastreando">◆</i> ' : '') + esc(m.t) +
+        (m.p ? '<small>' + esc(m.p) + '</small>' : '') + '</button>' +
+        (aberta ? '<div class="m-det">' + (m.desc ? '<p>' + esc(m.desc) + '</p>' : '') +
+          '<button type="button" class="m-rast" aria-pressed="' + segue + '">' + (segue ? 'Parar de rastrear' : 'Rastrear') + '</button></div>' : '') +
+        '</li>';
+    }).join('') || '<li class="vazio">Nenhuma missão agora.</li>';
     $('quests').hidden = questsClosed;
     $('q-toggle').hidden = !html.length;
     $('q-toggle').setAttribute('aria-expanded', String(!questsClosed));
@@ -1792,7 +1859,7 @@
     return Math.atan2(dx * -Math.cos(y) + dz * Math.sin(y), dx * Math.sin(y) + dz * Math.cos(y));
   }
   function seta() {
-    var el = $('seta-obj'), o = camp.objetivo(), p = st.player;
+    var el = $('seta-obj'), o = alvoRastreado(), p = st.player;
     if (!o || openWin || Math.hypot(o.x - p.x, o.z - p.z) < (o.perto || SETA.perto)) { el.hidden = true; return; }
     var v = view.project(o.x, o.y, o.z), m = SETA.margem;
     if (v && v.x > m && v.x < 1 - m && v.y > m && v.y < 1 - m) { el.hidden = true; return; } // à vista: sem seta
@@ -2356,6 +2423,16 @@
     big.addEventListener('pointerup', mapDragEnd); big.addEventListener('pointercancel', mapDragEnd); big.addEventListener('lostpointercapture', mapDragEnd);
     big.addEventListener('pointerleave', function () { mapHover = null; });
     $('map-zoom').addEventListener('input', function () { mapZoomTo(+this.value); });
+    // missões no mapa: o nome abre e fecha a descrição; o botão liga e desliga o rastreio (a seta e a marca no mapa)
+    $('map-quests').addEventListener('click', function (e) {
+      var li = e.target.closest('li[data-m]'); if (!li || !st) { return; }
+      var id = li.dataset.m, rast = !!e.target.closest('.m-rast');
+      if (rast) { st.rastreio = rastreada() === id ? null : id; save(); }
+      else if (e.target.closest('.m-tit')) { missaoAberta = missaoAberta === id ? null : id; }
+      else { return; }
+      renderQuests(); drawMap($('bigmap'), 560, true);
+      var b = $('map-quests').querySelector('li[data-m="' + id + '"] ' + (rast ? '.m-rast' : '.m-tit')); if (b) { b.focus(); }
+    });
     // rodinha do mouse (e o gesto de pinça do touchpad): amplia em volta do ponto embaixo do mouse.
     // Um clique da rodinha (100 px) = 10 na escala de 0 a 100, o mesmo dos botões + e −
     big.addEventListener('wheel', function (e) {

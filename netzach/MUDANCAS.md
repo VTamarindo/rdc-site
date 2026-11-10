@@ -15,7 +15,7 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Dá para entrar de novo na padaria, na igreja, na ferraria e na taverna (estavam fechadas desde o mapa novo).
 - Seta para o objetivo: na borda da tela quando ele não está à vista, e no minimapa (marca dourada, ou seta na borda quando fica fora dele).
 - Missão nova: aviso rápido no alto da tela, com o objetivo em vermelho. A lista de missões começa recolhida.
-- Celular: no mapa, a barra de zoom fica em pé na borda direita, e a lista de missões aparece entre ela e o mapa.
+- Mapa (PC e celular): o mapa à esquerda, as missões no meio e a barra de zoom em pé na direita. Clicar numa missão mostra a descrição e o botão Rastrear; a seta segue a missão rastreada (madeira: a árvore mais perto; ferro: o veio; entregar: quem pediu).
 
 ## Por dentro
 - Arte desenhada no Aseprite (`art/fonte/`), montada no atlas por `tools/montar_atlas.py`; atlas 10% menor.

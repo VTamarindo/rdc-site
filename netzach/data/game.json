@@ -26,6 +26,13 @@
       "terminar": "Termine o campo",
       "carroca2": "Leve o resto do trigo à carroça"
     },
+    "missoesDesc": {
+      "figura": "Uma figura escura apareceu no meio do trigo e parece esperar por você. Vá até ela.",
+      "colher": "O fazendeiro precisa de ajuda com a colheita. Colha pelo menos cinco fardos de trigo.",
+      "carroca": "Leve o trigo colhido até a carroça do fazendeiro, na beira do campo.",
+      "terminar": "Colha o campo inteiro: cada retalho de trigo que ainda está de pé.",
+      "carroca2": "Leve o resto do trigo até a carroça do fazendeiro."
+    },
     "dicaColher": {
       "teclado": "Para colher: chegue perto do trigo e clique nele (ou olhe para ele e aperte E). Ande com W A S D e gire a câmera arrastando o mouse.",
       "toque": "Para colher: chegue perto do trigo e toque nele (ou toque em Interagir). Ande com o analógico.",
