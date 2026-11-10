@@ -525,12 +525,12 @@ body.touch #cena-dica { bottom: auto; top: 8px; max-width: 40%; font-size: 13px;
 /* campanha antes do mundo aberto: a macro não existe ainda (js/ui.js, semMacro) */
 body.sem-macro .macro-ui { display: none !important; }
 /* seta do objetivo da campanha (js/ui.js, seta): na borda da tela quando ele não está à vista, apontando para o lado dele */
-#seta-obj { position: absolute; z-index: 3; width: 46px; margin: -23px 0 0 -23px; pointer-events: none; text-align: center; }
-#seta-obj svg { display: block; width: 46px; height: 46px; transform: rotate(var(--rot, 0rad)); filter: drop-shadow(0 0 2px #000) drop-shadow(0 2px 2px rgba(0, 0, 0, .6)); }
+#seta-obj { position: absolute; z-index: 3; width: 32px; margin: -16px 0 0 -16px; pointer-events: none; text-align: center; }
+#seta-obj svg { display: block; width: 32px; height: 32px; transform: rotate(var(--rot, 0rad)); filter: drop-shadow(0 0 2px #000) drop-shadow(0 2px 2px rgba(0, 0, 0, .6)); }
 #seta-obj path { fill: #f0c64e; stroke: #5a3a0a; stroke-width: 2; stroke-linejoin: round; }
-#seta-obj small { display: block; margin-top: -2px; font: bold 13px var(--serif); color: #f6ead0; text-shadow: 0 0 3px #000, 0 1px 2px #000; white-space: nowrap; }
-body.touch #seta-obj { width: 38px; margin: -19px 0 0 -19px; }
-body.touch #seta-obj svg { width: 38px; height: 38px; }
+#seta-obj small { display: block; margin-top: -2px; font: bold 12px var(--serif); color: #f6ead0; text-shadow: 0 0 3px #000, 0 1px 2px #000; white-space: nowrap; }
+body.touch #seta-obj { width: 27px; margin: -13px 0 0 -13px; }
+body.touch #seta-obj svg { width: 27px; height: 27px; }
 /* missão nova (js/ui.js, avisoMissao): um aviso rápido no alto, ao centro, com o objetivo em vermelho */
 #missao-nova { position: absolute; left: 50%; top: 9%; transform: translate(-50%, -8px); z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 24px 8px; border-color: var(--wax); pointer-events: none; opacity: 0; text-align: center; max-width: 80%; }
 #missao-nova small { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }

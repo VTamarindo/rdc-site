@@ -1202,14 +1202,14 @@
     // objetivo da campanha: uma marca dourada no lugar dele; fora do que o mapa mostra, uma seta na borda apontando para ele
     var ob = camp.objetivo();
     if (ob && Math.hypot(ob.x - p.x, ob.z - p.z) >= (ob.perto || SETA.perto)) {
-      var obx = X(ob.x), obz = Z(ob.z), mg = big ? 16 : 9, rr = big ? 7 : 4.5;
+      var obx = X(ob.x), obz = Z(ob.z), mg = big ? 16 : 9, rr = big ? 6.3 : 4;
       c.strokeStyle = '#5a3a0a'; c.lineWidth = big ? 2 : 1.4; c.fillStyle = '#f0c64e';
       if (obx > mg && obx < S - mg && obz > mg && obz < S - mg) {
-        c.beginPath(); c.arc(obx, obz, rr + 3.5, 0, 7); c.fillStyle = 'rgba(240,198,78,.35)'; c.fill();
+        c.beginPath(); c.arc(obx, obz, rr + 3.2, 0, 7); c.fillStyle = 'rgba(240,198,78,.35)'; c.fill();
         c.beginPath(); c.arc(obx, obz, rr, 0, 7); c.fillStyle = '#f0c64e'; c.fill(); c.stroke();
       } else {
         var vx = obx - S / 2, vz = obz - S / 2, h2 = S / 2 - mg, tt = Math.min(h2 / Math.max(1e-6, Math.abs(vx)), h2 / Math.max(1e-6, Math.abs(vz)));
-        var L = big ? 13 : 9;
+        var L = big ? 11.7 : 8.1;
         c.save(); c.translate(S / 2 + vx * tt, S / 2 + vz * tt); c.rotate(Math.atan2(vx, -vz));
         c.beginPath(); c.moveTo(0, -L); c.lineTo(L * 0.7, L * 0.6); c.lineTo(0, L * 0.25); c.lineTo(-L * 0.7, L * 0.6); c.closePath();
         c.fill(); c.stroke(); c.restore();
