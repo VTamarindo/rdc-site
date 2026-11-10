@@ -9,6 +9,12 @@
 window.NOTICIAS = [
   {
     jogo: "Netzach", data: "2026-11-10",
+    titulo: "Música épica no menu",
+    texto: "A tela inicial ganhou uma trilha medieval de quase dois minutos, com coro, taikos e trompas. O jogo novo agora começa no escuro, com as crianças rindo, antes da música calma do campo.",
+    simbolo: "♫", link: "netzach/", botao: "Ouvir"
+  },
+  {
+    jogo: "Netzach", data: "2026-11-10",
     titulo: "Moradores com passos e o som do trigo",
     texto: "Os moradores agora aparecem de frente, de lado e de costas, e andam com passos. Perto do campo se ouve o vento e o trigo, e o jogo novo começa no escuro, só com esse som.",
     imagem: "prev-netzach.jpg", link: "netzach/", botao: "Jogar"

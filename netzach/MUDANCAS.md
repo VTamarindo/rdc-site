@@ -5,7 +5,5 @@ Na publicação (só quando o usuário pede), a notícia do site (`noticias.js`,
 a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, ferramentas) vão no fim, em "Por dentro".
 
 ## Para o jogador
-- Música nova na tela inicial (~1 min 44 s): medieval e épica, com pedal grave, coro, taikos, tímpanos, cordas, metais e trompas, e o motivo do Netzach no meio. A tela inicial agora tem fundo preto.
-- Jogo novo: a janela do menu some junto com a música; no escuro, as crianças rindo; e com a imagem entram a música calma e o vento no trigo, em laço durante o começo (o capítulo do trigo).
 
 ## Por dentro
