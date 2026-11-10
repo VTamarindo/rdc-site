@@ -29,7 +29,7 @@ if ($Testar) { exit 0 }
 
 # versão nova, para todo navegador baixar os arquivos novos
 & (Join-Path $PSScriptRoot 'versao.ps1') | Write-Output
-G add netzach/index.html netzach/js/ui.js
+G add netzach/index.html netzach/js/ui.js index.html
 G commit -q -m "Publicação (versão $(((Select-String -Path netzach\js\ui.js -Pattern "VERSION = '([\d-]+)'").Matches[0].Groups[1].Value)))"
 G push -q origin dev
 

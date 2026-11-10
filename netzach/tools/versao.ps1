@@ -20,5 +20,8 @@ if ($Versao -notmatch '^\d{8}-\d+$') { Write-Error "Versão inválida: $Versao (
 $h2 = [regex]::Replace($h, '\?v=\d{8}-\d+', "?v=$Versao")
 $u2 = [regex]::Replace($u, "VERSION = '\d{8}-\d+'", "VERSION = '$Versao'")
 [IO.File]::WriteAllText($html, $h2, $utf8); [IO.File]::WriteAllText($ui, $u2, $utf8)
+# a página inicial do site: as notícias (noticias.js) também ganham a versão nova, senão o navegador mostra as velhas
+$raiz = Join-Path $jogo '..\index.html'
+if (Test-Path $raiz) { $r = [IO.File]::ReadAllText($raiz, $utf8); [IO.File]::WriteAllText($raiz, [regex]::Replace($r, 'noticias\.js\?v=[\w-]+', "noticias.js?v=$Versao"), $utf8) }
 $qtd = ([regex]::Matches($h2, "\?v=$Versao")).Count
 Write-Output "Versão $antes -> $Versao ($qtd arquivos no index.html e o VERSION do ui.js)."
