@@ -146,6 +146,9 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Céu e horários:** `js/ceu.js`, tabela `HORAS` (cores por hora do dia); montanhas em `serra`.
 - **Distância da névoa:** `js/view.js`, `fog: [45, 150]` (começa a 45 m e fecha em 150 m).
 - **Combate:** `js/sim.js`, `Sim.prototype.strike` (um golpe) e `swing`; contas do personagem em `stats`.
+- **Saque no chão:** `js/sim.js`, `deixaSaque`, `pegaSaque` e `macroSaque` (o que a macro pega: `st.saqueDeixa`); tempo e
+  limite em `game.json` → `saque`. Janela e botão Saque da macro em `js/ui.js` (`openSaque`, `renderSaqueCfg`); o
+  saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).
 - **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
 - **Animais e guardas perseguindo:** `js/sim.js`, `mobTick` (bichos), `genteTick` (moradores em briga), `chase` e
   `hitPlayer` (perseguir e bater, comum a todos), `foge` (moradores fugindo por um caminho) e `afasta` (ninguém em cima de outro).
@@ -194,6 +197,9 @@ com o nome da figura. Para criar de uma vez o arquivo de toda pessoa que ainda n
 partir da figura de frente e da ficha de cada pessoa em `FICHAS`: cabelo, barba, chapéu, roupa, o que leva na mão).
 `python tools/gerar_poses.py` grava de novo os arquivos do Aseprite (todos, ou só os nomes que você passar; `--previa` só
 desenha a folha de conferência). **Ele grava por cima:** depois de redesenhar alguém à mão, não passe essa pessoa por ele.
+
+**Saquinho do saque:** `art/fonte/saque.aseprite` (48 x 48), desenhado uma vez pela função `saque` de `tools/gerar_arte.py`;
+pode ser redesenhado à vontade no Aseprite (o `gerar_poses.py` não mexe nele).
 
 **A arte provisória (feita por código)** fica em `art/gerado/` (`sprites.png`, `atlas.json`, `walls.png`), feita por
 `tools/gerar_arte.py` (uma função por figura). Ela é a base: o que não tem arquivo no Aseprite vem dela. Para gerar de novo:

@@ -1472,6 +1472,22 @@ def vaca():
 
 
 # ---------------- bichos e recursos ----------------
+def saque():
+    """saquinho de pano amarrado, o saque que um bicho deixa no chão; quadro 48x48 (0,48 m), o fundo pousa na base.
+    Fica fora de SPRITES: entra no atlas por art/fonte/saque.aseprite"""
+    f = Fig(48, 48, seed=73)
+    corpo = [(9, 46), (39, 46), (42, 41), (41, 33), (36, 26), (30, 22), (18, 22), (12, 26), (7, 34), (7, 41)]
+    f.poly(corpo, 'avental', R=9, tex=0.07, edge=0.1, vgrad=0.08)                         # o bojo, caído e largo embaixo
+    f.poly([(19, 23), (29, 23), (28, 17), (20, 17)], 'avental', R=3, bias=0.02, tex=0.05) # o pescoço franzido
+    f.poly([(15, 18), (18, 9), (21, 14), (24, 6), (27, 13), (31, 8), (33, 18)], 'avental', R=3, bias=0.08, tex=0.06)  # as pontas
+    for x0, x1 in ((20, 17), (24, 24), (28, 31)): f.fold([(x0, 23), (x1, 34)], .2, .08)    # as pregas que descem da boca
+    f.fold([(21, 10), (22, 16)], .2, .05); f.fold([(27, 10), (26, 16)], .2, .05)
+    f.cap(18.5, 20, 29.5, 20, 1.4, 1.4, 'corda', R=1, shadow=0.15)                         # a corda que amarra
+    f.cap(29, 20, 33, 26, 1, 0.8, 'corda', R=1)                                            # a ponta solta
+    f.adj(f.m_ell(24, 46, 16, 2.5), -0.2)                                                  # o fundo encostado no chão
+    return f
+
+
 def coelho():
     """coelho-bravo pardo, de lado (3/4), virado para a esquerda; quadro 96x64"""
     f = Fig(96, 64, seed=51)

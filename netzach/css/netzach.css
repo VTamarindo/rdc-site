@@ -550,3 +550,12 @@ body.touch #missao-nova b { font-size: 18px; }
 #map-quests .m-det { padding: 0 4px 8px; }
 #map-quests .m-det p { margin: 0 0 6px; font-size: 13.5px; color: var(--ink); }
 #map-quests .m-rast { padding: 5px 12px; font-size: 13.5px; }
+/* saque no chão (janela do monte) e o saque da macro: um item por linha, com o ícone, o nome e o botão */
+.saque-lista { list-style: none; margin: 6px 0; padding: 0; }
+.saque-lista li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px dotted rgba(74, 44, 20, .4); }
+.saque-lista .saque-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; }
+.saque-lista .saque-ico svg { width: 34px; height: 34px; }
+.saque-lista .saque-nome { flex: 1; min-width: 0; }
+.saque-lista button { flex: none; min-width: 84px; padding: 5px 12px; }
+#saque-msg { min-height: 1.2em; margin: 4px 0 8px; }
+#w-saque .row { justify-content: flex-end; }

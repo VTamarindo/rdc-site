@@ -87,6 +87,7 @@
         <button type="button" role="menuitem" id="mm-pick">Escolher área</button>
         <button type="button" role="menuitem" id="mm-prev">Usar a área anterior</button>
         <button type="button" role="menuitem" id="mm-rules">Regras</button>
+        <button type="button" role="menuitem" id="mm-saque">Saque</button>
         <button type="button" role="menuitem" id="mm-pause">Pausar macro</button>
         <button type="button" role="menuitemradio" aria-checked="false" aria-describedby="map-tip" id="mm-def" data-tip="Torna o macro como navegação no mapa como o padrão">Padrão</button>
       </div>
@@ -159,6 +160,20 @@
     <header><h2>Regras da macro</h2><button type="button" class="x" data-close>Fechar</button></header>
     <p class="hint">De cima para baixo: a primeira regra ligada que for verdadeira decide o que o personagem faz. Se nenhuma for, ele espera no centro da área.</p>
     <ol id="rules"></ol>
+  </section>
+
+  <!-- saque no chão (js/ui.js, openSaque): o que o bicho deixou; o jogador escolhe o que pegar -->
+  <section id="w-saque" class="win small" hidden aria-label="Saque">
+    <header><h2>Saque</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <ul id="saque-itens" class="saque-lista"></ul>
+    <p id="saque-msg" class="hint"></p>
+    <div class="row"><button type="button" id="saque-tudo" class="main">Pegar tudo</button></div>
+  </section>
+  <!-- o que a macro pega sozinha (botão Saque no menu da macro) -->
+  <section id="w-saque-cfg" class="win small" hidden aria-label="Saque da macro">
+    <header><h2>Saque da macro</h2><button type="button" class="x" data-close>Fechar</button></header>
+    <p class="hint">O que a macro pega sozinha quando abate um bicho. O que estiver marcado como Deixar fica no chão, e você pode pegar depois.</p>
+    <ul id="saque-cfg" class="saque-lista"></ul>
   </section>
 
   <section id="w-npc" class="win small" hidden aria-label="Conversa">

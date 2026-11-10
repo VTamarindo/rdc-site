@@ -666,6 +666,37 @@
     hud(); marks();
     if (npcOpen && !nearOpen()) { hide(); }
   }
+  // ---------- saque no chão ----------
+  // a janela lista o que o bicho deixou: Pegar um item, ou Pegar tudo; fecha sozinha quando o monte acaba ou o jogador se afasta
+  var saqueOpen = null;
+  function openSaque(id) { saqueOpen = id; $('saque-msg').textContent = ''; show('w-saque'); renderSaque(); }
+  function renderSaque() {
+    var s = saqueOpen && sim.saqueDe(st, saqueOpen);
+    if (!s) { if (openWin === 'w-saque') { hide(); } return; }
+    var p = st.player, livre = calc.bagCap(world, p) - calc.bagCount(world, p);
+    $('saque-itens').innerHTML = Object.keys(s.itens).map(function (k) {
+      return '<li><span class="saque-ico">' + itemIcon(k) + '</span><span class="saque-nome">' + esc(qty(s.itens[k], k)) + '</span>' +
+        '<button type="button" data-pega="' + esc(k) + '">Pegar</button></li>';
+    }).join('');
+    if (!$('saque-msg').textContent) { $('saque-msg').textContent = 'Espaço na bolsa: ' + livre + '.'; }
+  }
+  function saqueTick() { // o monte sumiu (o tempo, a macro) ou o jogador se afastou: a janela fecha
+    var s = saqueOpen && sim.saqueDe(st, saqueOpen);
+    if (!s || calc.dist(st.player.x, st.player.z, s.x, s.z) > G.settings.interactRange + 1) { saqueOpen = null; hide(); }
+  }
+  // o que a macro pega sozinha: tudo o que algum bicho pode deixar, cada um com Pegar ou Deixar (st.saqueDeixa)
+  function saquePossivel() {
+    var k = {}; Object.keys(G.monsters).forEach(function (m) { (G.monsters[m].drops || []).forEach(function (d) { k[d.item] = 1; }); });
+    return Object.keys(k).filter(function (i) { return G.items[i]; }).sort(function (a, b) { return G.items[a].name.localeCompare(G.items[b].name); });
+  }
+  function renderSaqueCfg() {
+    var D = st.saqueDeixa || (st.saqueDeixa = {});
+    $('saque-cfg').innerHTML = saquePossivel().map(function (k) {
+      var pega = !D[k];
+      return '<li><span class="saque-ico">' + itemIcon(k) + '</span><span class="saque-nome">' + esc(G.items[k].name) + '</span>' +
+        '<button type="button" data-cfg="' + esc(k) + '" aria-pressed="' + pega + '">' + (pega ? 'Pegar' : 'Deixar') + '</button></li>';
+    }).join('');
+  }
   // a conversa fecha quando o jogador se afasta (ou quem fala cai desacordado)
   function nearOpen() {
     var q = world.personById[npcOpen];
@@ -698,6 +729,7 @@
     ev.forEach(function (e) {
       camp.evento(e);
       if (e.type === 'log') { newLog = true; }
+      else if (e.type === 'saque' && openWin === 'w-saque') { renderSaque(); } // a macro ou o tempo mexeram no monte aberto
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
         var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : ''); }
@@ -763,6 +795,7 @@
     if (openWin === 'w-char') { renderChar(); }
     dailyTick();
     if (openWin === 'w-npc') { sellTick(); }
+    if (openWin === 'w-saque') { saqueTick(); }
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     var busy = on || !!p.goto; // now: o mesmo do começo da função
@@ -1199,6 +1232,13 @@
     // destino: um X de lacre
     var gt = st.player.goto;
     if (gt) { var gx = X(gt.x), gz = Z(gt.z), xq = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - xq, gz - xq); c.lineTo(gx + xq, gz + xq); c.moveTo(gx + xq, gz - xq); c.lineTo(gx - xq, gz + xq); c.stroke(); c.lineCap = 'butt'; }
+    // saque no chão: um saquinho marrom onde o bicho caiu
+    (st.saque || []).forEach(function (s) {
+      if (!vis(s.x, s.z)) { return; }
+      var sx2 = X(s.x), sz2 = Z(s.z), r2 = big ? 4 : 2.6;
+      c.fillStyle = '#7a5634'; c.strokeStyle = '#2e1c0c'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(sx2 - r2, sz2 + r2); c.lineTo(sx2 + r2, sz2 + r2); c.lineTo(sx2 + r2 * 0.7, sz2 - r2 * 0.4); c.lineTo(sx2 - r2 * 0.7, sz2 - r2 * 0.4); c.closePath(); c.fill(); c.stroke();
+    });
     // objetivo da campanha: uma marca dourada no lugar dele; fora do que o mapa mostra, uma seta na borda apontando para ele
     var ob = alvoRastreado();
     if (ob && Math.hypot(ob.x - p.x, ob.z - p.z) >= (ob.perto || SETA.perto)) {
@@ -2180,6 +2220,7 @@
       return F.name + ' (' + (left > 0 ? 'volta em ' + calc.fmtLeft(left) : F.ready) + ')';
     }
     if (ref.type === 'prop') { return propById(ref.id).name; }
+    if (ref.type === 'saque') { return 'Saque'; }
     var n = world.nodeById[ref.id], def = G.nodes[n.kind], ns = st.nodes[n.id];
     return def.name + (ns.alive ? '' : ' (volta em ' + Math.ceil(ns.left) + ' s)');
   }
@@ -2190,6 +2231,7 @@
     if (ref.type === 'npc' || ref.type === 'gente') { return personPos(ref.id); }
     if (ref.type === 'mob') { return sim.mobById(st, ref.id); }
     if (ref.type === 'prop') { return propById(ref.id); }
+    if (ref.type === 'saque') { return sim.saqueDe(st, ref.id) || st.player; }
     return calc.nodePoint(world.nodeById[ref.id], st.player.x, st.player.z); // plantação: a borda mais perto do retalho
   }
   function interact(ref) {
@@ -2207,6 +2249,10 @@
     if (ref.type === 'prop') {
       var parede2 = sim.paredeEntre(st, ref.id); if (parede2) { toast(parede2); return; }
       if (d <= G.settings.interactRange + 0.5) { openNpc(pos.npc); } else { toast('Aproxime-se: ' + pos.name + '.'); }
+      return;
+    }
+    if (ref.type === 'saque') {
+      if (d <= G.settings.interactRange + 0.5) { openSaque(ref.id); } else { toast('Aproxime-se do saque.'); }
       return;
     }
     if (ref.type === 'node') {
@@ -2246,6 +2292,7 @@
     people(G.settings.interactRange);
     camp.perto().forEach(function (a) { consider({ type: 'camp', id: a.id }, a.x, a.z, G.campanha.alcance); });
     world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, G.settings.interactRange); });
+    (st.saque || []).forEach(function (s) { consider({ type: 'saque', id: s.id }, s.x, s.z, G.settings.interactRange); });
     world.nodes.forEach(function (n) { if (st.nodes[n.id].alive && !n.rect) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.gatherReach); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, G.settings.interactRange); } });
     (view.cows || []).forEach(function (v) { consider({ type: 'farm', id: v.id }, v.o.pos[0], v.o.pos[2], G.farm[sim.farmKind(v.id)].range); });
@@ -2465,6 +2512,22 @@
     $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = 'macro'; mapUi(); });
     $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } else if (st.hostil) { mapUi(); toast(G.aldeoes.textos.macro, 3); } });
     $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
+    $('mm-saque').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-saque-cfg'); renderSaqueCfg(); });
+    $('saque-cfg').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cfg]'); if (!b || !st) { return; }
+      var k = b.dataset.cfg; if (st.saqueDeixa[k]) { delete st.saqueDeixa[k]; } else { st.saqueDeixa[k] = true; }
+      save(); renderSaqueCfg(); var nb = $('saque-cfg').querySelector('[data-cfg="' + k + '"]'); if (nb) { nb.focus(); }
+    });
+    $('saque-itens').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pega]'); if (!b || !st || !saqueOpen) { return; }
+      $('saque-msg').textContent = sim.pegaSaque(st, saqueOpen, b.dataset.pega); handleEvents(); save(); renderSaque();
+      var nb = $('saque-itens').querySelector('[data-pega]') || $('saque-tudo'); if (nb && !$('w-saque').hidden) { nb.focus(); }
+    });
+    $('saque-tudo').addEventListener('click', function () {
+      if (!st || !saqueOpen) { return; }
+      var msg = sim.pegaTudo(st, saqueOpen); handleEvents(); save();
+      if (sim.saqueDe(st, saqueOpen)) { $('saque-msg').textContent = msg; renderSaque(); } else { toast(msg); saqueOpen = null; hide(); }
+    });
     $('mm-pause').addEventListener('click', function () { mapMenu = false; pauseMacro(); mapUi(); toast('Macro pausada.'); });
     $('iv-drink').addEventListener('click', function () { drinkPotion(); });
     // janela do personagem: as casas são refeitas quando algo muda, então o clique é apanhado na caixa de fora

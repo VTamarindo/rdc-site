@@ -373,6 +373,7 @@
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
       gente: {}, hostil: null, // gente[id]: vida, desmaio e, com a vila em armas, a posição de quem anda; hostil: o incidente em curso
+      saque: [], saqueDeixa: {}, // saque no chão e o que a macro deixa de pegar (ver deixaSaque)
       mortos: {}, nomes: {}, // mortos[id]: { volta: st.t em que chega o substituto, 0 = ninguém vem }; nomes[id]: nome de quem substituiu
       log: []
     };
@@ -463,6 +464,52 @@
     st.stats.items[item] = (st.stats.items[item] || 0) + n;
     this.emit(st, { type: 'gain', item: item, n: n });
     return true;
+  };
+  // ---------- saque no chão (o que os bichos deixam) ----------
+  // st.saque: [{ id, x, z, itens: { item: n }, ate: st.t em que some }]. O jogador abre o monte e escolhe o que pegar;
+  // com a macro trabalhando, ela pega na hora o que não estiver em st.saqueDeixa (o jogador marca no menu da macro, botão
+  // Saque) e o resto fica no chão. Cada monte some depois de game.json → saque.dura segundos; no máximo saque.max montes
+  Sim.prototype.deixaSaque = function (st, m, def) {
+    var G = this.w.game, C = G.saque || {}, it = {}, n = 0;
+    (def.drops || []).forEach(function (d) { if (rnd(st) < d.chance) { it[d.item] = (it[d.item] || 0) + d.n; n++; } });
+    if (!n) { return null; }
+    st.saque = st.saque || [];
+    st.saqueN = (st.saqueN || 0) + 1;
+    var s = { id: 'sq' + st.saqueN, x: m.x, z: m.z, itens: it, ate: st.t + (C.dura || 300) };
+    st.saque.push(s);
+    while (st.saque.length > (C.max || 30)) { st.saque.shift(); }
+    var p = st.player;
+    if (p.mode === 'macro' && p.macro.on) { this.macroSaque(st, s); }
+    if (this.saqueDe(st, s.id)) { this.log(st, def.name + ' deixou algo no chão.'); }
+    this.emit(st, { type: 'saque' });
+    return s;
+  };
+  Sim.prototype.saqueDe = function (st, id) { return (st.saque || []).filter(function (s) { return s.id === id; })[0] || null; };
+  Sim.prototype.macroSaque = function (st, s) {
+    var deixa = st.saqueDeixa || {};
+    for (var k in s.itens) { if (!deixa[k]) { this.pegaSaque(st, s.id, k, s.itens[k], true); } }
+  };
+  // pega n de um item do monte (n vazio = tudo o que houver), até onde a bolsa deixa; devolve o texto para o jogador.
+  // longe = já vale a distância (a macro, ao lado do bicho que acabou de abater)
+  Sim.prototype.pegaSaque = function (st, id, item, n, longe) {
+    var w = this.w, G = w.game, p = st.player, s = this.saqueDe(st, id);
+    if (!s || !s.itens[item]) { return 'Não há mais isso aqui.'; }
+    if (!longe && dist(p.x, p.z, s.x, s.z) > G.settings.interactRange + 0.5) { return 'Aproxime-se do saque.'; }
+    var tem = s.itens[item], quer = Math.min(tem, n === undefined || n === null ? tem : Math.max(1, Math.floor(n)));
+    var def = G.items[item], cabe = def.noBag ? quer : Math.max(0, bagCap(w, p) - bagCount(w, p)), k = Math.min(quer, cabe);
+    if (!k) { return 'Bolsa cheia: ' + def.name.toLowerCase() + ' ficou no chão.'; }
+    this.give(st, item, k);
+    s.itens[item] -= k; if (!s.itens[item]) { delete s.itens[item]; }
+    if (!Object.keys(s.itens).length) { st.saque = st.saque.filter(function (x) { return x !== s; }); }
+    this.emit(st, { type: 'saque' });
+    var nome = (k === 1 ? def.name : k + ' ' + (def.plural || def.name)).toLowerCase();
+    return k < quer ? 'Pegou ' + nome + '; o resto não coube na bolsa.' : 'Pegou ' + nome + '.';
+  };
+  Sim.prototype.pegaTudo = function (st, id) {
+    var s = this.saqueDe(st, id), msgs = [];
+    if (!s) { return 'Não há mais nada aqui.'; }
+    var self = this; Object.keys(s.itens).forEach(function (k) { msgs.push(self.pegaSaque(st, id, k)); });
+    return msgs.filter(function (m) { return /^Bolsa|resto/.test(m); })[0] || 'Pegou tudo.';
   };
   Sim.prototype.rollDrops = function (st, drops) {
     for (var i = 0; i < drops.length; i++) {
@@ -807,7 +854,7 @@
       this.log(st, def.name + ' abatido.');
       this.emit(st, { type: 'kill', id: m.id });
       this.gainXp(st, def.xp);
-      this.rollDrops(st, def.drops);
+      this.deixaSaque(st, m, def); // fica no chão; a macro pega sozinha o que estiver marcado
       if (p.action && p.action.id === m.id) { p.action = null; }
     }
   };
@@ -1162,6 +1209,9 @@
       if (!ns.alive && (!semVolta || nd[k].field !== semVolta)) { ns.left -= dt; if (ns.left <= 0) { ns.alive = true; this.emit(st, { type: 'regrow', id: nd[k].id }); } }
     }
     for (var i = 0; i < st.mobs.length; i++) { this.mobTick(st, st.mobs[i], dt); }
+    if (st.saque && st.saque.length && st.saque[0].ate <= st.t) { // o mais velho vem primeiro
+      st.saque = st.saque.filter(function (s) { return s.ate > st.t; }); this.emit(st, { type: 'saque' });
+    }
     // tempo fora: a briga e os desmaios ficam congelados até o jogador voltar (ninguém é preso ou foge sem estar olhando)
     if (!this.offline) { this.genteTick(st, dt); }
     this.repoeTick(st);
@@ -1489,6 +1539,8 @@
     if (st.player.mapNav !== 'macro') { st.player.mapNav = 'caminhada'; }
     if (!st.gente || typeof st.gente !== 'object') { st.gente = {}; }
     if (st.hostil === undefined) { st.hostil = null; }
+    if (!Array.isArray(st.saque)) { st.saque = []; }
+    if (!st.saqueDeixa || typeof st.saqueDeixa !== 'object') { st.saqueDeixa = {}; }
     return st;
   };
   // saves de antes do equipamento: a espada da melhoria (p.weapon 0, 1 ou 2) vira a espada equivalente (legacyWeapons),

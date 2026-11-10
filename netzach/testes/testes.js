@@ -307,6 +307,43 @@
         confere(an(true, 3600) === 's:a0' || o.tex === 's:a1', 'muito tempo de uma vez: ' + o.tex);
         o.userData.deitado = true; confere(an(true, 0.1) === 's:x', 'desacordado: ' + o.tex);
       });
+      // saque: o lobo sempre deixa a pele (chance 1), bom para testar
+      function abate(st, kind) {
+        var m = st.mobs.filter(function (b) { return b.kind === kind && b.alive; })[0];
+        st.player.x = m.x + 1; st.player.z = m.z; m.hp = 1; sim.swing(st, m);
+        return m;
+      }
+      teste('saque: o bicho abatido deixa um monte no chão, e o jogador escolhe o que pegar', function () {
+        var st = novo(), p = st.player; abate(st, 'lobo');
+        confere(st.saque.length === 1, 'montes: ' + st.saque.length);
+        var s = st.saque[0];
+        confere(!(p.inv.pele_lobo > 0), 'foi direto para a bolsa');
+        confere(s.itens.pele_lobo === 1, 'sem a pele no monte: ' + JSON.stringify(s.itens));
+        sim.pegaSaque(st, s.id, 'pele_lobo');
+        confere(p.inv.pele_lobo === 1, 'não pegou');
+        confere(!s.itens.carne ? !st.saque.length : st.saque.length === 1, 'o monte vazio não sumiu');
+      });
+      teste('saque: longe do monte não pega; o monte some com o tempo', function () {
+        var st = novo(), p = st.player; abate(st, 'lobo');
+        var s = st.saque[0]; p.x += 20;
+        sim.pegaSaque(st, s.id, 'pele_lobo');
+        confere(!(p.inv.pele_lobo > 0), 'pegou de longe');
+        sim.advance(st, (G.saque.dura || 300) + 5);
+        confere(!st.saque.length, 'o monte não sumiu');
+      });
+      teste('saque: a macro pega sozinha só o que estiver marcado', function () {
+        var st = novo(), p = st.player; p.mode = 'macro'; p.macro.on = true; st.saqueDeixa = { carne: true };
+        for (var i = 0; i < 6; i++) { var m = abate(st, 'lobo'); m.alive = true; m.hp = G.monsters.lobo.hp; }
+        confere(p.inv.pele_lobo === 6, 'peles: ' + p.inv.pele_lobo);
+        confere(!(p.inv.carne > 0), 'pegou carne, que estava marcada para ficar');
+        confere(st.saque.every(function (s) { return Object.keys(s.itens).join() === 'carne'; }), 'sobrou outra coisa no chão');
+      });
+      teste('saque: com a bolsa cheia, o que não cabe fica no chão', function () {
+        var st = novo(), p = st.player; abate(st, 'lobo');
+        p.inv.pedra = NZ.calc.bagCap(world, p) - NZ.calc.bagCount(world, p) + (p.inv.pedra || 0);
+        var s = st.saque[0], msg = sim.pegaSaque(st, s.id, 'pele_lobo');
+        confere(!(p.inv.pele_lobo > 0) && s.itens.pele_lobo === 1, 'passou do limite da bolsa (' + msg + ')');
+      });
       teste('save de um jogo jogado cabe no armazenamento (menos de 60 KB)', function () {
         var st = novo(); sim.advance(st, 600);
         var kb = JSON.stringify(st).length / 1024;

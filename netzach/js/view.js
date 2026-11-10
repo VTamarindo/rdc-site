@@ -1194,6 +1194,24 @@
     if (v > 0.2) { u.rumo = Math.atan2(dx, dz); u.parou = 0; } else { u.parou = (u.parou === undefined ? 1 : u.parou) + (dt || 0); }
     this.anima(o, u.rumo, (u.parou || 0) < 0.15, dt); // um quadro parado no meio do passo não interrompe a animação
   };
+  // saque no chão (st.saque, ver Sim.deixaSaque): o saquinho de pano amarrado (figura 'saque', art/fonte/saque.aseprite)
+  // onde o bicho caiu, clicável (ref 'saque'). Aparece e some junto com a lista do save
+  var SAQUE_H = 0.48;
+  View.prototype.saqueQuadro = function (st) {
+    var self = this, O = this.saqueO || (this.saqueO = {}), vivo = {};
+    ((st && st.saque) || []).forEach(function (s) {
+      vivo[s.id] = 1; if (O[s.id]) { return; }
+      var g = self.sprite('saque', SAQUE_H).at(s.x, 0, s.z);
+      g.userData.ref = { type: 'saque', id: s.id };
+      self.root.add(g); self.pick.push(g); O[s.id] = g;
+    });
+    Object.keys(O).forEach(function (id) {
+      if (vivo[id]) { return; }
+      var g = O[id]; delete O[id];
+      self.root.children.splice(self.root.children.indexOf(g), 1);
+      self.pick.splice(self.pick.indexOf(g), 1);
+    });
+  };
   // quem parou para o jogador (conversa, cena da campanha) fica de frente para ele; ao voltar a andar, o rumo recomeça
   View.prototype.paraDeFrente = function (o, dt) {
     o.userData.ax = undefined; o.userData.rumo = undefined;
@@ -1848,6 +1866,7 @@
       self.setImg(o, img);
     });
     var t = performance.now(), rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
+    this.saqueQuadro(st);
     st.mobs.forEach(function (mb) {
       var o = self.objs[mb.id]; if (!o) { return; } // combatente que outro sistema desenha
       o.visible = mb.alive;
@@ -1952,7 +1971,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=12' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=13' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {

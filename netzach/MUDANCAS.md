@@ -17,6 +17,9 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Missão nova: aviso rápido no alto da tela, com o objetivo em vermelho. A lista de missões começa recolhida.
 - Mapa (PC e celular): o mapa à esquerda, as missões no meio e a barra de zoom em pé na direita. Clicar numa missão mostra a descrição e o botão Rastrear; a seta segue a missão rastreada (madeira: a árvore mais perto; ferro: o veio; entregar: quem pediu).
 
+- O que os bichos deixam fica no chão, num saquinho: clique nele (ou aperte E) e escolha o que pegar. A macro pega sozinha
+  o que estiver marcado no botão Saque, no menu dela; o resto fica no chão. Cada saquinho some depois de 5 minutos.
+
 ## Por dentro
 - Arte desenhada no Aseprite (`art/fonte/`), montada no atlas por `tools/montar_atlas.py`; atlas 10% menor.
 - Testes automáticos dos dados e da simulação (`testes/`).

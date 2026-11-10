@@ -208,6 +208,7 @@
     "armorK": 20
   },
   "legacyWeapons": ["espada_ferro", "espada_aco", "espada_ostanita"],
+  "saque": { "_nota": "O que os bichos deixam fica no chão (js/sim.js, deixaSaque): dura = segundos até o monte sumir; max = quantos montes no máximo (o mais velho some).", "dura": 300, "max": 30 },
   "monsters": {
     "coelho": {
       "name": "Coelho",
