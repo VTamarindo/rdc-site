@@ -415,6 +415,27 @@
     if (saved) { beginAway(lastReal); endAway(clockNow()); } else if (!campanha()) { toast('Bem-vindo à vila, ' + name + '.', 3); }
     save();
   }
+  // jogo novo: a tela inicial escurece até o preto (o mesmo do acordar da campanha) e o jogo começa no escuro.
+  // A campanha segue dali com o texto e o clarear dela; o modo livre clareia aqui (clareia). Usa o #cena-preto da campanha
+  var ESCURECE_SEG = 1.4, CLAREIA_SEG = 1.2, escurecendo = false;
+  function escurece(fim) {
+    if (escurecendo) { return; } // clique duplo no botão: um jogo só
+    escurecendo = true;
+    var el = $('cena-preto'); clearTimeout(el._t);
+    $('cena-preto-t').textContent = '';
+    el.hidden = false; el.style.zIndex = 9; // acima da tela inicial
+    el.style.transition = 'none'; el.style.opacity = 0; void el.offsetWidth;
+    el.style.transition = 'opacity ' + ESCURECE_SEG + 's ease-in'; el.style.opacity = 1;
+    if (NZ.som) { NZ.som.musica(false); } // a música some junto com a imagem
+    setTimeout(function () { el.style.zIndex = ''; escurecendo = false; fim(); }, ESCURECE_SEG * 1000 + 60);
+  }
+  function clareia() {
+    if (campanha()) { return; } // a campanha tem o próprio clarear (o acordar)
+    var el = $('cena-preto'); clearTimeout(el._t);
+    el.hidden = false; el.style.transition = 'none'; el.style.opacity = 1; void el.offsetWidth;
+    el.style.transition = 'opacity ' + CLAREIA_SEG + 's ease-out'; el.style.opacity = 0;
+    el._t = setTimeout(function () { el.hidden = true; }, CLAREIA_SEG * 1000 + 60);
+  }
   function toTitle() {
     save(); sobe(); hide(true); closeAllMarks();
     st = null; camp.abre(null); slot = 0; slotDono = ''; ultimo = null; away = null; document.title = baseTitle;
@@ -515,7 +536,9 @@
       var n = $('new-name').value.replace(/\s+/g, ' ').trim();
       if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
       if (load(titleNew)) { showTitle(); $('t-msg').textContent = 'Esse espaço acabou de receber um save da nuvem. Escolha outro.'; $('t-msg').hidden = false; return; }
-      $('new-name').blur(); play(titleNew, n, modoNovo);
+      $('new-name').blur();
+      var espaco = titleNew, modo = modoNovo;
+      escurece(function () { play(espaco, n, modo); clareia(); });
     });
     // configurações (js/som.js): som ligado ou desligado e o volume da música e dos efeitos; valem para este navegador, fora do save
     $('t-cfg-abre').addEventListener('click', titleConfig);
@@ -752,18 +775,18 @@
   var mapHover = null, mapArmed = false, mapMenu = false, mapTipT = 0;
   // zoom do mapa grande: mapZ é a ampliação; (mapCx, mapCz), o ponto do mundo no centro da janela.
   // mapDragged: o gesto atual passou de MAP_DRAG_MIN pixels e virou arrasto, então não é clique
-  var mapZ = 1, mapZMax = 3, mapCx = 0, mapCz = 0, mapDrag = null, mapDragged = false, MAP_DRAG_MIN = 8;
+  var mapZ = 1, mapV = 0, mapZMax = 3, mapCx = 0, mapCz = 0, mapDrag = null, mapDragged = false, MAP_DRAG_MIN = 8;
   function mapLimit() { // a janela nunca sai da imagem
     var h = world.B * (1 - 1 / mapZ);
     mapCx = Math.max(-h, Math.min(h, mapCx)); mapCz = Math.max(-h, Math.min(h, mapCz));
   }
-  // v vai de 0 a 100 em escala geométrica: cada passo amplia na mesma proporção, seja qual for o tamanho da vila
-  function mapZoomTo(v) {
-    v = Math.max(0, Math.min(100, v));
+  // v vai de 0 a 100 em escala geométrica: cada passo amplia na mesma proporção, seja qual for o tamanho da vila.
+  // foco: o ponto do mundo que fica parado na janela (a rodinha usa o ponto embaixo do mouse); sem ele, o jogador, se à vista
+  function mapZoomTo(v, foco) {
+    v = Math.max(0, Math.min(100, v)); mapV = v; // o valor exato (a barra só guarda inteiros, e o touchpad anda aos poucos)
     var z = Math.pow(mapZMax, v / 100), p = st.player, h = world.B / mapZ;
-    if (Math.abs(p.x - mapCx) <= h && Math.abs(p.z - mapCz) <= h) { // o jogador à vista fica parado na janela
-      mapCx = p.x - (p.x - mapCx) * mapZ / z; mapCz = p.z - (p.z - mapCz) * mapZ / z;
-    }
+    var a = foco || (Math.abs(p.x - mapCx) <= h && Math.abs(p.z - mapCz) <= h ? p : null);
+    if (a) { mapCx = a.x - (a.x - mapCx) * mapZ / z; mapCz = a.z - (a.z - mapCz) * mapZ / z; }
     mapZ = z; mapLimit();
     var r = $('map-zoom'); r.value = v; r.style.setProperty('--p', v + '%');
     r.setAttribute('aria-valuetext', z.toFixed(1) + ' vezes');
@@ -2239,6 +2262,14 @@
     big.addEventListener('pointerup', mapDragEnd); big.addEventListener('pointercancel', mapDragEnd); big.addEventListener('lostpointercapture', mapDragEnd);
     big.addEventListener('pointerleave', function () { mapHover = null; });
     $('map-zoom').addEventListener('input', function () { mapZoomTo(+this.value); });
+    // rodinha do mouse (e o gesto de pinça do touchpad): amplia em volta do ponto embaixo do mouse.
+    // Um clique da rodinha (100 px) = 10 na escala de 0 a 100, o mesmo dos botões + e −
+    big.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var dv = -e.deltaY * (e.deltaMode === 1 ? 3.3 : e.deltaMode === 2 ? 100 : 0.1);
+      dv = Math.max(-25, Math.min(25, dv));
+      if (dv) { mapHover = null; mapZoomTo(mapV + dv, mapPoint(e)); }
+    }, { passive: false });
     $('map-zout').addEventListener('click', function () { mapZoomTo(+$('map-zoom').value - 10); });
     $('map-zin').addEventListener('click', function () { mapZoomTo(+$('map-zoom').value + 10); });
     big.addEventListener('click', function (e) {
