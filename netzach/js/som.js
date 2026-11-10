@@ -25,13 +25,19 @@
     if (ctx) { return true; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) { return false; }
     try { ctx = new AC(TOQUE ? { latencyHint: 'playback' } : undefined); } catch (e) { ctx = new AC(); }
-    mestre = ctx.createGain(); mestre.gain.value = ligadoJa ? VOL.mestre : 0; mestre.connect(ctx.destination);
+    // limitador no fim: os acordes somados passavam de 1 e estouravam (o chiado); ele segura o pico sem mudar o resto
+    var lim = ctx.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 4; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.25;
+    lim.connect(ctx.destination);
+    mestre = ctx.createGain(); mestre.gain.value = ligadoJa ? VOL.mestre : 0; mestre.connect(lim);
     medidor = ctx.createAnalyser(); medidor.fftSize = 2048; mestre.connect(medidor); // só para testes (estado())
-    // reverberação: resposta de ruído que se apaga em 3 s, um pouco diferente em cada ouvido (o "sonho")
-    reverb = ctx.createConvolver();
-    var n = Math.floor(ctx.sampleRate * (TOQUE ? 1.6 : 3)), b = ctx.createBuffer(2, n, ctx.sampleRate);
-    for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); } }
-    reverb.buffer = b;
+    // reverberação: resposta de ruído que se apaga em 3 s, um pouco diferente em cada ouvido (o "sonho"). No celular ela
+    // pesava demais junto com o jogo 3D (o som picotava): lá fica só o eco, que é leve
+    if (TOQUE) { reverb = ctx.createGain(); reverb.gain.value = 0; } else {
+      reverb = ctx.createConvolver();
+      var n = Math.floor(ctx.sampleRate * 3), b = ctx.createBuffer(2, n, ctx.sampleRate);
+      for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); } }
+      reverb.buffer = b;
+    }
     var rv = ctx.createGain(); rv.gain.value = 0.55; reverb.connect(rv); rv.connect(mestre);
     // eco: 3/8 de segundo, voltando três ou quatro vezes, cada vez mais abafado
     eco = ctx.createDelay(2); eco.delayTime.value = 0.375;
@@ -72,7 +78,7 @@
   var COMP = 3, DUR = CICLO.length * COMP;
   var querMusica = false, musica = null; // musica: { bus, lfo, ate (até onde já está marcado), timer }
   function pad(bus, lfo, m, t, dur, vol) {
-    [-7, 7].forEach(function (cents) {
+    (TOQUE ? [0] : [-7, 7]).forEach(function (cents) { // no celular, uma voz por nota (metade do trabalho)
       var o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
       o.type = 'triangle'; o.frequency.value = hz(m); o.detune.value = cents; lfo.connect(o.detune);
       f.type = 'lowpass'; f.frequency.value = 1100; f.Q.value = 0.4;
@@ -140,8 +146,8 @@
   function criancas() {
     if (!pronto()) { return; }
     var t0 = ctx.currentTime + 0.1, saida = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 4200; saida.gain.value = 0.92; // ao longe: abafado e com mais reverberação
-    saida.connect(lp); lp.connect(sfx); lp.connect(reverb);
+    lp.type = 'lowpass'; lp.frequency.value = 4200; saida.gain.value = 0.92; // ao longe: um pouco abafado
+    saida.connect(lp); lp.connect(sfx); // sem reverberação: com ela a risada ficava ecoando
     [[0, 410, -0.5], [0.45, 470, 0.4], [1.1, 360, 0.1]].forEach(function (cr) {
       var pan = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain(); if (pan.pan) { pan.pan.value = cr[2]; }
       pan.connect(saida);

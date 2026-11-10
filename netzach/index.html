@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Netzach · protótipo da vila</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-7">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-8">
 </head>
 <body>
 <div id="app">
@@ -180,6 +180,8 @@
 
   <!-- tela inicial: cobre tudo até escolher um save. Para o controle e o Esc é uma janela (foco nos botões, B volta) -->
   <!-- uma aba só: quando o jogo abre em outra aba, esta salva, entrega o save para lá e para (js/ui.js, "uma aba só") -->
+  <!-- celular em pé: o jogo é na horizontal (css: #gire) -->
+  <div id="gire" aria-live="polite"><p>Gire o celular: o jogo é jogado na horizontal.</p></div>
   <div id="w-aba" hidden>
     <section class="win small" aria-label="Jogo aberto em outra aba">
       <h1 class="t-logo">Netzach</h1>
@@ -319,13 +321,13 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-7"></script>
-<script src="js/sim.js?v=20261110-7"></script>
-<script src="js/ceu.js?v=20261110-7"></script>
-<script src="js/view.js?v=20261110-7"></script>
-<script src="js/controle.js?v=20261110-7"></script>
-<script src="js/som.js?v=20261110-7"></script>
-<script src="js/campanha.js?v=20261110-7"></script>
-<script src="js/ui.js?v=20261110-7"></script>
+<script src="js/conta.js?v=20261110-8"></script>
+<script src="js/sim.js?v=20261110-8"></script>
+<script src="js/ceu.js?v=20261110-8"></script>
+<script src="js/view.js?v=20261110-8"></script>
+<script src="js/controle.js?v=20261110-8"></script>
+<script src="js/som.js?v=20261110-8"></script>
+<script src="js/campanha.js?v=20261110-8"></script>
+<script src="js/ui.js?v=20261110-8"></script>
 </body>
 </html>

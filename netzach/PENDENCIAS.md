@@ -59,6 +59,15 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   aceita. Agora destrava no fim do toque e no clique, usa um buffer maior e eco mais curto no celular, e para quando a aba
   some. **Não testado num celular de verdade.**
 
+## Celular, um aparelho por vez e som (10/11, versão `20261110-8`)
+- **Feito:** no celular o primeiro toque põe o jogo em tela cheia e trava na horizontal (Android; no iPhone, em pé aparece
+  "Gire o celular"); o jogo cobre o recorte da câmera (`viewport-fit=cover`) e o HUD das bordas desvia dele; a dica do
+  tutorial fica no alto e some em 8 s (`DICA_SEG`, em `js/campanha.js`); risada sem reverberação; limitador no fim do som
+  (o chiado era estouro); no celular, sem reverberação e com metade dos osciladores.
+- **Um aparelho por vez** (com conta): tabela `sessoes` e funções `sessao_*` em `supabase/sessoes.sql`. Aplicado no
+  Supabase em 10/11 e testado por SQL (pedir, perder a vez, liberar com o espaço aberto).
+- **Não testado:** celular de verdade (tela cheia, trava, recorte, som) e os dois aparelhos ao mesmo tempo no jogo.
+
 ## Campanha (começou em 10/11, versão `20261110-5`)
 - **Feito:** modo Campanha ou Modo livre no jogo novo; tela inicial com o fundo deitado no trigo; o capítulo do trigo inteiro
   (acordar, seguir a figura ou ficar 5 s parado, o puxão do fazendeiro, tutorial de colheita por aparelho, fuga do campo,

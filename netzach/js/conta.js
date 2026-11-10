@@ -152,6 +152,25 @@
     return token().then(manda);
   }
 
+  // ---------- um aparelho por vez: tabela public.sessoes e as funções sessao_* (supabase/sessoes.sql) ----------
+  // pede(game, aba, navegador) → como estava antes ({ aba, navegador, liberado, idade } ou null); pulso(game, aba) → a dona
+  // atual ({ aba, navegador, liberado, slot } ou null); libera(game, para, slot). fechando: a aba está indo embora (keepalive).
+  // Sem a tabela no Supabase (ou sem rede) a promessa é rejeitada e o jogo segue como antes, sem fechar o outro aparelho
+  function rpc(nome, args, fechando) {
+    function manda(tk) {
+      return fetch(URL_SB.replace(/\/+$/, '') + '/rest/v1/rpc/' + nome, { method: 'POST', headers: cab(tk), body: JSON.stringify(args), keepalive: !!fechando, cache: 'no-store' })
+        .then(function (r) { if (!r.ok) { throw new Error('nuvem ' + r.status); } return r.status === 204 ? null : r.json(); });
+    }
+    if (fechando) { var s = sessaoLocal(); if (!s) { return Promise.reject(new Error('sem sessão')); } return manda(s.access_token); }
+    return token().then(manda);
+  }
+  function primeira(l) { return l && l.length ? l[0] : null; }
+  var sessao = {
+    pede: function (game, aba, nav) { return rpc('sessao_pede', { p_game: game, p_aba: aba, p_navegador: nav }).then(primeira); },
+    pulso: function (game, aba) { return rpc('sessao_pulso', { p_game: game, p_aba: aba }).then(primeira); },
+    libera: function (game, para, slot, fechando) { return rpc('sessao_libera', { p_game: game, p_para: para, p_slot: slot || null }, fechando); }
+  };
+
   // ---------- painel: entrar / criar conta / sair, igual no portal e nos jogos ----------
   function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   // opts: semConta (texto quando não entrou), comConta (texto quando entrou), aoAbrir(aberto) avisa quando o formulário abre/fecha,
@@ -233,6 +252,7 @@
     aoMudar: function (f) { ouvintes.push(f); },
     entrar: entrar, criar: criar, sair: sair, esqueci: esqueci, novaSenha: novaSenha,
     saves: { listar: listar, gravar: gravar },
+    sessao: sessao,
     painel: painel
   };
 })();

@@ -120,6 +120,17 @@ body.touch #bar { left: 10px; right: 10px; bottom: 8px; justify-content: center;
 body.touch #bar button.icon { width: 50px; height: 50px; }
 body.touch .dpad, body.touch .ab { bottom: 70px; }
 body.touch #mini { width: 112px; height: 112px; }
+/* celular: o jogo cobre a tela inteira, até o recorte da câmera (viewport-fit=cover); o que fica nas bordas desvia dele */
+body.touch #status { left: calc(10px + env(safe-area-inset-left, 0px)); }
+body.touch #mini { right: calc(10px + env(safe-area-inset-right, 0px)); }
+body.touch #stick, body.touch .dpad { left: calc(18px + env(safe-area-inset-left, 0px)); }
+body.touch .ab { right: calc(18px + env(safe-area-inset-right, 0px)); }
+body.touch #bar { left: calc(10px + env(safe-area-inset-left, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); }
+/* celular em pé: o jogo é na horizontal (o iPhone não deixa travar a tela, então avisa) */
+#gire { display: none; }
+@media (orientation: portrait) {
+  body.touch #gire { display: flex; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; padding: 28px; background: #111; color: #eedfb8; font-size: 20px; text-align: center; }
+}
 body.touch #macro-line { top: auto; bottom: 240px; max-width: 92%; font-size: 13px; white-space: normal; text-align: center; }
 
 /* ---------- janelas de pergaminho ---------- */
@@ -464,7 +475,7 @@ body.touch #q-toggle { min-height: 34px; }
 #cena-texto { font-size: 17px; margin: 6px 0 10px; }
 #cena-opts { gap: 6px; }
 body.touch .win.cena { bottom: 8px; }
-body.touch #cena-dica { bottom: auto; top: 50%; max-width: 70%; font-size: 13px; }
+body.touch #cena-dica { bottom: auto; top: 8px; max-width: 40%; font-size: 13px; padding: 5px 12px; } /* no alto, entre o status e o minimapa: o meio fica livre para a barra da colheita */
 #cena-preto { position: absolute; inset: 0; z-index: 8; background: #000; display: grid; place-items: center; opacity: 0; pointer-events: none; }
 #cena-preto p { margin: 0 8%; color: var(--light); font-size: clamp(18px, 3vw, 28px); font-style: italic; text-align: center; letter-spacing: .02em; }
 #cena-dica { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 4; max-width: min(620px, 80%); margin: 0; padding: 7px 16px; font-size: 14.5px; text-align: center; pointer-events: none; }

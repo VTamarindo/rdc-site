@@ -154,7 +154,12 @@
       el.hidden = false; el.style.opacity = a;
       clearTimeout(el._t); if (!a) { el._t = setTimeout(function () { if (el.style.opacity === '0') { el.hidden = true; } }, (seg || 0) * 1000 + 50); }
     }
-    function dica(t) { var el = $('cena-dica'); el.textContent = t || ''; el.hidden = !t; }
+    // no celular a dica fica no alto e some sozinha depois de DICA_SEG segundos (na frente da colheita, atrapalhava)
+    var DICA_SEG = 8;
+    function dica(t) {
+      var el = $('cena-dica'); el.textContent = t || ''; el.hidden = !t; clearTimeout(el._t);
+      if (t && document.body.classList.contains('touch')) { el._t = setTimeout(function () { el.hidden = true; }, DICA_SEG * 1000); }
+    }
     function missao(t, prog) { S().missao = t ? { t: t, p: prog || '' } : null; api.quests(); }
     function feito(titulo, linha) {
       var el = $('cena-feito');

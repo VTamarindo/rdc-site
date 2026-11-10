@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-7', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-8', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -80,21 +80,28 @@
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); bindTitle(); bindConta(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
+    if (isTouch) { ['touchend', 'click'].forEach(function (ev) { window.addEventListener(ev, celularCheio, true); }); }
     fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
     NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; }, slot: function () { return slot; },
       copias: function () { var o = {}; for (var i = 1; i <= SLOTS; i++) { try { var c = JSON.parse(localStorage.getItem(slotKey(i) + '-copia')); if (c) { o[i] = c; } } catch (e) { /* nada */ } } return o; },
       nuvem: function () { return st ? sobe() : nuvem(); } }; // para testes
 
     $('aba-volta').addEventListener('click', function () { location.reload(); }); // recarregar = abrir de novo: a outra aba passa o jogo para cá
-    abreInicio();
+    inicioComVez();
+    setInterval(function () { if (!document.hidden) { vezPulso(); } }, vez.PULSO);
 
     // na tela inicial não há jogo rodando: nada a salvar nem tempo fora a contar (cada save conta o seu ao ser aberto)
     document.addEventListener('visibilitychange', function () {
       if (!st || aba.fechada) { return; }
       if (document.hidden) { beginAway(clockNow()); save(); sobe(true); }
-      else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); save(); sobe(); } // voltar à aba confere se outro aparelho jogou
+      // voltar à aba: primeiro confere se outro aparelho pegou o jogo enquanto esta estava escondida; senão, segue e sobe
+      else { vezPulso(function (perdeu) { if (perdeu || !st || aba.fechada) { return; } if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); save(); sobe(); }); }
     });
-    window.addEventListener('pagehide', function () { if (!aba.fechada) { save(); sobe(true); } });
+    window.addEventListener('pagehide', function () {
+      if (aba.fechada) { return; }
+      save(); sobe(true);
+      if (vez.minha && vezPronta()) { Conta.sessao.libera(GAME, aba.id, slot, true).catch(function () { /* nada */ }); } // saiu: o próximo não espera
+    });
     setInterval(function () {
       if (!st || aba.fechada) { return; }
       if (away) { catchUp(clockNow()); }
@@ -271,8 +278,10 @@
     });
   }
   // para o jogo desta aba e mostra o aviso (o navegador só deixa fechar sozinha a aba que um script abriu)
-  function fechaAba() {
+  function fechaAba(motivo) {
     aba.fechada = true;
+    $('aba-txt').textContent = motivo === 'aparelho' ? 'O jogo foi aberto em outro aparelho. Para não rodarem dois ao mesmo tempo, este parou: o progresso foi salvo e seguiu para lá.'
+      : 'O jogo foi aberto em outra aba. Para não rodarem dois ao mesmo tempo, esta parou: o progresso foi salvo e seguiu para a aba nova.';
     if (!G) { return; } // ainda carregando: start() vê aba.fechada e mostra o aviso
     if (st) { hide(true); closeAllMarks(); camp.abre(null); }
     if (NZ.som) { NZ.som.musica(false); }
@@ -281,6 +290,71 @@
     document.title = baseTitle;
     try { window.close(); } catch (e) { /* não deixou: fica o aviso */ }
   }
+  // ---------- um aparelho por vez (com conta: js/conta.js → sessao, tabela do supabase/sessoes.sql) ----------
+  // Ao abrir, esta aba pede a vez. Se outro aparelho estava com o jogo aberto (e deu sinal de vida há pouco), a tela espera:
+  // lá, o pulso (a cada 5 s) vê que perdeu a vez, salva, sobe o save, libera dizendo qual espaço estava aberto e fecha.
+  // Aqui, liberado, o jogo puxa a nuvem e abre direto nesse espaço. Vale sempre o último que abriu. Abas do mesmo navegador
+  // continuam se acertando pelo canal acima. Sem a tabela no Supabase ou sem rede, tudo segue como antes
+  var NAV_KEY = 'netzach-navegador', navId = '';
+  try { navId = localStorage.getItem(NAV_KEY) || ''; if (!navId) { navId = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(NAV_KEY, navId); } } catch (e) { navId = aba.id; }
+  var vez = { minha: false, pedindo: false, uid: '', PULSO: 5000, ESPERA: 15000, FRESCO: 25 };
+  function vezPronta() { return !!(window.Conta && Conta.sessao && Conta.online() && dono()); }
+  function vezPede(cb) {
+    if (!vezPronta()) { cb(0); return; }
+    var uid = dono(), t0 = Date.now(); vez.pedindo = true;
+    function fim(s) { vez.pedindo = false; cb(s); }
+    Conta.sessao.pede(GAME, aba.id, navId).then(function (ant) {
+      vez.minha = true; vez.uid = uid;
+      if (!(ant && ant.aba !== aba.id && ant.navegador !== navId && !ant.liberado && ant.idade < vez.FRESCO)) { fim(0); return; }
+      $('loading').textContent = 'Fechando o jogo no outro aparelho…'; $('loading').hidden = false;
+      (function confere() {
+        Conta.sessao.pulso(GAME, aba.id).then(function (r) {
+          if (r && r.aba === aba.id && r.liberado) { fim(r.slot || 0); return; }
+          if (!r || r.aba !== aba.id || Date.now() - t0 > vez.ESPERA) { fim(0); return; } // sumiu, outro pediu depois, ou não respondeu
+          setTimeout(confere, 1000);
+        }, function () { fim(0); });
+      })();
+    }, function () { fim(0); });
+  }
+  // ao carregar: pede a vez (se tem conta) e depois abre como sempre; se o outro aparelho estava num save, abre nele
+  function inicioComVez() {
+    if (!(window.Conta && Conta.sessao && dono())) { abreInicio(); return; }
+    Promise.race([Conta.pronto, new Promise(function (ok) { setTimeout(ok, 4000); })]).then(function () {
+      vezPede(function (s) {
+        if (!s || aba.entrega || aba.espera || aba.fechada) { abreInicio(); return; }
+        aba.pronto = true;
+        $('loading').textContent = 'Abrindo o jogo que estava no outro aparelho…'; $('loading').hidden = false;
+        nuvem().then(function () {
+          $('loading').hidden = true;
+          if (st || aba.fechada) { return; }
+          if (load(s)) { play(s); toast('O jogo veio do outro aparelho.', 4); } else { showTitle(); }
+        });
+      });
+    });
+  }
+  // sinal de vida; outra aba (de outro navegador) com a vez = este aparelho fecha
+  function vezPulso(cb) {
+    if (!vez.minha || vez.pedindo || aba.fechada || !vezPronta() || dono() !== vez.uid) { if (cb) { cb(false); } return; }
+    Conta.sessao.pulso(GAME, aba.id).then(function (r) {
+      var perdeu = !!(r && r.aba !== aba.id && !aba.fechada && !(r.navegador === navId && aba.canal));
+      if (perdeu) { perdeVez(r.aba, !!cb); }
+      if (cb) { cb(perdeu); }
+    }, function () { if (cb) { cb(false); } });
+  }
+  // passa o jogo para o outro aparelho: salva, sobe (até 5 s), libera e fecha. semSubir: esta aba ficou parada escondida
+  // e o outro já pode ter jogado; subir agora atropelaria o save de lá
+  function perdeVez(para, semSubir) {
+    vez.minha = false; aba.fechada = true;
+    var n = st ? slot : 0;
+    function libera() { Conta.sessao.libera(GAME, para, n).catch(function () { /* o outro desiste de esperar sozinho */ }); fechaAba('aparelho'); }
+    if (!st || !slot || semSubir) { if (st) { save(); } libera(); return; }
+    save();
+    Promise.race([Promise.resolve(sobe()), new Promise(function (ok) { setTimeout(ok, 5000); })]).catch(function () { /* sem nuvem */ }).then(function () {
+      if (st && slot === n) { save(); }
+      libera();
+    });
+  }
+
   // depois de carregar: abre o save que veio da outra aba, espera por ele um pouco, ou mostra a tela inicial
   function abreInicio() {
     aba.pronto = true;
@@ -411,7 +485,10 @@
       comConta: 'Conta',
       aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
     });
-    Conta.aoMudar(function () { if (titleOn && !st) { showTitle(); nuvem(); } else { nuvemTexto(); } });
+    Conta.aoMudar(function () {
+      if (!dono()) { vez.minha = false; } else if (dono() !== vez.uid && !aba.fechada) { vezPede(function () { /* entrou na conta: este aparelho fica com a vez */ }); }
+      if (titleOn && !st) { showTitle(); nuvem(); } else { nuvemTexto(); }
+    });
     Conta.pronto.then(function () { if (!st) { nuvem(); } });
   }
   function bindTitle() {
@@ -2018,6 +2095,18 @@
   // ---------- tela cheia (o iPhone não oferece isso às páginas: o botão avisa em vez de falhar calado) ----------
   function fullEl() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
   function fullCan() { var d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen); }
+  // celular: tela cheia (sem a barra do navegador, que deixava uma faixa preta) e travado na horizontal. O navegador só deixa
+  // pedir isso num toque, então o primeiro toque pede; quem sair da tela cheia pelo Menu não é puxado de volta.
+  // O iPhone não deixa travar a tela: em pé aparece o aviso de girar (#gire)
+  var fullAuto = true;
+  function pedeCheia() {
+    var d = document.documentElement, r;
+    try { r = d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen(); } catch (e) { r = null; }
+    return Promise.resolve(r).then(function () {
+      if (screen.orientation && screen.orientation.lock) { return screen.orientation.lock('landscape').catch(function () { /* não deixou travar */ }); }
+    });
+  }
+  function celularCheio() { if (isTouch && fullAuto && fullCan() && !fullEl()) { pedeCheia().catch(function () { /* recusou: tenta no próximo toque */ }); } }
   function fullUi() {
     var b = $('btn-full');
     b.textContent = !fullCan() ? 'Tela cheia indisponível neste navegador' : fullEl() ? 'Sair da tela cheia' : 'Tela cheia';
@@ -2025,8 +2114,8 @@
   }
   function toggleFull() {
     var d = document.documentElement, r;
-    if (fullEl()) { r = (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
-    else { r = (d.requestFullscreen || d.webkitRequestFullscreen).call(d); }
+    if (fullEl()) { fullAuto = false; r = (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+    else { fullAuto = true; r = pedeCheia(); }
     if (r && r.catch) { r.catch(function () { toast('O navegador recusou a tela cheia.'); }); }
   }
 
