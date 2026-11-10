@@ -5,9 +5,9 @@
 window.SITE = {
   netzachUrl: "netzach/",
   echadUrl: "",
-  // Supabase (o mesmo projeto das contas): Project Settings → API. Usado pelo formulário de Feedback da página inicial,
+  // Supabase: o projeto "Romance de Cavalaria", só do site (o mesmo das contas, em netzach/js/conta.js). Project Settings → API. Usado pelo formulário de Feedback da página inicial,
   // que grava na tabela public.feedback (supabase/feedback.sql). A chave é a publishable / "anon public", feita para
   // ficar à vista. NUNCA cole aqui a chave secret / service_role. Vazio = o formulário avisa que o envio está sendo ligado.
-  supabaseUrl: "https://mwpmumaiaetruuhfdrnv.supabase.co",
-  supabaseKey: "sb_publishable_HnR3WdmClezg7yf-X52FHw_fLsh7dhG"
+  supabaseUrl: "https://cyzldbitvtknniexqjkp.supabase.co",
+  supabaseKey: "sb_publishable_YK8dhOvCfNAl2aSjuroBwg_gYQ5mm-7"
 };

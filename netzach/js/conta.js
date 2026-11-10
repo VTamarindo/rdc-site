@@ -6,8 +6,8 @@
   // Projeto do Supabase: Project Settings → API (ou "Connect"). Cole o Project URL e a chave publishable (ou "anon public").
   // Essa chave é feita para ficar no site, à vista: quem protege os saves são as regras da tabela (supabase/conta.sql).
   // NUNCA cole aqui a chave secret / service_role.
-  var URL_SB = 'https://mwpmumaiaetruuhfdrnv.supabase.co';
-  var CHAVE = 'sb_publishable_HnR3WdmClezg7yf-X52FHw_fLsh7dhG';
+  var URL_SB = 'https://cyzldbitvtknniexqjkp.supabase.co';
+  var CHAVE = 'sb_publishable_YK8dhOvCfNAl2aSjuroBwg_gYQ5mm-7';
   var LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js';
   var SRI = 'sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O';
   var STORE = 'rdc-conta'; // chave da sessão no localStorage
