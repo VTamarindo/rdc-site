@@ -119,6 +119,25 @@
           return q.fixed && (!f || Math.hypot(f.x - q.x, f.z - q.z) > r);
         }).map(function (q) { return q.id + ' em ' + q.x + ', ' + q.z; }));
       });
+      // a padaria ficou fechada (10/11): o centro em meio metro fazia a parede cair no meio de uma casa da grade
+      teste('toda construção com interior tem porta aberta e chão por dentro', function () {
+        lista(world.salas.filter(function (S) {
+          var porta = S.portas.some(function (i) { return world.grid[i] === 0; });
+          var chao = S.cel.some(function (i) { return world.grid[i] === 0 && S.portas.indexOf(i) < 0; });
+          return !porta || !chao;
+        }).map(function (S) { return S.id + ' (centro em ' + S.b.x + ', ' + S.b.z + '; use números que alinhem a parede com a grade)'; }));
+      });
+      teste('quem atende dentro de uma sala pode ser alcançado de dentro dela', function () {
+        var r = G.settings.interactRange;
+        lista(world.people.filter(function (q) {
+          var S = q.fixed && world.salaDe(q.x, q.z); if (!S) { return false; }
+          return !S.cel.some(function (i) {
+            if (world.grid[i] !== 0) { return false; }
+            var x = (i % world.N) - world.B + 0.5, z = Math.floor(i / world.N) - world.B + 0.5;
+            return Math.hypot(x - q.x, z - q.z) <= r;
+          });
+        }).map(function (q) { return q.id + ' (' + q.x + ', ' + q.z + ')'; }));
+      });
       teste('ponto de nascer do jogador é livre', function () {
         var s = V.spawn; confere(world.free(s.x, s.z, 0.3), 'spawn em ' + s.x + ', ' + s.z);
       });
@@ -173,6 +192,21 @@
         var st = novo(); st.fmt = NZ.FORMATO_SAVE + 1;
         var recusou = false; try { NZ.migrate(st); } catch (e) { recusou = true; }
         confere(recusou, 'abriu um save do futuro');
+      });
+      teste('o jogador entra andando em toda construção com interior', function () {
+        var p = [];
+        world.salas.forEach(function (S) {
+          var st = novo(), pl = st.player, alvo = null;
+          S.cel.some(function (i) {
+            if (world.grid[i] !== 0 || S.portas.indexOf(i) >= 0) { return false; }
+            alvo = { x: (i % world.N) - world.B + 0.5, z: Math.floor(i / world.N) - world.B + 0.5 }; return true;
+          });
+          if (!alvo) { p.push(S.id + ': sem chão livre'); return; }
+          var f = world.nearestFree(S.fora.x, S.fora.z) || S.fora;
+          pl.x = f.x; pl.z = f.z; sim.goTo(st, alvo.x, alvo.z); sim.advance(st, 40);
+          if (world.salaEm(pl.x, pl.z) !== S.id) { p.push(S.id + ': parou em ' + pl.x.toFixed(1) + ', ' + pl.z.toFixed(1)); }
+        });
+        lista(p);
       });
       teste('20 minutos de jogo sozinho sem erro nem número quebrado', function () {
         var st = novo(); sim.advance(st, 1200);

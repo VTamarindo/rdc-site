@@ -110,6 +110,8 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - `interiores`: a sala de cada construção (porta, teto, paredes, luzes e móveis `moveis`). Os móveis são desenhados pela
   tabela `MOVEL` em `js/view.js`.
   **Depois de mexer em ruas, construções ou caminhos, rode** `tools/verificar_trilhas.py` para ver se alguém atravessa parede.
+  **Construção com interior:** o canto dela (centro menos metade da largura, e centro menos metade do fundo) precisa cair em
+  meio metro (…,5), senão a parede cai no meio de uma casa da grade e a porta não abre. Os testes avisam qual está errada.
 
 ### Campanha (modo história)
 - **Escrever cenas:** no roteirizador. Exporte para a pasta `netzach` (as cenas vão para `cenas/`, mais `projeto.json`), e rode

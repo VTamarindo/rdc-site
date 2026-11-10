@@ -11,7 +11,8 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Quem para para falar com você fica de frente; na carroça, a câmera vira para o fazendeiro devagar.
 - O mapa amplia e afasta com a rodinha do mouse, em volta do ponto embaixo do mouse.
 - Som de vento e de trigo farfalhando perto do campo, com distância e direção (já na tela inicial).
-- Jogo novo: o menu escurece, ficam dois segundos só com o som do campo, e então o texto e o acordar.
+- Jogo novo: o menu escurece, ficam dois segundos só com o som do campo, e então o texto (aparecendo devagar) e o acordar.
+- Dá para entrar de novo na padaria, na igreja, na ferraria e na taverna (estavam fechadas desde o mapa novo).
 
 ## Por dentro
 - Arte desenhada no Aseprite (`art/fonte/`), montada no atlas por `tools/montar_atlas.py`; atlas 10% menor.

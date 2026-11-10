@@ -30,11 +30,11 @@
   ],
   "buildings": [
     {"id": "alfaiate", "type": "alfaiate", "x": -13, "z": -8, "w": 7, "d": 7, "h": 3.4, "rot": 0},
-    {"id": "igreja", "type": "igreja", "x": 12.5, "z": -10.5, "w": 7, "d": 11, "h": 5, "rot": 0},
-    {"id": "ferreiro", "type": "ferreiro", "x": -13, "z": 8.5, "w": 7, "d": 7, "h": 3.6, "rot": 180},
-    {"id": "bar", "type": "bar", "x": 13.5, "z": 9.5, "w": 9, "d": 9, "h": 5, "rot": 180},
+    {"id": "igreja", "type": "igreja", "x": 13, "z": -11, "w": 7, "d": 11, "h": 5, "rot": 0},
+    {"id": "ferreiro", "type": "ferreiro", "x": -13, "z": 9, "w": 7, "d": 7, "h": 3.6, "rot": 180},
+    {"id": "bar", "type": "bar", "x": 14, "z": 10, "w": 9, "d": 9, "h": 5, "rot": 180},
     {"id": "casa_senhor", "type": "casa_senhor", "x": 48, "z": 0, "w": 13, "d": 11, "h": 7, "rot": -90},
-    {"id": "padaria", "type": "padaria", "x": 28, "z": 8.5, "w": 7, "d": 7, "h": 3.6, "rot": 180},
+    {"id": "padaria", "type": "padaria", "x": 28, "z": 9, "w": 7, "d": 7, "h": 3.6, "rot": 180},
     {"id": "forno", "type": "forno", "x": 33.6, "z": 7.6, "w": 2.4, "d": 2.4, "h": 1.8, "rot": 180},
     {"id": "moradia1", "type": "moradia", "x": -41, "z": -7.5, "w": 6, "d": 6, "h": 2.8, "rot": 0, "wall": "cal", "chimney": true},
     {"id": "moradia2", "type": "moradia", "x": -32, "z": -7.5, "w": 6, "d": 6, "h": 2.8, "rot": 0, "wall": "tabuas", "chimney": false},
@@ -44,11 +44,11 @@
     {"id": "moradia6", "type": "moradia", "x": -23, "z": 7.5, "w": 6, "d": 6, "h": 2.8, "rot": 180, "wall": "cal", "chimney": false}
   ],
   "npcs": [
-    {"id": "padre", "x": 13.0, "z": -15.0},
+    {"id": "padre", "x": 13.5, "z": -15.5},
     {"id": "alfaiate", "name": "Alfaiate", "x": -12.5, "z": -10.5},
-    {"id": "ferreiro", "x": -14.5, "z": 9.0},
-    {"id": "taberneiro", "x": 11.0, "z": 12.0},
-    {"id": "padeira", "name": "Padeira", "h": 1.76, "x": 28.5, "z": 10.0},
+    {"id": "ferreiro", "x": -14.5, "z": 9.5},
+    {"id": "taberneiro", "x": 11.5, "z": 12.5},
+    {"id": "padeira", "name": "Padeira", "h": 1.76, "x": 28.5, "z": 10.5},
     {"id": "senhor", "name": "Senhor da vila", "h": 1.98, "y": -0.42, "x": 52.5, "z": 0.5},
     {"id": "anselmo", "x": -4.6, "z": 13.5}
   ],

@@ -159,10 +159,16 @@
 
     // ---------- tela: preto, dica, missão, missão completada ----------
     // preto(opacidade, texto, segundos da transição)
+    // um texto novo no preto aparece devagar (TEXTO_SEG), em vez de surgir de uma vez
+    var TEXTO_SEG = 0.7;
     function preto(a, texto, seg) {
-      var el = $('cena-preto');
+      var el = $('cena-preto'), tx = $('cena-preto-t');
       el.style.transition = 'opacity ' + (seg || 0) + 's linear';
-      if (texto !== undefined) { $('cena-preto-t').textContent = texto; }
+      if (texto !== undefined && texto !== tx.textContent) {
+        tx.textContent = texto;
+        tx.style.transition = 'none'; tx.style.opacity = texto ? 0 : 1; void tx.offsetWidth;
+        if (texto) { tx.style.transition = 'opacity ' + TEXTO_SEG + 's ease-out'; tx.style.opacity = 1; }
+      }
       el.hidden = false; el.style.opacity = a;
       clearTimeout(el._t); if (!a) { el._t = setTimeout(function () { if (el.style.opacity === '0') { el.hidden = true; } }, (seg || 0) * 1000 + 50); }
     }
