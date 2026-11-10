@@ -50,6 +50,15 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
   ficou ao lado do pasto, a leste; a cidade ficou um pouco maior que no rascunho, porque as construções têm o tamanho de antes.
 - **Não testado:** celular (a máscara do chão usa uma segunda textura no sombreador) e a campanha inteira de novo com o campo novo.
 
+## Menu inicial e som (10/11, versão `20261110-7`)
+- **Feito:** o Modo livre só aparece no modo desenvolvedor (5 cliques no "Netzach" do menu inicial ou do Menu); a conta
+  (entrar/sair) só aparece na primeira tela do menu inicial; em Novo jogo, "Começar a campanha" logo abaixo do nome e
+  "Voltar ao menu inicial" embaixo; o botão Som virou a tela de Configurações (som ligado/desligado, volume da música e
+  dos efeitos); risadas das crianças 15% mais altas.
+- **Som no celular:** a causa provável era o destrave: o som só tentava destravar no começo do toque, que o celular não
+  aceita. Agora destrava no fim do toque e no clique, usa um buffer maior e eco mais curto no celular, e para quando a aba
+  some. **Não testado num celular de verdade.**
+
 ## Campanha (começou em 10/11, versão `20261110-5`)
 - **Feito:** modo Campanha ou Modo livre no jogo novo; tela inicial com o fundo deitado no trigo; o capítulo do trigo inteiro
   (acordar, seguir a figura ou ficar 5 s parado, o puxão do fazendeiro, tutorial de colheita por aparelho, fuga do campo,

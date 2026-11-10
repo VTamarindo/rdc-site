@@ -20,7 +20,7 @@ powershell -ExecutionPolicy Bypass -File netzach\tools\servidor.ps1 -Root . -Por
 Depois abra `http://localhost:8080/netzach/`. Para parar, feche a janela do PowerShell (ou Ctrl+C).
 No console do navegador (F12), `NZ.debug.state()` mostra o estado do jogo (ex.: `NZ.debug.state().player.inv.moeda = 500`
 para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes escondido: clique 5 vezes seguidas na palavra
-"Netzach" no topo do Menu.
+"Netzach" no topo do Menu. O mesmo atalho no "Netzach" do menu inicial mostra o botão "Modo livre" em Novo jogo (o menu inicial só oferece a campanha).
 
 ## Os arquivos
 | Arquivo | O que tem |
@@ -34,7 +34,7 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 | `js/ui.js` | Interface: tela inicial e saves, laço do jogo, HUD, mapa, janelas, lojas, teclado, mouse e toque. |
 | `js/controle.js` | Controle (Xbox/gamepad): botões, foco nas janelas, cursor do mapa, câmera invertida. |
 | `js/campanha.js` | **Campanha** (modo história): lê `data/campanha.json`, mostra falas e escolhas, aplica os efeitos e conduz o que cada cena faz no mundo (tabela `ROTEIRO`, pelo id da cena). |
-| `js/som.js` | **Sons feitos por código** (provisórios): a trilha da tela inicial (ciclo de 24 s, tabela `CICLO`: acordes e melodia), as crianças rindo, o toque de missão completada e os sons de navegação nos menus. Volume em `VOL`. O botão "Som" da tela inicial liga e desliga. |
+| `js/som.js` | **Sons feitos por código** (provisórios): a trilha da tela inicial (ciclo de 24 s, tabela `CICLO`: acordes e melodia), as crianças rindo, o toque de missão completada e os sons de navegação nos menus. Volume em `VOL`. A tela de Configurações (botão no menu inicial) liga e desliga o som e acerta o volume da música e dos efeitos (`NZ.som.volume`), guardados no navegador. No celular o áudio usa um buffer maior e eco mais curto, destrava no fim do toque e para quando a aba some. |
 | `data/campanha.json` | As cenas do roteirizador num arquivo só. **Não edite**: é gerado por `tools/montar_campanha.ps1` (ver "Campanha" abaixo). |
 | `js/conta.js` | Conta do site (Supabase): entrar, criar conta, sair, trocar senha e gravar/ler os saves na nuvem. Usado também pelo portal. O endereço e a chave do projeto ficam no topo. A tabela é criada por `supabase/conta.sql` (na raiz do site). |
 | `js/ceu.js` | Céu: cores de cada hora, sol, lua, estrelas, nuvens e montanhas. |

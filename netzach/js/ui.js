@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-6', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-7', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -234,7 +234,7 @@
     if (u) {
       t = nuvemSt === 'indo' ? 'Sincronizando com a nuvem…' : nuvemSt === 'off' ? 'Sem conexão com a nuvem: os saves ficam aqui e sobem quando ela voltar.' : 'Saves guardados na nuvem: aparecem em qualquer navegador em que você entrar.';
     }
-    el.textContent = t; el.hidden = !t;
+    el.textContent = t; el.hidden = !t || (titleOn && $('t-list').hidden); // fora da lista de saves (jogo novo, apagar, configurações) fica escondido
     var onde = $('save-onde'); if (onde) { onde.textContent = u ? 'neste navegador e na sua conta' : 'neste navegador'; }
   }
   // sobe o save aberto, se mudou. fechando: a aba está indo embora (uma tacada só, sem esperar resposta).
@@ -344,7 +344,9 @@
   function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('hover').hidden = true; $('toast').hidden = true; }
 
   // ---------- tela inicial ----------
-  var titleOn = false, titleDel = 0, titleNew = 0;
+  var titleOn = false, titleDel = 0, titleNew = 0, titleCfg = false;
+  // a conta, o aviso da nuvem e o botão de configurações só aparecem na primeira parte da tela inicial (a lista de saves)
+  function titleRodape(naLista) { $('t-conta').hidden = !naLista; $('t-cfg-abre').hidden = !naLista; if (!naLista) { $('t-nuvem').hidden = true; } else { nuvemTexto(); } }
   function slotInfo(n) {
     var s = load(n); if (!s) { return { n: n }; }
     var c = s.state.modo === 'campanha' && s.state.camp;
@@ -359,10 +361,10 @@
     var d = new Date(ms); return 'em ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
   }
   function showTitle() {
-    titleOn = false; hide(true); titleOn = true; openWin = 'w-title'; titleDel = titleNew = 0;
+    titleOn = false; hide(true); titleOn = true; openWin = 'w-title'; titleDel = titleNew = 0; titleCfg = false;
     if (NZ.som) { NZ.som.musica(true); } // a trilha da tela inicial (js/som.js); começa no primeiro clique ou tecla
     $('hud').hidden = true; $('w-title').hidden = false; guardClicks();
-    $('t-list').hidden = false; $('new-form').hidden = true; $('t-del').hidden = true;
+    $('t-list').hidden = false; $('new-form').hidden = true; $('t-del').hidden = true; $('t-cfg').hidden = true; titleRodape(true);
     var all = [], last = null;
     for (var i = 1; i <= SLOTS; i++) { all.push(slotInfo(i)); }
     $('t-slots').innerHTML = all.map(function (s) {
@@ -382,18 +384,24 @@
     nuvemTexto();
   }
   function titleNewGame(n) {
-    titleNew = n; $('t-list').hidden = true; $('new-form').hidden = false;
+    titleNew = n; $('t-list').hidden = true; $('new-form').hidden = false; titleRodape(false);
     $('new-name').value = ''; $('new-err').hidden = true;
     // com o controle, focar o campo abriria o teclado do console sem pedir: ele abre quando o jogador aperta A no campo
     if (!(ctrl && ctrl.active())) { setTimeout(function () { try { $('new-name').focus(); } catch (e) { /* nada */ } }, 50); }
   }
   function titleAskDel(n) {
     var s = slotInfo(n); if (!s.name) { return; }
-    titleDel = n; $('t-list').hidden = true; $('t-del').hidden = false;
+    titleDel = n; $('t-list').hidden = true; $('t-del').hidden = false; titleRodape(false);
     $('t-del-txt').textContent = 'Apagar ' + s.name + ' (nível ' + s.lv + ', espaço ' + n + ')? Não dá para desfazer.';
   }
   // Esc, B ou Voltar: do nome ou da confirmação volta à lista; na lista não há para onde voltar
-  function titleBack() { if (contaUi && contaUi.fechar()) { return; } if (titleNew || titleDel) { showTitle(); } }
+  function titleBack() { if (contaUi && contaUi.fechar()) { return; } if (titleNew || titleDel || titleCfg) { showTitle(); } }
+  function titleConfig() { titleCfg = true; $('t-list').hidden = true; $('t-cfg').hidden = false; titleRodape(false); cfgMostra(); }
+  function cfgMostra() {
+    if (!NZ.som) { return; }
+    var on = NZ.som.ligado(); $('cfg-som').textContent = 'Som: ' + (on ? 'ligado' : 'desligado'); $('cfg-som').setAttribute('aria-pressed', String(on));
+    ['musica', 'efeitos'].forEach(function (k) { var v = Math.round(NZ.som.volume(k) * 100); $('cfg-' + k).value = v; $('cfg-' + k + '-v').textContent = v + '%'; });
+  }
   // painel da conta (js/conta.js) na tela inicial: aberto, ele toma o lugar da lista de saves
   var contaUi = null;
   function bindConta() {
@@ -401,7 +409,7 @@
     contaUi = Conta.painel($('t-conta'), {
       semConta: 'Sem conta: os saves ficam só neste navegador. Entre para levá-los a qualquer aparelho.',
       comConta: 'Conta',
-      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
+      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
     });
     Conta.aoMudar(function () { if (titleOn && !st) { showTitle(); nuvem(); } else { nuvemTexto(); } });
     Conta.pronto.then(function () { if (!st) { nuvem(); } });
@@ -427,14 +435,18 @@
       if (load(titleNew)) { showTitle(); $('t-msg').textContent = 'Esse espaço acabou de receber um save da nuvem. Escolha outro.'; $('t-msg').hidden = false; return; }
       $('new-name').blur(); play(titleNew, n, modoNovo);
     });
-    // som ligado ou desligado (js/som.js): vale para este navegador, fora do save
-    function somBotao() { var on = NZ.som ? NZ.som.ligado() : false; $('t-som').textContent = 'Som: ' + (on ? 'ligado' : 'desligado'); $('t-som').setAttribute('aria-pressed', String(on)); }
-    if (NZ.som) { somBotao(); $('t-som').addEventListener('click', function () { NZ.som.ligado(!NZ.som.ligado()); somBotao(); }); } else { $('t-som').hidden = true; }
+    // configurações (js/som.js): som ligado ou desligado e o volume da música e dos efeitos; valem para este navegador, fora do save
+    $('t-cfg-abre').addEventListener('click', titleConfig);
+    if (NZ.som) {
+      $('cfg-som').addEventListener('click', function () { NZ.som.ligado(!NZ.som.ligado()); cfgMostra(); });
+      ['musica', 'efeitos'].forEach(function (k) { $('cfg-' + k).addEventListener('input', function () { NZ.som.volume(k, this.value / 100); cfgMostra(); }); });
+    } else { $('t-cfg-abre').hidden = true; }
     // os dois botões do jogo novo: o clique vem antes do envio do formulário; Enter no nome vale o primeiro (a campanha)
     var modoNovo = 'campanha';
     Array.prototype.forEach.call(document.querySelectorAll('#new-form [data-modo]'), function (b) { b.addEventListener('click', function () { modoNovo = b.dataset.modo; }); });
     $('new-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') { modoNovo = camp.tem() ? 'campanha' : 'livre'; } });
-    if (!camp.tem()) { $('new-camp').hidden = true; modoNovo = 'livre'; }
+    if (!camp.tem()) { $('new-camp').hidden = $('new-hint').hidden = true; $('new-livre').hidden = false; modoNovo = 'livre'; } // sem campanha, o modo livre fica à vista
+    $('w-title').addEventListener('click', devTap);
   }
 
   // ---------- tempo fora ----------
@@ -2032,13 +2044,18 @@
   }
 
   // modo desenvolvedor: cliques seguidos no nome do jogo, no título do menu, mostram os testes até recarregar a página
-  var DEV_CLICKS = 5, DEV_GAP_MS = 700, devClicks = 0, devLast = 0;
+  // O mesmo atalho no nome do jogo da tela inicial: lá ele mostra o Modo livre no jogo novo (a tela inicial só oferece a campanha)
+  var DEV_CLICKS = 5, DEV_GAP_MS = 700, devClicks = 0, devLast = 0, devOn = false;
   function devTap(e) {
-    if (!$('dev-opts').hidden) { return; }
-    if (e.target !== $('dev-tap')) { devClicks = 0; return; } // clique em outro ponto do menu quebra a sequência
+    if (devOn) { return; }
+    if (e.target !== $('dev-tap') && e.target !== $('t-dev-tap')) { devClicks = 0; return; } // clique em outro ponto quebra a sequência
     var now = performance.now();
     devClicks = now - devLast <= DEV_GAP_MS ? devClicks + 1 : 1; devLast = now;
-    if (devClicks >= DEV_CLICKS) { $('dev-opts').hidden = false; toast('Modo desenvolvedor ativado.', 3); }
+    if (devClicks >= DEV_CLICKS) { ligaDev(); }
+  }
+  function ligaDev() {
+    devOn = true; $('dev-opts').hidden = false; $('new-livre').hidden = false; toast('Modo desenvolvedor ativado.', 3);
+    if (titleOn && !$('t-list').hidden) { $('t-msg').textContent = 'Modo desenvolvedor: o Modo livre aparece em Novo jogo.'; $('t-msg').hidden = false; }
   }
 
   // ---------- entrada ----------
@@ -2047,7 +2064,7 @@
     window.addEventListener('keydown', function (e) {
       // submenu de venda aberto: Esc fecha só ele e os atalhos do jogo ficam desligados
       if (sellPop || pop) { if (e.code === 'Escape') { if (sellPop) { closeSell(); } else { closePop(); } e.preventDefault(); } return; }
-      if (e.target.tagName === 'INPUT' && e.target.id !== 'map-zoom') { return; } // a barra de zoom não tira M e Esc
+      if (e.target.tagName === 'INPUT' && e.target.type !== 'range') { return; } // as barras (zoom do mapa, volumes) não tiram M e Esc
       if (e.code === 'Escape') { if (openWin) { hide(); } else { cmd('menu'); } e.preventDefault(); return; }
       if (openWin === 'w-report' && (e.code === 'Enter' || e.code === 'Space')) { hide(); e.preventDefault(); return; }
       var map = { KeyM: 'map', KeyR: 'rules', KeyT: 'stance', KeyF: 'potion', KeyG: 'macro', KeyI: 'inv', KeyB: 'bag' };
@@ -2185,7 +2202,7 @@
     return {
       win: function () { return openWin; },
       // a parte visível da tela inicial: trocar de parte (lista, nome, apagar) recomeça o foco do controle nela
-      painel: function () { return !titleOn ? null : titleNew ? $('new-form') : titleDel ? $('t-del') : $('t-list'); },
+      painel: function () { return !titleOn ? null : titleNew ? $('new-form') : titleDel ? $('t-del') : titleCfg ? $('t-cfg') : $('t-list'); },
       sell: function () { return sellPop ? sellPop.pop : pop ? pop.pop : null; },
       closeSell: function () { if (sellPop) { closeSell(); } else { closePop(); } },
       mapBox: function () { return mapMenu === 'macro' ? $('map-menu') : mapMenu === 'caminhada' ? $('map-walk-menu') : null; },

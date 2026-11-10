@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-6">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-7">
 </head>
 <body>
 <div id="app">
@@ -191,7 +191,7 @@
 
   <div id="w-title" hidden>
     <section class="win small" aria-label="Netzach">
-      <h1 class="t-logo">Netzach</h1>
+      <h1 class="t-logo"><span id="t-dev-tap">Netzach</span></h1>
       <p class="t-sub">protótipo da vila</p>
       <div id="t-list">
         <button type="button" id="t-cont" class="main" hidden>Continuar</button>
@@ -202,18 +202,28 @@
       </div>
       <p id="t-nuvem" class="hint" hidden></p>
       <div id="t-conta" class="conta"></div>
-      <button type="button" id="t-som" class="t-som" aria-pressed="true">Som: ligado</button>
+      <button type="button" id="t-cfg-abre">Configurações</button>
+      <!-- configurações: por enquanto só o som (js/som.js); valem para este navegador, fora do save -->
+      <div id="t-cfg" hidden>
+        <h3>Configurações</h3>
+        <h4>Som</h4>
+        <button type="button" id="cfg-som" aria-pressed="true">Som: ligado</button>
+        <label for="cfg-musica">Volume da música <output id="cfg-musica-v"></output></label>
+        <input id="cfg-musica" type="range" min="0" max="100" step="5">
+        <label for="cfg-efeitos">Volume dos efeitos <output id="cfg-efeitos-v"></output></label>
+        <input id="cfg-efeitos" type="range" min="0" max="100" step="5">
+        <button type="button" data-t-back>Voltar ao menu inicial</button>
+      </div>
       <form id="new-form" hidden>
         <h3>Novo jogo</h3>
         <label for="new-name">Nome do personagem</label>
         <input id="new-name" type="text" maxlength="20" autocomplete="off" spellcheck="false" required>
         <p id="new-err" class="hint" hidden>Escolha um nome de 2 a 20 letras.</p>
-        <p class="hint">Campanha: a história, desde o campo de trigo. Modo livre: a vila aberta, com o dia correndo no relógio de verdade.</p>
-        <div class="col">
-          <button type="submit" class="main" data-modo="campanha" id="new-camp">Começar a campanha</button>
-          <button type="submit" data-modo="livre">Modo livre</button>
-          <button type="button" data-t-back>Voltar</button>
-        </div>
+        <button type="submit" class="main" data-modo="campanha" id="new-camp">Começar a campanha</button>
+        <p class="hint" id="new-hint">A história começa no campo de trigo.</p>
+        <!-- só no modo desenvolvedor (5 cliques seguidos em "Netzach", no topo desta tela ou do Menu) -->
+        <button type="submit" data-modo="livre" id="new-livre" hidden>Modo livre (desenvolvedor)</button>
+        <button type="button" data-t-back>Voltar ao menu inicial</button>
       </form>
       <div id="t-del" hidden>
         <h3>Apagar save</h3>
@@ -309,13 +319,13 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-6"></script>
-<script src="js/sim.js?v=20261110-6"></script>
-<script src="js/ceu.js?v=20261110-6"></script>
-<script src="js/view.js?v=20261110-6"></script>
-<script src="js/controle.js?v=20261110-6"></script>
-<script src="js/som.js?v=20261110-6"></script>
-<script src="js/campanha.js?v=20261110-6"></script>
-<script src="js/ui.js?v=20261110-6"></script>
+<script src="js/conta.js?v=20261110-7"></script>
+<script src="js/sim.js?v=20261110-7"></script>
+<script src="js/ceu.js?v=20261110-7"></script>
+<script src="js/view.js?v=20261110-7"></script>
+<script src="js/controle.js?v=20261110-7"></script>
+<script src="js/som.js?v=20261110-7"></script>
+<script src="js/campanha.js?v=20261110-7"></script>
+<script src="js/ui.js?v=20261110-7"></script>
 </body>
 </html>

@@ -4,7 +4,8 @@
    - missao(): o toque de missão completada;
    - foco() e clique(): a navegação nos menus (ligados sozinhos a todos os botões das janelas e da tela inicial).
    O navegador só deixa tocar som depois do primeiro clique ou tecla: até lá, tudo fica mudo e a música espera.
-   ligado(true/false) liga e desliga tudo; a escolha fica no navegador (fora do save). */
+   ligado(true/false) liga e desliga tudo; volume('musica' | 'efeitos', 0 a 1) acerta cada parte (tela de Configurações).
+   As escolhas ficam no navegador (fora do save). */
 (function (NZ) {
   'use strict';
   var KEY = 'zg-vila-som', ctx = null, mestre = null, reverb = null, eco = null, sfx = null;
@@ -12,18 +13,23 @@
   var ligadoJa = true;
   try { ligadoJa = localStorage.getItem(KEY) !== '0'; } catch (e) { /* sem armazenamento: ligado */ }
   var VOL = { mestre: 0.9, musica: 1.1, sfx: 0.9 };
+  // volume escolhido pelo jogador (0 a 1), por cima do VOL
+  var KEY_VOL = 'zg-vila-som-vol', USER = { musica: 1, efeitos: 1 };
+  try { var uv = JSON.parse(localStorage.getItem(KEY_VOL) || '{}'); ['musica', 'efeitos'].forEach(function (k) { if (typeof uv[k] === 'number') { USER[k] = Math.max(0, Math.min(1, uv[k])); } }); } catch (e) { /* padrão */ }
+  // celular: menos trabalho para o áudio (o jogo 3D disputa o processador e o som picotava): buffer maior e eco mais curto
+  var TOQUE = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
 
   function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
   // monta o áudio na primeira vez; devolve false se o navegador não tem Web Audio
   function prepara() {
     if (ctx) { return true; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) { return false; }
-    ctx = new AC();
+    try { ctx = new AC(TOQUE ? { latencyHint: 'playback' } : undefined); } catch (e) { ctx = new AC(); }
     mestre = ctx.createGain(); mestre.gain.value = ligadoJa ? VOL.mestre : 0; mestre.connect(ctx.destination);
     medidor = ctx.createAnalyser(); medidor.fftSize = 2048; mestre.connect(medidor); // só para testes (estado())
     // reverberação: resposta de ruído que se apaga em 3 s, um pouco diferente em cada ouvido (o "sonho")
     reverb = ctx.createConvolver();
-    var n = Math.floor(ctx.sampleRate * 3), b = ctx.createBuffer(2, n, ctx.sampleRate);
+    var n = Math.floor(ctx.sampleRate * (TOQUE ? 1.6 : 3)), b = ctx.createBuffer(2, n, ctx.sampleRate);
     for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); } }
     reverb.buffer = b;
     var rv = ctx.createGain(); rv.gain.value = 0.55; reverb.connect(rv); rv.connect(mestre);
@@ -31,17 +37,25 @@
     eco = ctx.createDelay(2); eco.delayTime.value = 0.375;
     var fb = ctx.createGain(); fb.gain.value = 0.38; var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
     eco.connect(lp); lp.connect(fb); fb.connect(eco); lp.connect(reverb); lp.connect(mestre);
-    sfx = ctx.createGain(); sfx.gain.value = VOL.sfx; sfx.connect(mestre);
+    sfx = ctx.createGain(); sfx.gain.value = VOL.sfx * USER.efeitos; sfx.connect(mestre);
     return true;
   }
   function pronto() { return prepara() && ctx.state === 'running'; }
-  // o primeiro gesto destrava o som (regra dos navegadores) e começa a música, se ela estava esperando
+  // o primeiro gesto destrava o som (regra dos navegadores) e começa a música, se ela estava esperando. No celular só
+  // valem o fim do toque e o clique (touchstart e pointerdown não destravam): por isso a lista tem os dois tipos. Depois de
+  // uma interrupção (ligação, aba escondida no iPhone), o próximo gesto destrava de novo
   function destrava() {
-    if (!prepara()) { return; }
+    if (escondido || !prepara()) { return; }
     if (ctx.state === 'running') { tocaMusica(); return; }
-    ctx.resume().then(function () { tocaMusica(); });
+    var p = ctx.resume(); if (p && p.then) { p.then(function () { tocaMusica(); }, function () { /* sem gesto válido: o próximo tenta */ }); }
   }
-  ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, destrava, true); });
+  ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(function (ev) { window.addEventListener(ev, destrava, true); });
+  // aba escondida: o áudio para (no celular ele seguia tocando ou voltava picotado); ao voltar, retoma
+  var escondido = false;
+  document.addEventListener('visibilitychange', function () {
+    escondido = document.hidden; if (!ctx) { return; }
+    if (escondido) { if (ctx.state === 'running') { ctx.suspend(); } } else { destrava(); }
+  });
 
   // ---------- trilha da tela inicial ----------
   // 8 compassos de 3 s = 24 s. Cada um: o baixo, o acorde (notas MIDI) e a melodia da caixinha [segundo no compasso, nota]
@@ -90,7 +104,7 @@
     var bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), lp = ctx.createBiquadFilter();
     lp.type = 'lowpass'; lp.frequency.value = 3200; // tudo um pouco abafado, como lembrança
     bus.connect(lp); lp.connect(mestre); lp.connect(reverb);
-    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(VOL.musica, ctx.currentTime + 2.5);
+    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, VOL.musica * USER.musica), ctx.currentTime + 2.5);
     lfo.frequency.value = 0.23; lg.gain.value = 9; lfo.connect(lg); lfo.start(); // "fita velha": a afinação oscila de leve
     var M = musica = { bus: bus, lfo: lg, osc: lfo, ate: ctx.currentTime + 0.15 };
     function adiante() { // marca o próximo ciclo 4 s antes do fim do atual, para não ter buraco
@@ -126,7 +140,7 @@
   function criancas() {
     if (!pronto()) { return; }
     var t0 = ctx.currentTime + 0.1, saida = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 4200; saida.gain.value = 0.8; // ao longe: abafado e com mais reverberação
+    lp.type = 'lowpass'; lp.frequency.value = 4200; saida.gain.value = 0.92; // ao longe: abafado e com mais reverberação
     saida.connect(lp); lp.connect(sfx); lp.connect(reverb);
     [[0, 410, -0.5], [0.45, 470, 0.4], [1.1, 360, 0.1]].forEach(function (cr) {
       var pan = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain(); if (pan.pan) { pan.pan.value = cr[2]; }
@@ -165,6 +179,16 @@
   NZ.som = {
     musica: function (on) { querMusica = !!on; if (on) { tocaMusica(); } else if (ctx) { paraMusica(2.5); } },
     criancas: criancas, missao: missao, foco: foco, clique: clique,
+    volume: function (k, v) {
+      if (!(k in USER)) { return 0; }
+      if (v === undefined) { return USER[k]; }
+      USER[k] = Math.max(0, Math.min(1, +v || 0)); try { localStorage.setItem(KEY_VOL, JSON.stringify(USER)); } catch (e) { /* vale até fechar */ }
+      if (ctx) {
+        var t = ctx.currentTime, g = k === 'musica' ? (musica && musica.bus.gain) : sfx.gain, alvo = k === 'musica' ? VOL.musica * USER.musica : VOL.sfx * USER.efeitos;
+        if (g) { g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(Math.max(0.0001, alvo), t + 0.15); }
+      }
+      return USER[k];
+    },
     estado: function () { var pico = 0; if (medidor) { var a = new Float32Array(medidor.fftSize); medidor.getFloatTimeDomainData(a); for (var i = 0; i < a.length; i++) { pico = Math.max(pico, Math.abs(a[i])); } } return { audio: ctx ? ctx.state : 'sem', musica: !!musica, ligado: ligadoJa, pico: Math.round(pico * 1000) / 1000 }; }, // para testes
     ligado: function (v) {
       if (v === undefined) { return ligadoJa; }
