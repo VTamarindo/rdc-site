@@ -841,7 +841,7 @@
       g.add(box(W * 0.5, 0.56, 0.3, 'tijolo', 1, 0, 1.08, D / 2 - 0.2)); g.add(box(W * 0.62, 0.1, 0.34, 'pedra', 1, 0, 1.4, D / 2 - 0.2));
       g.add(box(W * 0.3, 0.34, 0.02, null, 1, 0, 1.02, D / 2 - 0.04, 0x1c1410)); g.add(acesa(box(W * 0.24, 0.09, 0.02, null, 1, 0, 0.9, D / 2 - 0.025, 0xd8581c)));
       g.add(box(W * 0.7, 0.08, 0.3, 'pedra', 1, 0, 0.84, D / 2 + 0.1));
-      g.add(box(0.45, I.teto - 1.7, 0.45, 'tijolo', 1, 0, (I.teto + 1.7) / 2, -D * 0.2));
+      g.add(box(0.45, I.teto - 1, 0.45, 'tijolo', 1, 0, (I.teto + 1) / 2, -D * 0.2)); // chaminé: nasce dentro da cúpula (antes começava acima dela e flutuava)
     },
     masseira: function (g, W, D) {
       g.add(box(W, 0.25, D, 'tabuas', PX, 0, 0.72, 0, MAD)); pernas(g, W, D, 0.6, 0.07, MADE);
