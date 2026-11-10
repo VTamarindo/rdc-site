@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-11', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-12', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -688,7 +688,12 @@
   var hudT = 0;
   function hud() {
     var p = st.player, mh = calc.maxHp(world, p);
-    var sm = semMacro(); if (sm !== document.body.classList.contains('sem-macro')) { document.body.classList.toggle('sem-macro', sm); }
+    var sm = semMacro();
+    if (sm !== document.body.classList.contains('sem-macro')) {
+      // o capítulo acabou de terminar (ou o save abriu no mundo aberto): a dica do mapa, da macro e da caminhada aparece de novo
+      if (document.body.classList.contains('sem-macro')) { hintSeen = false; lineTxt = null; }
+      document.body.classList.toggle('sem-macro', sm);
+    }
     $('hp-bar').style.width = Math.max(0, p.hp / mh * 100) + '%';
     $('hp-t').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + mh + (p.poison ? ' · envenenado' : '');
     var need = p.lv * G.player.xpPerLevel;
@@ -711,16 +716,17 @@
 
     var line = $('macro-line'), on = p.mode === 'macro' && p.macro.on;
     var busy = on || !!p.goto, now = performance.now();
-    var hint = semMacro() ? (isTouch ? 'Toque no mapa pequeno, no canto, para andar' : 'Mapa (M): clique para andar') : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
+    // campanha antes do mundo aberto: sem dica de mapa; ela aparece uma vez, com a macro e a caminhada juntas, no fim do capítulo
+    var hint = semMacro() ? '' : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
     var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
     // vila em armas: a linha fica fixa, em vermelho, e conta o tempo que falta longe da vila
     var H = st.hostil, AT = G.aldeoes.textos;
     if (H) { busy = true; txt = H.fora > 0 ? AT.fora.replace('{s}', Math.ceil(G.aldeoes.calmaSeg - H.fora)) : AT.linha + (p.goto ? ' · andando até o ponto marcado' : ''); }
     line.classList.toggle('hostil', !!H);
     // o que está acontecendo fica na tela; dica e aviso de parada somem depois de LINE_MS, e a dica só aparece uma vez
-    if (txt !== lineTxt) { lineTxt = txt; line.textContent = txt; lineEnd = txt === hint && hintSeen ? 0 : now + LINE_MS; }
-    if (!p.name) { lineEnd = now + LINE_MS; } // a contagem só começa depois de criar o personagem
-    if (txt === hint && now >= lineEnd) { hintSeen = true; }
+    if (txt !== lineTxt) { lineTxt = txt; line.textContent = txt; lineEnd = !txt || (txt === hint && hintSeen) ? 0 : now + LINE_MS; } // sem texto: a linha fica escondida
+    if (!p.name && txt) { lineEnd = now + LINE_MS; } // a contagem só começa depois de criar o personagem
+    if (txt && txt === hint && now >= lineEnd) { hintSeen = true; }
     line.classList.toggle('on', busy);
     line.classList.toggle('fade', !busy && now >= lineEnd);
     renderQuests();
