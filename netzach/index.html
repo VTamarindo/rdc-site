@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-3">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-5">
 </head>
 <body>
 <div id="app">
@@ -168,6 +168,16 @@
     <p id="npc-res" class="hint"></p>
   </section>
 
+  <!-- campanha (js/campanha.js): a caixa das falas e escolhas, a tela preta das passagens, a dica do tutorial e o aviso de missão completada -->
+  <section id="w-cena" class="win small cena" hidden aria-label="Cena">
+    <h2 id="cena-nome" hidden></h2>
+    <p id="cena-texto"></p>
+    <div id="cena-opts" class="col"></div>
+  </section>
+  <div id="cena-preto" hidden><p id="cena-preto-t"></p></div>
+  <p id="cena-dica" class="parch" hidden></p>
+  <div id="cena-feito" class="parch" hidden role="status"><b id="cena-feito-t"></b><span id="cena-feito-l"></span></div>
+
   <!-- tela inicial: cobre tudo até escolher um save. Para o controle e o Esc é uma janela (foco nos botões, B volta) -->
   <!-- uma aba só: quando o jogo abre em outra aba, esta salva, entrega o save para lá e para (js/ui.js, "uma aba só") -->
   <div id="w-aba" hidden>
@@ -192,13 +202,18 @@
       </div>
       <p id="t-nuvem" class="hint" hidden></p>
       <div id="t-conta" class="conta"></div>
+      <button type="button" id="t-som" class="t-som" aria-pressed="true">Som: ligado</button>
       <form id="new-form" hidden>
         <h3>Novo jogo</h3>
         <label for="new-name">Nome do personagem</label>
         <input id="new-name" type="text" maxlength="20" autocomplete="off" spellcheck="false" required>
         <p id="new-err" class="hint" hidden>Escolha um nome de 2 a 20 letras.</p>
-        <button type="submit" class="main">Começar</button>
-        <button type="button" data-t-back>Voltar</button>
+        <p class="hint">Campanha: a história, desde o campo de trigo. Modo livre: a vila aberta, com o dia correndo no relógio de verdade.</p>
+        <div class="col">
+          <button type="submit" class="main" data-modo="campanha" id="new-camp">Começar a campanha</button>
+          <button type="submit" data-modo="livre">Modo livre</button>
+          <button type="button" data-t-back>Voltar</button>
+        </div>
       </form>
       <div id="t-del" hidden>
         <h3>Apagar save</h3>
@@ -294,11 +309,13 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-3"></script>
-<script src="js/sim.js?v=20261110-3"></script>
-<script src="js/ceu.js?v=20261110-3"></script>
-<script src="js/view.js?v=20261110-3"></script>
-<script src="js/controle.js?v=20261110-3"></script>
-<script src="js/ui.js?v=20261110-3"></script>
+<script src="js/conta.js?v=20261110-5"></script>
+<script src="js/sim.js?v=20261110-5"></script>
+<script src="js/ceu.js?v=20261110-5"></script>
+<script src="js/view.js?v=20261110-5"></script>
+<script src="js/controle.js?v=20261110-5"></script>
+<script src="js/som.js?v=20261110-5"></script>
+<script src="js/campanha.js?v=20261110-5"></script>
+<script src="js/ui.js?v=20261110-5"></script>
 </body>
 </html>

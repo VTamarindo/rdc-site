@@ -1,6 +1,40 @@
 {
   "version": 1,
   "_nota": "Protótipo da vila. Todos os nomes e textos são provisórios.",
+  "campanha": {
+    "_nota": "Modo história (js/campanha.js). As cenas vêm de data/campanha.json (gerado por tools/montar_campanha.ps1); aqui ficam os lugares, os números e os textos do jogo em volta delas. hora: a hora fixa do céu na campanha e na tela inicial (o dia só corre com o relógio no modo livre). inicio.yaw e carroca.rot em graus (90 = olhando para o leste).",
+    "hora": 9.5,
+    "campo": "trigo",
+    "inicio": { "x": 23, "z": 45, "yaw": 90 },
+    "figura": { "x": 36, "z": 45, "img": "rapaz", "h": 1.85, "tinta": "2a2430", "nome": "Figura misteriosa" },
+    "fazendeiro": { "img": "faz_velho", "h": 1.86, "nome": "Fazendeiro" },
+    "carroca": { "x": 34, "z": 59.6, "rot": 0, "nome": "Carroça", "faz": [-2.2, -1.2] },
+    "itens": { "pocao": 2 },
+    "semArma": true,
+    "folga": 5,
+    "seguir": 2.5,
+    "paradoSeg": 5,
+    "alcance": 3.6,
+    "colher": [5, 15],
+    "acordou": "(Nome) acordou ao ouvir crianças rindo.",
+    "missoes": {
+      "figura": "Siga a figura misteriosa",
+      "colher": "Colha ao menos 5 fardos de trigo",
+      "carroca": "Coloque o trigo na carroça",
+      "terminar": "Termine o campo",
+      "carroca2": "Leve o resto do trigo à carroça"
+    },
+    "dicaColher": {
+      "teclado": "Para colher: chegue perto do trigo e clique nele (ou olhe para ele e aperte E). Ande com W A S D e gire a câmera arrastando o mouse.",
+      "toque": "Para colher: chegue perto do trigo e toque nele (ou toque em Interagir). Ande com o analógico.",
+      "controle": "Para colher: chegue perto do trigo, olhe para ele e aperte A. Ande com o analógico esquerdo."
+    },
+    "naoFuja": "O fazendeiro chamou você de volta ao campo.",
+    "feito": "Missão completada",
+    "ficaNoPasto": "c01_trigo_terminar_o_campo",
+    "pasto": { "missao": "Encontre o fazendeiro perto do pasto", "prog": "em breve" },
+    "fimTexto": "Fim do primeiro capítulo. A história continua em breve."
+  },
   "settings": {
     "tickSec": 0.2,
     "offlineCapHours": 4,

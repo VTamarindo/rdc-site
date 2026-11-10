@@ -186,8 +186,12 @@
   Node.prototype.add = function (n) { n.parent = this; this.children.push(n); return n; };
   Node.prototype.at = function (x, y, z) { this.pos = [x, y, z]; return this; };
 
-  var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;varying vec3 vn;varying vec3 vw;varying vec2 vu;' +
-    'void main(){vec4 w=M*vec4(p,1.0);vn=N*n;vw=w.xyz;vu=uv;gl_Position=VP*w;}';
+  // vento no trigo (vf = 1 nas malhas do trigal): a ponta da planta balança mais que o pé, com rajadas que correm pelo campo.
+  // vt = segundos do relógio da tela. É só desenho: o clique e a colheita usam o retalho, que não se mexe
+  var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;uniform float vt;uniform float vf;varying vec3 vn;varying vec3 vw;varying vec2 vu;' +
+    'void main(){vec4 w=M*vec4(p,1.0);if(vf>0.5){float h=max(w.y,0.0);float k=h*h;float g=0.55+0.45*sin(vt*0.7-w.x*0.11+w.z*0.05);' +
+    'w.x+=k*(0.075*g+0.05*sin(vt*2.1+w.x*0.9+w.z*0.4));w.z+=k*0.04*sin(vt*1.6+w.z*0.8-w.x*0.3);}' +
+    'vn=N*n;vw=w.xyz;vu=uv;gl_Position=VP*w;}';
   var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;uniform vec3 tint;' +
     'uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;uniform vec3 fogCol;uniform vec2 fog;' +
     // dentro: peça de interior, iluminada pela luz da casa (ambiente + lareira/velas), não pelo céu, que à noite apagaria a sala
@@ -206,7 +210,7 @@
     var pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
     var u = this.u = {};
-    ['VP', 'M', 'N', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
+    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
     this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
     gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
@@ -235,6 +239,7 @@
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(env.fogCol[0], env.fogCol[1], env.fogCol[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.uniform3fv(u.amb, env.amb || BRANCO); gl.uniform1f(u.dentro, 0); this.envTint = env.tint; this.inT = false;
+    gl.uniform1f(u.vt, (performance.now() / 1000) % 3600); gl.uniform1f(u.vf, 0); this.vfAgora = 0;
     gl.uniform3fv(u.fogCol, env.fogCol);
     if (env.ceu) { this.ceu(env.ceu, cam); }
     gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.vp)); gl.uniform3fv(u.eye, cam.eye); gl.uniform3fv(u.tint, env.tint);
@@ -285,6 +290,7 @@
     gl.bindTexture(gl.TEXTURE_2D, this.tex[n.tex] || this.tex._branco);
     gl.uniformMatrix4fv(u.M, false, new Float32Array(n.world)); gl.uniformMatrix3fv(u.N, false, new Float32Array(normalMat(n.world)));
     gl.uniform3fv(u.col, n.color); gl.uniform3fv(u.emi, n.emissive);
+    var vf = n.vento ? 1 : 0; if (vf !== this.vfAgora) { gl.uniform1f(u.vf, vf); this.vfAgora = vf; }
     gl.uniform1f(u.alpha, n.alpha); gl.uniform1f(u.unlit, n.unlit ? 1 : 0);
     // peça de interior: as luzes da sala e, nas sem sombra (chamas, figuras), o brilho próprio no lugar da tinta do céu
     if (n.dentro) {
@@ -954,6 +960,7 @@
       Object.keys(grupos).forEach(function (c) {
         var o = new Node({ data: new Float32Array(grupos[c]), count: grupos[c].length / 8 }, 0xffffff, { tex: f[k].tex, unlit: f[k].unlit });
         o.color = f[k].color; R.add(o);
+        if (/^trigo_/.test(f[k].tex)) { o.vento = true; } // o trigal balança ao vento (ver VS)
         if (sala && f[k].modo !== 'janela') { o.dentro = sala; }
       });
     });
@@ -1053,6 +1060,8 @@
     lobo: 0.96, veado: 2.16, ovelha: 1.04, ovelha_tosquiada: 1.04, arbusto: 1.28, arbusto_seco: 1.28, escorpiao: 0.16, serpente: 0.24, troll: 2.56 };
   // bichos desenhados de lado, olhando para a esquerda (como a vaca): espelham quando andam para a direita da tela.
   // PULO: altura do saltinho ao andar (o coelho pula; escorpião e serpente rastejam)
+  // deitado de costas no meio do trigo: a altura do olho (o trigo tem ~1,3 m) e o quanto olha para cima (rad)
+  var DEITADO = { y: 0.24, pitch: 1.12 };
   var DE_LADO = { lobo: 1, veado: 1, escorpiao: 1, serpente: 1 };
   var PULO = { coelho: 0.15, lobo: 0.04, veado: 0.07, troll: 0.03 };
 
@@ -1382,6 +1391,64 @@
   };
   // segura um morador parado (menu de interação aberto com ele); null solta. Ele volta a andar de onde parou
   View.prototype.segura = function (id) { this.held = id || null; };
+
+  // ---------- campanha: figuras e objetos que só existem na história (js/campanha.js diz onde ficam) ----------
+  // ator(id, img, h, tinta, nome): figura clicável (ref tipo 'camp'), escondida até a história mostrar.
+  // vai(id, x, z, vel): anda até lá; some(id, seg): desbota até sumir. Nada disto entra na simulação nem no save
+  View.prototype.ator = function (id, img, h, tinta, nome) {
+    var A = this.atores || (this.atores = {});
+    if (A[id]) { return A[id]; }
+    var o = this.sprite(img, h);
+    if (tinta !== undefined) { o.color = hex(tinta); }
+    o.userData.ref = { type: 'camp', id: id }; o.visible = false;
+    this.root.add(o); this.pick.push(o);
+    return (A[id] = { id: id, o: o, nome: nome || id, alvo: null, vel: 0, desbota: 0 });
+  };
+  View.prototype.poeAtor = function (id, x, z) { var a = this.atores[id]; a.o.at(x, 0, z); a.o.visible = true; a.o.alpha = 1; a.alvo = null; a.desbota = 0; };
+  View.prototype.vai = function (id, x, z, vel) { var a = this.atores[id]; a.alvo = [x, z]; a.vel = vel || 1.4; };
+  View.prototype.some = function (id, seg) { var a = this.atores[id]; if (a.o.visible) { a.desbota = seg || 1; } };
+  View.prototype.esconde = function (id) { var a = this.atores && this.atores[id]; if (a) { a.o.visible = false; a.alvo = null; a.desbota = 0; } };
+  View.prototype.atoresQuadro = function (dt) {
+    var A = this.atores; if (!A) { return; }
+    Object.keys(A).forEach(function (k) {
+      var a = A[k], o = a.o;
+      if (!o.visible || o.userData.fixo) { return; }
+      if (a.alvo) {
+        var dx = a.alvo[0] - o.pos[0], dz = a.alvo[1] - o.pos[2], d = Math.hypot(dx, dz), s = a.vel * dt;
+        if (d <= s) { o.pos[0] = a.alvo[0]; o.pos[2] = a.alvo[1]; a.alvo = null; o.pos[1] = 0; }
+        else { o.pos[0] += dx / d * s; o.pos[2] += dz / d * s; o.pos[1] = Math.abs(Math.sin(performance.now() / 140)) * 0.04; }
+      }
+      if (a.desbota > 0) {
+        o.alpha = Math.max(0, o.alpha - dt / a.desbota);
+        if (o.alpha <= 0.01) { o.visible = false; o.alpha = 1; a.desbota = 0; }
+      }
+    });
+  };
+  // carroça de tábuas de duas rodas, comprida ao longo de x (rot gira); carga(true) mostra o trigo dentro
+  View.prototype.carroca = function (id, x, z, rot, nome) {
+    var A = this.atores || (this.atores = {});
+    if (A[id]) { return A[id]; }
+    var g = new Node().at(x, 0, z); g.rotY = rot || 0;
+    g.add(box(2.3, 0.08, 1.3, 'tabuas', PX, 0, 0.8, 0));
+    [-1, 1].forEach(function (s) {
+      g.add(box(2.3, 0.36, 0.06, 'tabuas', PX, 0, 1.0, s * 0.62)); g.add(box(0.06, 0.36, 1.3, 'tabuas', PX, s * 1.12, 1.0, 0));
+      var r = new Node(rotX(cylGeo(0.48, 0.48, 0.09, 14, 0, PX), Math.PI / 2), 0x8a6a48, { tex: 'tabuas' }).at(0, 0.48, s * 0.74); g.add(r); // roda
+      g.add(box(0.16, 0.16, 0.12, null, 1, 0, 0.48, s * 0.8, 0x3a3a42));                                                     // cubo de ferro
+      g.add(box(1.9, 0.07, 0.07, 'tabuas', PX, 2.05, 0.66, s * 0.42));                                                    // varais
+    });
+    g.add(box(0.1, 0.1, 1.6, null, 1, 0, 0.48, 0, 0x4a3420)); // eixo
+    g.add(box(0.08, 0.66, 0.08, 'tabuas', PX, -1.0, 0.33, 0)); // escora de trás, para ficar de pé sem o cavalo
+    var carga = new Node().at(0, 0, 0); g.add(carga);
+    carga.add(box(2.1, 0.32, 1.12, 'palha', 0.64, 0, 1.0, 0, 0xe8d090));
+    [[-0.6, -0.25], [0.1, 0.22], [0.6, -0.2]].forEach(function (f) { carga.add(box(0.9, 0.3, 0.5, 'palha', 0.64, f[0], 1.3, f[1], 0xf0dc9c)); });
+    carga.visible = false;
+    var turned = Math.abs(Math.round((rot || 0) / (Math.PI / 2))) % 2 === 1;
+    g.userData.ref = { type: 'camp', id: id }; g.userData.fixo = true;
+    g.userData.box = { x: x, z: z, w: turned ? 1.8 : 3.0, d: turned ? 3.0 : 1.8, h: 1.6 };
+    g.visible = false;
+    this.root.add(g); this.pick.push(g);
+    return (A[id] = { id: id, o: g, nome: nome || id, carga: carga, alvo: null, vel: 0, desbota: 0 });
+  };
   // onde cada morador está agora no desenho: a simulação parte daqui quando a vila entra em armas
   View.prototype.walkerPos = function () {
     var o = {}; this.walkers.forEach(function (w) { o[w.d.id] = [w.o.pos[0], w.o.pos[2]]; }); return o;
@@ -1512,8 +1579,8 @@
     astro(C.sol, m.solDir, 420); astro(C.lua, m.luaDir, 300);
   };
   // as serras ficam no mundo, então o jogador anda em relação a elas (paralaxe); as nuvens correm com o relógio
-  View.prototype.ceuQuadro = function (eye, tgt, ms) {
-    this.ceuHora(ms);
+  View.prototype.ceuQuadro = function (eye, tgt, ms, hora) {
+    this.ceuHora(hora === undefined || hora === null ? ms : hora);
     var C = this.ceuN;
     C.serras.forEach(function (n) { n.pos[0] = -eye[0]; n.pos[2] = -eye[2]; n.world = local(n); });
     C.nuv.pos[0] = (ms / 1000 * 1.6) % 1400; C.nuv.world = local(C.nuv);
@@ -1630,15 +1697,21 @@
     if (opts.moving) { this.bob += dt * 9; }
     var by = opts.moving ? Math.sin(this.bob) * 0.05 : 0;
     var sh = this.shake > 0 ? (Math.random() - 0.5) * this.shake : 0; this.shake = Math.max(0, this.shake - dt * 0.6);
-    var eye = [px, 1.6 + by + sh, pz], cy = Math.cos(this.pitch);
-    var tgt = [px + Math.sin(this.yaw) * cy, eye[1] + Math.sin(this.pitch), pz + Math.cos(this.yaw) * cy];
-    var vp = mul(perspective(this.fov, this.aspect, 0.1, 200), lookAt(eye, tgt));
-    this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: this.pitch };
-    this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock);
+    // deitado (0 a 1): o personagem deitado de costas no chão, olhando o céu entre as plantas (tela inicial e o acordar da
+    // campanha); 0 = em pé. A respiração mexe a vista um pouco, como quem está deitado no campo
+    var dk = opts.deitado || 0, ar = dk ? Math.sin(t / 1900) * 0.012 * dk : 0;
+    var pitch = this.pitch + (DEITADO.pitch + ar - this.pitch) * dk;
+    var eye = [px, 1.6 + by + sh + (DEITADO.y + ar * 2 - 1.6) * dk, pz], cy = Math.cos(pitch);
+    var tgt = [px + Math.sin(this.yaw) * cy, eye[1] + Math.sin(pitch), pz + Math.cos(this.yaw) * cy];
+    var vp = mul(perspective(this.fov, this.aspect, 0.05, 200), lookAt(eye, tgt));
+    this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: pitch };
+    // hora: a hora fixa do céu (campanha e tela inicial: o dia não corre com o relógio); clock: o relógio, que move as nuvens
+    this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock, opts.hora);
+    this.atoresQuadro(dt);
     this.ambient(opts.now === undefined ? Date.now() : opts.now, st, prev, alpha, dt);
     this.salaQuadro(eye);
     this.r.draw(this.root, this.cam, this.env);
-    if (!opts.semArma) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
+    if (!opts.semArma && !dk) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };
 
   // clique: raio da câmera contra as figuras, aceitando só pixels desenhados (com folga).

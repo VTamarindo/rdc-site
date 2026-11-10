@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-3', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-5', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -17,7 +17,10 @@
     return Promise.race([ask, new Promise(function (ok) { setTimeout(ok, 2500); })]);
   }
   var calc = NZ.calc;
-  var G, V, world, sim, st, view;
+  var G, V, world, sim, st, view, camp = null, campDados = null; // camp: o modo história (js/campanha.js)
+  // a hora fixa do céu na campanha e na tela inicial (game.json → campanha.hora); no modo livre o céu segue o relógio
+  function horaFixa() { var d = new Date(clockNow()); d.setHours(0, 0, 0, 0); return d.getTime() + G.campanha.hora * 3600000; }
+  function campanha() { return !!(st && st.modo === 'campanha'); }
   var DT, CAP, THRESH;
   var lastReal = clockNow(), acc = 0, prev = null, away = null;
   var keys = {}, pad = {}, lookHold = 0, drag = null, hoverRef = null, ctrl = null;
@@ -49,17 +52,29 @@
   // ---------- carregar ----------
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function () { /* sem ele, o jogo só não abre sem internet */ }); }
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
-  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION), clockSync()]).then(function (d) { start(d[0], d[1], d[2]); })
+  // data/campanha.json: as cenas do roteirizador (tools/montar_campanha.ps1). Sem ele, só o modo livre
+  var campanhaJSON = getJSON('data/campanha.json?v=' + VERSION).catch(function () { return null; });
+  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION), campanhaJSON, clockSync()]).then(function (d) { start(d[0], d[1], d[2], d[3]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
-  function start(game, vila, art) {
-    G = game; V = vila;
+  function start(game, vila, art, campanha) {
+    G = game; V = vila; campDados = campanha;
     DT = G.settings.tickSec; CAP = G.settings.offlineCapHours * 3600; THRESH = G.settings.returnThresholdSec;
     world = new NZ.World(G, V); sim = new NZ.Sim(world);
     slotsMigrate();
 
     view = new NZ.View($('view'), world, art);
-    vitrine = NZ.newState(world, 1); // a vila que aparece atrás da tela inicial; não é de nenhum save
+    // atrás da tela inicial: o céu visto de dentro do trigo, deitado, como no começo da campanha; não é de nenhum save
+    vitrine = NZ.newState(world, 1);
+    vitrine.player.x = G.campanha.inicio.x; vitrine.player.z = G.campanha.inicio.z;
+    camp = NZ.campanha({
+      G: G, world: world, view: view, sim: sim, dados: campDados,
+      save: function () { save(); }, toast: function (t, s) { toast(t, s); }, quests: function () { renderQuests(); },
+      eventos: function () { handleEvents(); hudT = 0; },
+      janela: cenaJanela, janelaAberta: function () { return openWin; },
+      guardado: function () { return performance.now() < guardUntil; },
+      entrada: function () { return ctrl && ctrl.active() ? 'controle' : isTouch ? 'toque' : 'teclado'; }
+    });
     $('loading').hidden = true; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
@@ -259,7 +274,8 @@
   function fechaAba() {
     aba.fechada = true;
     if (!G) { return; } // ainda carregando: start() vê aba.fechada e mostra o aviso
-    if (st) { hide(); closeAllMarks(); }
+    if (st) { hide(true); closeAllMarks(); camp.abre(null); }
+    if (NZ.som) { NZ.som.musica(false); }
     st = null; slot = 0; slotDono = ''; ultimo = null; away = null; titleOn = false; openWin = null;
     $('hud').hidden = true; $('w-title').hidden = true; $('loading').hidden = true; $('w-aba').hidden = false;
     document.title = baseTitle;
@@ -298,30 +314,42 @@
     });
   }
   // abre um save (ou começa um novo, com nome) no espaço n; o tempo fora de cada save conta desde a última vez que ele rodou
-  function play(n, name) {
+  // modo (só no jogo novo): 'campanha' ou 'livre'
+  function play(n, name, modo) {
     var saved = name ? null : load(n);
     if (!name && !saved) { showTitle(); return; }
     var env = ler(n);
     slot = n; slotDono = dono(); slotCloud = env && env.cloud !== undefined ? env.cloud : null; ultimo = null; nuvemT = 0;
     away = null; acc = 0; prev = null; dailyNext = 0; keys = {}; pad = {}; lineTxt = null;
     if (saved) { st = NZ.settle(world, NZ.migrate(saved.state)); lastReal = saved.lastReal || clockNow(); }
-    else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); st.player.name = name; lastReal = clockNow(); }
-    titleOn = false; hide(); $('w-title').hidden = true; $('hud').hidden = false;
+    else {
+      st = NZ.newState(world, (Date.now() % 2147483647) | 0); st.player.name = name; lastReal = clockNow();
+      st.modo = 'livre';
+      if (modo === 'campanha' && camp.tem()) { camp.novo(st); }
+    }
+    if (!st.modo) { st.modo = 'livre'; } // save de antes da campanha
+    titleOn = false; hide(true); $('w-title').hidden = true; $('hud').hidden = false;
+    if (NZ.som) { NZ.som.musica(false); } // a música some devagar ao entrar no jogo
     view.yaw = st.player.yaw; view.pitch = 0; sim.events = [];
-    renderLog(); hudT = 0;
-    if (saved) { beginAway(lastReal); endAway(clockNow()); } else { toast('Bem-vindo à vila, ' + name + '.', 3); }
+    camp.abre(st, !!saved);
+    renderLog(); renderQuests(); hudT = 0;
+    if (saved) { beginAway(lastReal); endAway(clockNow()); } else if (!campanha()) { toast('Bem-vindo à vila, ' + name + '.', 3); }
     save();
   }
   function toTitle() {
-    save(); sobe(); hide(); closeAllMarks();
-    st = null; slot = 0; slotDono = ''; ultimo = null; away = null; document.title = baseTitle;
+    save(); sobe(); hide(true); closeAllMarks();
+    st = null; camp.abre(null); slot = 0; slotDono = ''; ultimo = null; away = null; document.title = baseTitle;
     showTitle();
   }
   function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('hover').hidden = true; $('toast').hidden = true; }
 
   // ---------- tela inicial ----------
   var titleOn = false, titleDel = 0, titleNew = 0;
-  function slotInfo(n) { var s = load(n); return s ? { n: n, name: s.state.player.name || 'Sem nome', lv: s.state.player.lv || 1, when: s.lastReal || 0 } : { n: n }; }
+  function slotInfo(n) {
+    var s = load(n); if (!s) { return { n: n }; }
+    var c = s.state.modo === 'campanha' && s.state.camp;
+    return { n: n, name: s.state.player.name || 'Sem nome', lv: s.state.player.lv || 1, when: s.lastReal || 0, modo: c ? (c.fim ? 'Campanha · fim do capítulo 1' : 'Campanha · capítulo 1') : 'Modo livre' };
+  }
   function ago(ms) {
     var s = (clockNow() - ms) / 1000;
     if (!ms) { return ''; }
@@ -331,7 +359,8 @@
     var d = new Date(ms); return 'em ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
   }
   function showTitle() {
-    titleOn = false; hide(); titleOn = true; openWin = 'w-title'; titleDel = titleNew = 0;
+    titleOn = false; hide(true); titleOn = true; openWin = 'w-title'; titleDel = titleNew = 0;
+    if (NZ.som) { NZ.som.musica(true); } // a trilha da tela inicial (js/som.js); começa no primeiro clique ou tecla
     $('hud').hidden = true; $('w-title').hidden = false; guardClicks();
     $('t-list').hidden = false; $('new-form').hidden = true; $('t-del').hidden = true;
     var all = [], last = null;
@@ -339,7 +368,7 @@
     $('t-slots').innerHTML = all.map(function (s) {
       if (!s.name) { return '<li><button type="button" class="t-slot vazio" data-t-new="' + s.n + '"><b>Espaço ' + s.n + ' · vazio</b><small>Começar um jogo novo aqui</small></button><i class="t-vaga"></i></li>'; } // a vaga alinha as linhas: no controle, direita vai ao Apagar, não à linha de baixo
       if (!last || s.when > last.when) { last = s; }
-      return '<li><button type="button" class="t-slot" data-t-play="' + s.n + '"><b>' + esc(s.name) + '</b><span>Nível ' + s.lv + ' · espaço ' + s.n + '</span><small>Jogado ' + ago(s.when) + '</small></button>' +
+      return '<li><button type="button" class="t-slot" data-t-play="' + s.n + '"><b>' + esc(s.name) + '</b><span>' + s.modo + ' · nível ' + s.lv + ' · espaço ' + s.n + '</span><small>Jogado ' + ago(s.when) + '</small></button>' +
         '<button type="button" class="t-apaga" data-t-del="' + s.n + '" aria-label="Apagar o save de ' + esc(s.name) + '" title="Apagar">Apagar</button></li>';
     }).join('');
     var free = all.filter(function (s) { return !s.name; })[0];
@@ -396,8 +425,16 @@
       var n = $('new-name').value.replace(/\s+/g, ' ').trim();
       if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
       if (load(titleNew)) { showTitle(); $('t-msg').textContent = 'Esse espaço acabou de receber um save da nuvem. Escolha outro.'; $('t-msg').hidden = false; return; }
-      $('new-name').blur(); play(titleNew, n);
+      $('new-name').blur(); play(titleNew, n, modoNovo);
     });
+    // som ligado ou desligado (js/som.js): vale para este navegador, fora do save
+    function somBotao() { var on = NZ.som ? NZ.som.ligado() : false; $('t-som').textContent = 'Som: ' + (on ? 'ligado' : 'desligado'); $('t-som').setAttribute('aria-pressed', String(on)); }
+    if (NZ.som) { somBotao(); $('t-som').addEventListener('click', function () { NZ.som.ligado(!NZ.som.ligado()); somBotao(); }); } else { $('t-som').hidden = true; }
+    // os dois botões do jogo novo: o clique vem antes do envio do formulário; Enter no nome vale o primeiro (a campanha)
+    var modoNovo = 'campanha';
+    Array.prototype.forEach.call(document.querySelectorAll('#new-form [data-modo]'), function (b) { b.addEventListener('click', function () { modoNovo = b.dataset.modo; }); });
+    $('new-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') { modoNovo = camp.tem() ? 'campanha' : 'livre'; } });
+    if (!camp.tem()) { $('new-camp').hidden = true; modoNovo = 'livre'; }
   }
 
   // ---------- tempo fora ----------
@@ -451,10 +488,10 @@
     requestAnimationFrame(frame);
     if (aba.fechada) { return; } // passou o jogo para outra aba: nada roda nem desenha aqui
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
-    if (!st) { // tela inicial: a vila gira devagar atrás dos saves, e o controle só navega
+    if (!st) { // tela inicial: deitado no trigo, olhando o céu (o começo da campanha), e o controle só navega
       ctrl.tick(fdt);
-      view.yaw += fdt * 0.06; view.pitch = -0.04;
-      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow(), semArma: true });
+      view.yaw = G.campanha.inicio.yaw * Math.PI / 180 + Math.sin(t / 7000) * 0.05; view.pitch = -0.04;
+      view.render(vitrine, null, 1, fdt, { interp: false, moving: false, now: clockNow(), clock: clockNow(), hora: horaFixa(), deitado: 1, semArma: true });
       return;
     }
     var now = clockNow(), gap = (now - lastReal) / 1000;
@@ -469,6 +506,8 @@
     var guard = 0;
     while (acc >= DT && guard++ < 50) { prev = snapPrev(); sim.tick(st); acc -= DT; }
     handleEvents();
+    camp.tick(fdt);
+    if (!st) { return; }
 
     // câmera
     var p = st.player, auto = (p.mode === 'macro' && p.macro.on) || !!p.goto;
@@ -481,7 +520,7 @@
       }
     } else { p.yaw = view.yaw; }
     var autoMoving = auto && prev && (Math.abs(p.x - prev.player.x) + Math.abs(p.z - prev.player.z) > 0.001);
-    view.render(st, prev, Math.min(1, acc / DT), fdt, { interp: auto, moving: moving || autoMoving, now: now, clock: clockNow() });
+    view.render(st, prev, Math.min(1, acc / DT), fdt, { interp: auto, moving: moving || autoMoving, now: now, clock: clockNow(), hora: campanha() ? horaFixa() : null, deitado: camp.deitado() });
     hud(); marks();
     if (npcOpen && !nearOpen()) { hide(); }
   }
@@ -496,6 +535,7 @@
 
   function manualMove(dt) {
     if (openWin && openWin !== 'w-report') { return false; }
+    if (camp.trava()) { return false; } // a história está mostrando algo (acordar, o puxão do fazendeiro)
     // pad.sf e pad.ss: o analógico da tela; pad.gf e pad.gs: o do controle. Todos de -1 a 1
     var f = (keys.KeyW || keys.ArrowUp || pad.fwd ? 1 : 0) - (keys.KeyS || keys.ArrowDown || pad.back ? 1 : 0) + (pad.sf || 0) + (pad.gf || 0);
     var s = (keys.KeyD || pad.right ? 1 : 0) - (keys.KeyA || pad.left ? 1 : 0) + (pad.ss || 0) + (pad.gs || 0);
@@ -514,6 +554,7 @@
     var ev = sim.events; sim.events = [];
     var newLog = false;
     ev.forEach(function (e) {
+      camp.evento(e);
       if (e.type === 'log') { newLog = true; }
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
@@ -981,15 +1022,23 @@
   // ---------- janelas ----------
   function show(id) {
     if (titleOn) { return; } // na tela inicial não se abre janela do jogo
+    if (openWin === 'w-cena') { return; } // a fala da história fica até o jogador escolher
     hide(); openWin = id; $(id).hidden = false; keys = {}; pad = {}; guardClicks();
+  }
+  // caixa das falas da campanha (js/campanha.js): Esc, B e Fechar não a fecham; só as escolhas dela
+  function cenaJanela(abre) {
+    if (abre) { if (openWin && openWin !== 'w-cena') { hide(); } openWin = 'w-cena'; $('w-cena').hidden = false; keys = {}; pad = {}; guardClicks(); }
+    else if (openWin === 'w-cena') { $('w-cena').hidden = true; openWin = null; }
   }
   // o toque que abre uma janela gera, logo depois, um clique fantasma no mesmo ponto;
   // por meio segundo a janela ignora cliques, para ele não escolher uma opção sozinho
   var guardUntil = 0, lastPointer = 'mouse';
   window.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; }, true);
   function guardClicks() { if (lastPointer === 'touch') { guardUntil = performance.now() + 500; } }
-  function hide() {
+  // tudo: fecha até a caixa da campanha (sair para a tela inicial, passar o jogo a outra aba)
+  function hide(tudo) {
     if (titleOn) { titleBack(); return; } // a tela inicial só sai escolhendo um save
+    if (openWin === 'w-cena' && !tudo) { return; }
     if (openWin) { $(openWin).hidden = true; }
     closeSell(true); closePop(true); sellShown = null;
     openWin = null; npcOpen = null; if (view) { view.segura(null); } // o morador do menu volta a andar
@@ -1491,7 +1540,9 @@
     renderQuests();
   }
   function renderQuests() {
-    var html = [];
+    if (!st) { return; }
+    var html = [], cm = camp.missao();
+    if (cm) { html.push('<li class="active camp">' + esc(cm.t) + (cm.p ? '<br><small>' + esc(cm.p) + '</small>' : '') + '</li>'); }
     sim.dailyActive(st).forEach(function (id) {
       html.push('<li class="active">' + esc(G.daily.quests[id].title) + '<br><small>' + esc(dailyProg(id)) + '</small></li>');
     });
@@ -1518,6 +1569,8 @@
     el.style.left = (pos.x * 100) + '%'; el.style.top = (pos.y * 100) + '%';
   }
   function marks() {
+    mark('camp:carroca', '', 0, 0, 0); // campanha: a carroça ganha '!' quando é hora de levar o trigo
+    camp.marcas().forEach(function (m) { mark(m.id, m.sym, m.x, m.y, m.z); });
     var qd = dailyBoard();
     mark(qd.id, dailyOpen() ? '!' : '', qd.x, 2.75, qd.z);
     // quem está dentro de uma sala: com o jogador fora, a marca fica acima da porta (várias na mesma porta, lado a lado)
@@ -1808,6 +1861,7 @@
 
   // ---------- interação ----------
   function refName(ref) {
+    if (ref.type === 'camp') { return view.atores[ref.id].nome; } // figuras da campanha
     if (ref.type === 'npc' || ref.type === 'gente') { return personName(ref.id); }
     if (ref.type === 'amb') { return view.amb[ref.id].name; }
     if (ref.type === 'mob') { var mb = sim.mobById(st, ref.id); return G.monsters[mb ? mb.kind : 'coelho'].name; }
@@ -1821,6 +1875,7 @@
   }
   function propById(id) { return world.props.filter(function (o) { return o.id === id; })[0]; }
   function refPos(ref) {
+    if (ref.type === 'camp') { var co = view.atores[ref.id].o; return { x: co.pos[0], z: co.pos[2] }; }
     if (ref.type === 'amb' || ref.type === 'farm') { var o = view.amb[ref.id].o; return { x: o.pos[0], z: o.pos[2] }; }
     if (ref.type === 'npc' || ref.type === 'gente') { return personPos(ref.id); }
     if (ref.type === 'mob') { return sim.mobById(st, ref.id); }
@@ -1828,7 +1883,9 @@
     return calc.nodePoint(world.nodeById[ref.id], st.player.x, st.player.z); // plantação: a borda mais perto do retalho
   }
   function interact(ref) {
+    if (camp.trava() || openWin === 'w-cena') { return; }
     var p = st.player, pos = refPos(ref), d = calc.dist(p.x, p.z, pos.x, pos.z);
+    if (ref.type === 'camp') { camp.interage(ref.id, d); return; }
     if (ref.type === 'npc' || ref.type === 'gente') {
       var nm = personName(ref.id);
       if (sim.isKo(st, ref.id)) { toast(G.aldeoes.textos.desacordado.replace('{alvo}', nm)); return; }
@@ -1877,6 +1934,7 @@
       });
     }
     people(G.settings.interactRange);
+    camp.perto().forEach(function (a) { consider({ type: 'camp', id: a.id }, a.x, a.z, G.campanha.alcance); });
     world.props.forEach(function (o) { consider({ type: 'prop', id: o.id }, o.x, o.z, G.settings.interactRange); });
     world.nodes.forEach(function (n) { if (st.nodes[n.id].alive && !n.rect) { consider({ type: 'node', id: n.id }, n.x, n.z, G.player.gatherReach); } });
     st.mobs.forEach(function (m) { if (m.alive) { consider({ type: 'mob', id: m.id }, m.x, m.z, G.settings.interactRange); } });
@@ -2076,7 +2134,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) { b.addEventListener('click', function () { setStance(b.dataset.stance); }); });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-cmd]'), function (b) { b.addEventListener('click', function () { cmd(b.dataset.cmd); b.blur(); }); });
-    Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', hide); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', function () { hide(); }); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-dbg]'), function (b) { b.addEventListener('click', function () { debug(b.dataset.dbg); }); });
     $('w-menu').addEventListener('click', devTap);
 
@@ -2114,7 +2172,7 @@
         drawMap($('bigmap'), 560, true);
       },
       mapZoom: function (n) { mapZoomTo(+$('map-zoom').value + n); },
-      hide: hide, cmd: cmd, interact: interactFront, quests: toggleQuests, toast: function (t, sec) { toast(t, sec || 3); },
+      hide: function () { hide(); }, cmd: cmd, interact: interactFront, quests: toggleQuests, toast: function (t, sec) { toast(t, sec || 3); },
       move: function (f, s) { pad.gf = f; pad.gs = s; },
       look: function (x, y) { view.yaw -= x; view.pitch = Math.max(-1.1, Math.min(0.9, view.pitch - y)); lookHold = 2.5; },
       modo: function () { if (openWin === 'w-map') { mapUi(); } } // o texto do mapa muda entre clique e botão A

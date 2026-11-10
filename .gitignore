@@ -1,1 +1,5 @@
 netzach/cenas/
+# o resto do que o roteirizador exporta: o jogo usa data/campanha.json (tools/montar_campanha.ps1)
+netzach/projeto.json
+netzach/variaveis.json
+netzach/README.md

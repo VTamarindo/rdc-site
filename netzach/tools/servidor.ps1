@@ -1,6 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$Root, [Parameter(Mandatory=$true)][int]$Port)
 $Root = [IO.Path]::GetFullPath($Root)
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json; charset=utf-8'; '.png'='image/png'; '.webmanifest'='application/manifest+json'; '.jpg'='image/jpeg'; '.svg'='image/svg+xml' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.json'='application/json; charset=utf-8'; '.png'='image/png'; '.webmanifest'='application/manifest+json'; '.jpg'='image/jpeg'; '.svg'='image/svg+xml'; '.mp3'='audio/mpeg'; '.ogg'='audio/ogg'; '.wav'='audio/wav' }
+# antes de servir, junta as cenas do roteirizador em data/campanha.json (assim o teste sempre usa as cenas exportadas)
+try { & (Join-Path $PSScriptRoot 'montar_campanha.ps1') } catch { Write-Warning $_ }
 $l = New-Object System.Net.HttpListener
 $l.Prefixes.Add("http://localhost:$Port/")
 $l.Start()

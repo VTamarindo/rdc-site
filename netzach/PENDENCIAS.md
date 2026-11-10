@@ -32,6 +32,27 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
     agora passeiam pelo relógio do jogo, então a macro e o tempo fora sabem onde estão.
   - **Ajuda** do Menu fala de animais, veneno, vacas, ovelhas, plantações e das regras novas da macro.
 
+## Campanha (começou em 10/11, versão `20261110-5`)
+- **Feito:** modo Campanha ou Modo livre no jogo novo; tela inicial com o fundo deitado no trigo; o capítulo do trigo inteiro
+  (acordar, seguir a figura ou ficar 5 s parado, o puxão do fazendeiro, tutorial de colheita por aparelho, fuga do campo,
+  5 fardos, carroça, moedas, terminar o campo ou recusar, fim do capítulo). Testado no navegador do PC, por código.
+- **Decisões minhas, para confirmar:**
+  - na campanha o personagem começa **sem a espada** e com 0 moedas e 2 poções (`game.json` → `campanha.semArma`, `itens`);
+  - "Terminar o campo" dá as 15 moedas e 45 de experiência **de uma vez**, ao levar o trigo à carroça (o roteiro fala em
+    1 moeda e 3 de experiência por fardo);
+  - "Ficar parado" e "Seguir" mostram a mesma fala do roteirizador; "Colher o trigo" é escolhida ao começar a colher, e
+    "Tentar fugir" ao sair do campo (com 5 m de folga). Fugir depois do tutorial só traz de volta, sem cena;
+  - a figura misteriosa usa a figura do rapaz pintada de escuro, e o fazendeiro é o fazendeiro velho da horta;
+  - as diárias, a macro e o tempo fora continuam valendo na campanha (só o céu ficou parado).
+- **Falta:**
+  - os sons são provisórios, feitos por código em `js/som.js` (trilha da tela inicial, crianças rindo, menus, missão): trocar
+    pelos definitivos quando houver;
+  - a cena do pasto ("me encontre perto do pasto"): hoje o capítulo termina e, ao abrir o save de novo, o jogador começa na
+    praça; falta escrever a cena e ligar;
+  - a cena "Recusar oferta" está vazia no roteirizador (o capítulo só termina).
+- **Não testado:** celular e controle de verdade na campanha; o ritmo do acordar com o jogo à vista (o teste foi com o
+  navegador em segundo plano).
+
 ## Depende de decisão do usuário
 - **Anéis e colar:** os espaços existem, sem itens.
 - **Reputação:** só tem o número (e o −100 do ataque); o sistema completo fica para depois.

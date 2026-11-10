@@ -456,3 +456,22 @@ body.touch #q-toggle { min-height: 34px; }
 .conta-form input { font: inherit; font-size: 17px; font-variant: normal; letter-spacing: 0; color: var(--ink); background: #f8efd8; border: 1px solid var(--edge); border-radius: 2px; padding: 7px 10px; box-shadow: inset 0 1px 3px rgba(60, 30, 10, .35); user-select: text; -webkit-user-select: text; }
 .conta-form button.main { margin-top: 2px; }
 .conta-msg { margin: 0; font-size: 14px; color: var(--wax); }
+
+/* ---------- campanha (js/campanha.js) ---------- */
+/* a caixa das falas fica embaixo, para a cena continuar à vista */
+.win.cena { top: auto; bottom: 18px; transform: translateX(-50%); width: min(560px, 94vw); max-height: 46vh; padding: 10px 18px 14px; }
+.win.cena h2 { font-size: 19px; }
+#cena-texto { font-size: 17px; margin: 6px 0 10px; }
+#cena-opts { gap: 6px; }
+body.touch .win.cena { bottom: 8px; }
+body.touch #cena-dica { bottom: auto; top: 50%; max-width: 70%; font-size: 13px; }
+#cena-preto { position: absolute; inset: 0; z-index: 8; background: #000; display: grid; place-items: center; opacity: 0; pointer-events: none; }
+#cena-preto p { margin: 0 8%; color: var(--light); font-size: clamp(18px, 3vw, 28px); font-style: italic; text-align: center; letter-spacing: .02em; }
+#cena-dica { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 4; max-width: min(620px, 80%); margin: 0; padding: 7px 16px; font-size: 14.5px; text-align: center; pointer-events: none; }
+#cena-feito { position: absolute; left: 50%; top: 22%; transform: translate(-50%, -10px); z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 28px; border-color: var(--gold); pointer-events: none; opacity: 0; }
+#cena-feito b { font-size: 24px; color: var(--wax); font-weight: normal; font-variant: small-caps; letter-spacing: .06em; }
+#cena-feito span { font-size: 15px; }
+#cena-feito.entra { opacity: 1; transform: translate(-50%, 0); transition: opacity .35s, transform .35s; }
+#cena-feito.sai { opacity: 0; transition: opacity .6s; }
+#quests li.camp { color: var(--wax); }
+#t-som { display: block; margin: 8px auto 0; padding: 4px 12px; font-size: 13px; }

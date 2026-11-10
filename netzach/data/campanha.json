@@ -1,0 +1,295 @@
+{
+"_nota": "Gerado por tools/montar_campanha.ps1 a partir de projeto.json e cenas/. Não edite aqui: edite no roteirizador, exporte e rode a ferramenta de novo.",
+"projeto": {
+  "nome": "Netzach",
+  "cena_inicial": "c01_trigo_acorda",
+  "cenas": [
+    "c01_trigo_acorda",
+    "c01_trigo_colher_o_trigo",
+    "c01_trigo_colocar_na_carroca",
+    "c01_trigo_ficar_parado",
+    "c01_trigo_receber_moedas",
+    "c01_trigo_recusar_oferta",
+    "c01_trigo_seguir_figura",
+    "c01_trigo_tentar_fugir",
+    "c01_trigo_terminar_o_campo",
+    "c01_trigo_tutorial"
+  ],
+  "variaveis": {
+    "experiencia": {
+      "tipo": "numero",
+      "inicial": 0
+    },
+    "moedas": {
+      "tipo": "numero",
+      "inicial": 0
+    },
+    "nivel": {
+      "tipo": "numero",
+      "inicial": 0
+    }
+  },
+  "exportado_em": "2026-11-10T14:15:01.045Z"
+},
+"cenas": {
+"c01_trigo_acorda": {
+  "id": "c01_trigo_acorda",
+  "titulo": "O jogo começa",
+  "tipo": "principal",
+  "resumo": "Tela preta.\n\nAparece escrito: (Nome) acordou ao ouvir crianças rindo.\n\nSom de crianças rindo.\n\nImagem aparece gradativamente, céu azul, folhas de trigo balançando ao vento, ao levantar estamos em um campo de trigo.\n\nMais a frente ele vê uma figura misteriosa.\n\nMissão: \"Siga a figura misteriosa\"",
+  "inicial": true,
+  "falas": [],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_acorda_1",
+      "texto": "Seguir",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_seguir_figura",
+      "pendente": false
+    },
+    {
+      "id": "c01_trigo_acorda_2",
+      "texto": "Ficar parado",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_ficar_parado",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_colher_o_trigo": {
+  "id": "c01_trigo_colher_o_trigo",
+  "titulo": "continuar",
+  "tipo": "principal",
+  "resumo": "O jogador segue o tutorial que indica \"colher ao menos 5 fardos de trigo\" que consiste basicamente em clicar 5 vezes e ver a animação 5 vezes de coleta em monte distintos.",
+  "inicial": false,
+  "falas": [],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_colher_o_trigo_1",
+      "texto": "Colocar o trigo na carroça ",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_colocar_na_carroca",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_colocar_na_carroca": {
+  "id": "c01_trigo_colocar_na_carroca",
+  "titulo": "Colocar o trigo na carroça",
+  "tipo": "principal",
+  "resumo": "O jogador coloca o trigo na carroça para ser levada para o celeiro da vila",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Aqui, tome essas moedas por seu tempo.",
+      "condicao": null
+    }
+  ],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_colocar_na_carroca_1",
+      "texto": "Receber moedas",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_receber_moedas",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_ficar_parado": {
+  "id": "c01_trigo_ficar_parado",
+  "titulo": "Trigo ficar parado",
+  "tipo": "principal",
+  "resumo": "Você corre atrás da figura\nAlguém te puxa bruscamente\nÉ o fazendeiro",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Vocês está sempre fugindo do trabalho. Volte aqui e comece a colher o trigo!",
+      "condicao": null
+    }
+  ],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_ficar_parado_1",
+      "texto": "continuar",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_tutorial",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_receber_moedas": {
+  "id": "c01_trigo_receber_moedas",
+  "titulo": "Receber moedas",
+  "tipo": "principal",
+  "resumo": "O jogador recebe a recompensa da quest com um sonzinho e uma janela em pop-up de \"missão completada\"",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Se quiser, pode receber um pouco mais por completar o resto do campo",
+      "condicao": null
+    }
+  ],
+  "efeitos": [
+    {
+      "op": "+=",
+      "valor": 5,
+      "variavel": "moedas"
+    },
+    {
+      "op": "+=",
+      "valor": 15,
+      "variavel": "experiencia"
+    }
+  ],
+  "escolhas": [
+    {
+      "id": "c01_trigo_receber_moedas_1",
+      "texto": "Terminar o campo",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_terminar_o_campo",
+      "pendente": false
+    },
+    {
+      "id": "c01_trigo_receber_moedas_2",
+      "texto": "Recusar oferta",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_recusar_oferta",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_recusar_oferta": {
+  "id": "c01_trigo_recusar_oferta",
+  "titulo": "Recusar oferta",
+  "tipo": "principal",
+  "resumo": "",
+  "inicial": false,
+  "falas": [],
+  "efeitos": [],
+  "escolhas": []
+},
+"c01_trigo_seguir_figura": {
+  "id": "c01_trigo_seguir_figura",
+  "titulo": "Segue a figura misteriosa",
+  "tipo": "principal",
+  "resumo": "Você corre atrás da figura\nAlguém te puxa bruscamente\nÉ o fazendeiro",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Vocês está sempre fugindo do trabalho. Volte aqui e comece a colher o trigo!",
+      "condicao": null
+    }
+  ],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_seguir_figura_1",
+      "texto": "Continuar",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_tutorial",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_tentar_fugir": {
+  "id": "c01_trigo_tentar_fugir",
+  "titulo": "Tentar fugir",
+  "tipo": "principal",
+  "resumo": "Ao tentar fugir para longe do campo de trigo, o jogo vai apagar a tela com um fade out e ele vai voltar a posição original",
+  "inicial": false,
+  "falas": [],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_tentar_fugir_1",
+      "texto": "Reiniciar",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_tutorial",
+      "pendente": false
+    }
+  ]
+},
+"c01_trigo_terminar_o_campo": {
+  "id": "c01_trigo_terminar_o_campo",
+  "titulo": "Terminar o campo",
+  "tipo": "principal",
+  "resumo": "O jogador faz o resto do campo e coloca tudo na carroça, a ideia é ter mais 15 unidades de terreno para colher, o que dá uma unidade de ouro e 3 de experiência por unidade de terreno",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Meu parabéns. Parece que trabalhar no campo não é tão ruim como imaginava, não é mesmo?",
+      "condicao": null
+    },
+    {
+      "personagem": "Fazendeiro",
+      "texto": "Se quiser tenho mais trabalhos, mas não para agora, primeiro vou levar esse trigo para a vila e depois conversamos. Pode me encontrar perto do pasto, lá te darei novas tarefas",
+      "condicao": null
+    }
+  ],
+  "efeitos": [
+    {
+      "op": "+=",
+      "valor": 45,
+      "variavel": "experiencia"
+    },
+    {
+      "op": "+=",
+      "valor": 15,
+      "variavel": "moedas"
+    }
+  ],
+  "escolhas": []
+},
+"c01_trigo_tutorial": {
+  "id": "c01_trigo_tutorial",
+  "titulo": "Nova cena",
+  "tipo": "principal",
+  "resumo": "Surge na tela um texto explicativo conforme cada plataforma e dispositivo a respeito da colheita do trigo, o jogador deve colher o trigo",
+  "inicial": false,
+  "falas": [
+    {
+      "personagem": "protagonista (nome do jogador)",
+      "texto": "De novo, isso... Quando tudo vai acabar?",
+      "condicao": null
+    }
+  ],
+  "efeitos": [],
+  "escolhas": [
+    {
+      "id": "c01_trigo_tutorial_1",
+      "texto": "Colher o trigo",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_colher_o_trigo",
+      "pendente": false
+    },
+    {
+      "id": "c01_trigo_tutorial_2",
+      "texto": "Tentar fugir",
+      "condicao": null,
+      "efeitos": [],
+      "destino": "c01_trigo_tentar_fugir",
+      "pendente": false
+    }
+  ]
+}
+}
+}

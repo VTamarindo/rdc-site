@@ -6,7 +6,7 @@ recarregou o navegador. Textos e comentários em português.
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
    - `js/ui.js`, linha 6: `var VERSION = '20261109-9'` → por exemplo `'20261109-10'`;
-   - `index.html`: todos os `?v=` (são 7) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `index.html`: todos os `?v=` (são 9) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave secreta no código. A única exceção é a chave **publishable** (ou "anon") do Supabase em `js/conta.js`, que é feita para ficar à vista; a `secret`/`service_role` nunca.
@@ -33,6 +33,9 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 | `js/view.js` | O desenho 3D: construções, chão, plantações, figuras, céu, espada na mão, clique nas coisas. |
 | `js/ui.js` | Interface: tela inicial e saves, laço do jogo, HUD, mapa, janelas, lojas, teclado, mouse e toque. |
 | `js/controle.js` | Controle (Xbox/gamepad): botões, foco nas janelas, cursor do mapa, câmera invertida. |
+| `js/campanha.js` | **Campanha** (modo história): lê `data/campanha.json`, mostra falas e escolhas, aplica os efeitos e conduz o que cada cena faz no mundo (tabela `ROTEIRO`, pelo id da cena). |
+| `js/som.js` | **Sons feitos por código** (provisórios): a trilha da tela inicial (ciclo de 24 s, tabela `CICLO`: acordes e melodia), as crianças rindo, o toque de missão completada e os sons de navegação nos menus. Volume em `VOL`. O botão "Som" da tela inicial liga e desliga. |
+| `data/campanha.json` | As cenas do roteirizador num arquivo só. **Não edite**: é gerado por `tools/montar_campanha.ps1` (ver "Campanha" abaixo). |
 | `js/conta.js` | Conta do site (Supabase): entrar, criar conta, sair, trocar senha e gravar/ler os saves na nuvem. Usado também pelo portal. O endereço e a chave do projeto ficam no topo. A tabela é criada por `supabase/conta.sql` (na raiz do site). |
 | `js/ceu.js` | Céu: cores de cada hora, sol, lua, estrelas, nuvens e montanhas. |
 | `sw.js`, `manifest.webmanifest`, `icons/` | App instalável no celular e abertura sem internet. |
@@ -77,6 +80,26 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - `interiores`: a sala de cada construção (porta, teto, paredes, luzes e móveis `moveis`). Os móveis são desenhados pela
   tabela `MOVEL` em `js/view.js`.
   **Depois de mexer em ruas, construções ou caminhos, rode** `tools/verificar_trilhas.py` para ver se alguém atravessa parede.
+
+### Campanha (modo história)
+- **Escrever cenas:** no roteirizador. Exporte para a pasta `netzach` (as cenas vão para `cenas/`, mais `projeto.json`), e rode
+  `powershell -ExecutionPolicy Bypass -File netzach\tools\montar_campanha.ps1` na pasta do site: ele junta tudo em
+  `data/campanha.json`, que é o que vai para o site (`cenas/`, `projeto.json`, `variaveis.json` e o `README.md` do roteirizador
+  ficam fora do git). O servidor de teste (`servidor.ps1`) já roda a ferramenta ao abrir.
+- **O que cada cena faz:** cena sem roteiro funciona sozinha (falas uma a uma; escolhas viram botões; sem escolhas, o capítulo
+  acaba). Cena que acontece no mundo (andar até a figura, colher, a carroça) ganha uma entrada em `ROTEIRO`, em `js/campanha.js`,
+  com o mesmo id da cena; ela usa as escolhas pela ordem do roteirizador (`segue(c, 0)` = a primeira).
+- **Variáveis:** `moedas` = moedas da bolsa, `experiencia` = experiência (sobe de nível como sempre), `nivel` = nível; outras
+  ficam guardadas no save (`st.camp.vars`). Condições: `{ variavel, op, valor }` ou o texto `moedas >= 5`. Nos textos,
+  `(Nome)` vira o nome do personagem, e a fala de "protagonista" sai com o nome dele.
+- **Lugares, números e textos do capítulo:** `data/game.json` → `campanha` (onde acorda, a figura, a carroça, quantos fardos,
+  os 5 s parado, as missões, a dica de colheita de cada aparelho, a hora fixa do céu).
+- **Hora:** na campanha e na tela inicial o céu fica parado na `campanha.hora`; só o modo livre segue o relógio de verdade.
+- **Tela inicial:** o fundo é o começo da campanha: deitado no trigo, olhando o céu (`deitado` em `View.prototype.render`,
+  altura e ângulo em `DEITADO`, em `js/view.js`). O trigo balança com o vento no sombreador (`VS`, `vf`), no campo inteiro.
+- **Sons:** feitos por código em `js/som.js` (sem arquivos). A campanha pede pelo nome em `som()` (`SONS`, em `js/campanha.js`). O navegador só toca som depois do primeiro clique ou tecla, então a música da tela inicial começa aí.
+- **Fim do capítulo:** o save marca `st.camp.fim`; quem abre esse save depois começa na praça. A cena do pasto ainda vai ser ligada.
+- **Testar uma cena:** no console, `NZ.debug.state().camp` mostra a cena e o passo.
 
 ### Código
 - **Desenho de uma construção:** `js/view.js`, funções `church`, `smith`, `bar`, `casaSenhor`, `padaria`, `alfaiate`,

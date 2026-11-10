@@ -4,8 +4,14 @@
     {
       "name": "site",
       "runtimeExecutable": "powershell",
-      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "netzach\\tools\\servidor.ps1", "-Root", ".", "-Port", "8080"],
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "netzach/tools/servidor.ps1", "-Root", ".", "-Port", "8080"],
       "port": 8080
+    },
+    {
+      "name": "site-8081",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "netzach/tools/servidor.ps1", "-Root", ".", "-Port", "8081"],
+      "port": 8081
     }
   ]
 }
