@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "netzach\\tools\\servidor.ps1", "-Root", ".", "-Port", "8080"],
+      "port": 8080
+    }
+  ]
+}

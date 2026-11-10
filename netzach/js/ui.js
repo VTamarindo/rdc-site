@@ -45,27 +45,52 @@
     $('loading').hidden = true; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
     if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
-    bindInput(); bindTitle(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
+    bindInput(); bindTitle(); bindConta(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     fullUi(); document.addEventListener('fullscreenchange', fullUi); document.addEventListener('webkitfullscreenchange', fullUi);
-    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; }, slot: function () { return slot; } }; // para testes
+    NZ.debug = { state: function () { return st; }, view: function () { return view; }, sim: sim, interact: function (ref) { interact(ref); }, clockNow: clockNow, clockShift: function (ms) { clockShift += ms; }, slot: function () { return slot; },
+      copias: function () { var o = {}; for (var i = 1; i <= SLOTS; i++) { try { var c = JSON.parse(localStorage.getItem(slotKey(i) + '-copia')); if (c) { o[i] = c; } } catch (e) { /* nada */ } } return o; },
+      nuvem: function () { return st ? sobe() : nuvem(); } }; // para testes
 
     showTitle();
 
     // na tela inicial não há jogo rodando: nada a salvar nem tempo fora a contar (cada save conta o seu ao ser aberto)
     document.addEventListener('visibilitychange', function () {
       if (!st) { return; }
-      if (document.hidden) { beginAway(clockNow()); save(); }
-      else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); }
+      if (document.hidden) { beginAway(clockNow()); save(); sobe(true); }
+      else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); save(); sobe(); } // voltar à aba confere se outro aparelho jogou
     });
-    window.addEventListener('pagehide', save);
-    setInterval(function () { if (!st) { return; } if (away) { catchUp(clockNow()); } save(); }, 5000);
+    window.addEventListener('pagehide', function () { save(); sobe(true); });
+    setInterval(function () {
+      if (!st) { return; }
+      if (away) { catchUp(clockNow()); }
+      save();
+      if ((nuvemT += 5) >= NUVEM_SEG) { sobe(); }
+    }, 5000);
     requestAnimationFrame(frame);
   }
 
   // ---------- save: SLOTS espaços, cada um na sua chave (saveKey-1, -2, -3), no mesmo formato do save único de antes ----------
-  var SLOTS = 3, slot = 0, vitrine = null;
-  function slotKey(n) { return G.settings.saveKey + '-' + n; }
+  // Com conta (js/conta.js), cada conta tem as suas chaves (saveKey-u<id>-1...) e elas espelham a nuvem; sem conta, saveKey-1...
+  // O save leva savedAt (quando foi gravado) e cloud (o savedAt que a nuvem tinha da última vez que os dois bateram):
+  // savedAt diferente de cloud = mudou aqui e falta subir. Espaço apagado com conta vira { del: true } para o apagar chegar à nuvem.
+  var SLOTS = 3, slot = 0, vitrine = null, GAME = 'netzach';
+  var slotDono = '', slotCloud = null, ultimo = null; // de quem é o save aberto, o que a nuvem tem dele, e o último save gravado ({ t, json })
+  function dono() { var u = window.Conta && Conta.usuario(); return u ? u.id : ''; }
+  function slotKey(n, uid) { if (uid === undefined) { uid = dono(); } return G.settings.saveKey + (uid ? '-u' + uid : '') + '-' + n; }
+  function ler(n, uid) { try { return JSON.parse(localStorage.getItem(slotKey(n, uid))); } catch (e) { return null; } }
+  function grava(n, uid, env) { try { localStorage.setItem(slotKey(n, uid), typeof env === 'string' ? env : JSON.stringify(env)); return true; } catch (e) { return false; } }
+  function carimbo(env) { return env ? Math.round(env.savedAt || env.lastReal || 0) : 0; }
+  // o save que perde uma troca (nuvem × aparelho) não some: fica numa cópia por espaço (NZ.debug.copias() mostra)
+  function copia(n, uid, env) { if (env && env.state) { try { localStorage.setItem(slotKey(n, uid) + '-copia', JSON.stringify(env)); } catch (e) { /* sem espaço: segue */ } } }
+  function apagaSlot(n) {
+    var uid = dono();
+    try {
+      if (!uid) { localStorage.removeItem(slotKey(n, '')); return; }
+      var velho = ler(n, uid);
+      grava(n, uid, { v: 1, del: true, savedAt: Math.round(clockNow()), cloud: velho ? velho.cloud : undefined });
+    } catch (e) { /* nada */ }
+  }
   // o save único de antes (saveKey sem número) vira o espaço 1. A chave velha só sai depois de a cópia estar gravada e lida de volta
   function slotsMigrate() {
     try {
@@ -78,24 +103,139 @@
       localStorage.removeItem(G.settings.saveKey);
     } catch (e) { /* sem armazenamento: nada a migrar */ }
   }
+  // save enxuto (uns 6 KB em vez de 17): recursos no estado de sempre (vivos, sem espera) não são gravados, pois NZ.settle
+  // os recria vivos ao abrir; números quebrados ficam com 3 casas. Só muda o texto gravado, não o jogo rodando
+  function enxuto(k, v) {
+    if (k === 'nodes' && this && this.player && v && typeof v === 'object') {
+      var o = {};
+      for (var id in v) { var n = v[id]; if (!(n && n.alive === true && !n.left && Object.keys(n).length === 2)) { o[id] = n; } }
+      return o;
+    }
+    return typeof v === 'number' && v % 1 !== 0 && isFinite(v) ? Math.round(v * 1000) / 1000 : v;
+  }
   function save() {
     if (!st || !slot) { return; }
-    try { localStorage.setItem(slotKey(slot), JSON.stringify({ v: 1, ver: SAVE_VER, lastReal: lastReal, state: st })); } catch (e) { /* sem armazenamento: segue sem salvar */ }
+    var t = Math.round(clockNow());
+    var json = JSON.stringify({ v: 1, ver: SAVE_VER, lastReal: lastReal, savedAt: t, cloud: slotCloud === null ? undefined : slotCloud, state: st }, enxuto);
+    ultimo = { t: t, json: json };
+    grava(slot, slotDono, json); // sem armazenamento: segue sem salvar
   }
   function load(n) {
-    try {
-      var s = JSON.parse(localStorage.getItem(slotKey(n)));
-      if (!(s && s.v === 1 && s.state && s.state.player)) { return null; }
-      // protótipo: SAVE_VER novo = jogo recomeça do zero (sem precisar limpar o cache)
-      if (G.settings.resetSaveOnNewVersion && s.ver !== SAVE_VER) { localStorage.removeItem(slotKey(n)); newVersion = true; return null; }
-      return s;
-    } catch (e) { return null; }
+    var s = ler(n);
+    if (!(s && s.v === 1 && s.state && s.state.player)) { return null; }
+    // protótipo: SAVE_VER novo = jogo recomeça do zero (sem precisar limpar o cache); com conta, o apagar vai também para a nuvem
+    if (G.settings.resetSaveOnNewVersion && s.ver !== SAVE_VER) { apagaSlot(n); newVersion = true; return null; }
+    return s;
+  }
+
+  // ---------- nuvem (só com conta) ----------
+  // Na tela inicial, nuvem() acerta os 3 espaços: o lado que mudou desde a última troca vence; se os dois mudaram, vence o
+  // gravado por último, e o outro fica na cópia. Jogando, sobe() manda o save aberto a cada minuto, ao esconder a aba e ao sair;
+  // se outro aparelho gravou esse espaço nesse meio tempo, o jogo abre a versão de lá (a daqui fica na cópia).
+  var nuvemSt = '', sincronizando = null, subindo = false, NUVEM_SEG = 60, nuvemT = 0;
+  function nuvemPronta() { return !!(window.Conta && Conta.online() && dono()); }
+  // a nuvem guarda o save como texto: o JSON do save vai entre aspas dentro do corpo
+  function corpo(t, json) { return '{"saved_at":' + t + ',"data":' + (json ? JSON.stringify(json) : 'null') + '}'; }
+  // os saves feitos sem conta neste navegador passam para a conta ao entrar: num espaço livre dela, se houver
+  function juntaVisitante(uid) {
+    for (var n = 1; n <= SLOTS; n++) {
+      var g = ler(n, ''); if (!(g && g.state)) { continue; }
+      var alvo = 0;
+      for (var m = n, k = 0; k < SLOTS; k++, m = m % SLOTS + 1) { var u = ler(m, uid); if (!(u && u.state)) { alvo = m; break; } }
+      if (alvo) { var livre = ler(alvo, uid); g.cloud = livre ? livre.cloud : undefined; g.savedAt = Math.max(carimbo(g), livre ? (livre.savedAt || 0) + 1 : 0); grava(alvo, uid, g); }
+      else {
+        var u2 = ler(n, uid);
+        if (carimbo(g) > carimbo(u2)) { copia(n, uid, u2); g.cloud = u2.cloud; grava(n, uid, g); } else { copia(n, uid, g); }
+      }
+      try { localStorage.removeItem(slotKey(n, '')); } catch (e) { /* nada */ }
+    }
+  }
+  function nuvem() {
+    var uid = dono();
+    if (!uid) { nuvemSt = ''; return Promise.resolve(); }
+    juntaVisitante(uid);
+    if (!nuvemPronta()) { nuvemSt = 'off'; return Promise.resolve(); }
+    if (sincronizando) { return sincronizando; }
+    nuvemSt = 'indo'; nuvemTexto();
+    var mudou = false;
+    sincronizando = Conta.saves.listar(GAME).then(function (rows) {
+      if (dono() !== uid || st) { return; } // trocou de conta ou abriu um jogo enquanto isso: a próxima vez acerta
+      var R = {}, sobes = [];
+      rows.forEach(function (r) { R[r.slot] = r; });
+      for (var n = 1; n <= SLOTS; n++) {
+        var L = ler(n, uid), r = R[n], rs = r ? +r.saved_at : null, lt = carimbo(L);
+        var puxa = false, manda = false;
+        if (!L) { puxa = !!r; }
+        else if (!r) { manda = true; }
+        else if (lt === rs) { if (L.cloud !== rs) { L.cloud = rs; grava(n, uid, L); } }
+        else if (L.cloud === rs) { manda = true; }                   // só mudou aqui
+        else if (lt === L.cloud || L.cloud === undefined && !L.state) { puxa = true; } // só mudou lá
+        else if (lt > rs) { manda = true; if (r.data && r.data.state) { copia(n, uid, r.data); } } // os dois: vence o mais recente
+        else { puxa = true; copia(n, uid, L); }
+        if (puxa) {
+          var d = r.data;
+          if (d && d.state && G.settings.resetSaveOnNewVersion && d.ver !== SAVE_VER) { // save de antes do recomeço: apaga lá também
+            newVersion = true; L = { v: 1, del: true, savedAt: Math.round(clockNow()), cloud: rs }; grava(n, uid, L); manda = true;
+          } else {
+            d = d && d.state ? d : { v: 1, del: true }; d.savedAt = rs; d.cloud = rs; grava(n, uid, d); mudou = true;
+          }
+        }
+        if (manda) { sobes.push(n); }
+      }
+      return Promise.all(sobes.map(function (n) {
+        var L = ler(n, uid), r = R[n];
+        return Conta.saves.gravar(GAME, n, r ? +r.saved_at : null, corpo(carimbo(L), L.state ? JSON.stringify(L, enxuto) : null)).then(function (res) {
+          if (res === 'ok' && dono() === uid) { var L2 = ler(n, uid); if (L2 && carimbo(L2) === carimbo(L)) { L2.cloud = carimbo(L); grava(n, uid, L2); } }
+        });
+      }));
+    }).then(function () { nuvemSt = 'ok'; }, function () { nuvemSt = 'off'; }).then(function () {
+      sincronizando = null;
+      if (titleOn && !titleNew && !titleDel && !(contaUi && contaUi.aberto())) { if (mudou || newVersion) { showTitle(); } else { nuvemTexto(); } }
+    });
+    return sincronizando;
+  }
+  function nuvemTexto() {
+    var el = $('t-nuvem'); if (!el) { return; }
+    var u = window.Conta && Conta.usuario(), t = '';
+    if (u) {
+      t = nuvemSt === 'indo' ? 'Sincronizando com a nuvem…' : nuvemSt === 'off' ? 'Sem conexão com a nuvem: os saves ficam aqui e sobem quando ela voltar.' : 'Saves guardados na nuvem: aparecem em qualquer navegador em que você entrar.';
+    }
+    el.textContent = t; el.hidden = !t;
+    var onde = $('save-onde'); if (onde) { onde.textContent = u ? 'neste navegador e na sua conta' : 'neste navegador'; }
+  }
+  // sobe o save aberto, se mudou. fechando: a aba está indo embora (uma tacada só, sem esperar resposta)
+  function sobe(fechando) {
+    if (!st || !slot || !ultimo || subindo || !slotDono || slotDono !== dono() || !(window.Conta && Conta.online())) { return; }
+    if (ultimo.t === slotCloud) { return; }
+    var u = ultimo, n = slot, quem = slotDono;
+    subindo = true; nuvemT = 0;
+    Conta.saves.gravar(GAME, n, slotCloud, corpo(u.t, u.json), fechando).then(function (res) {
+      subindo = false;
+      if (!st || slot !== n || slotDono !== quem) { return; }
+      if (res === 'ok') { slotCloud = u.t; nuvemSt = 'ok'; return; }
+      return outroAparelho(n, quem);
+    }).catch(function () { subindo = false; nuvemSt = 'off'; });
+  }
+  // outro aparelho gravou este espaço enquanto ele estava aberto aqui: vale o de lá (se lá foi apagado, este continua e recria)
+  function outroAparelho(n, quem) {
+    return Conta.saves.listar(GAME).then(function (rows) {
+      if (!st || slot !== n || slotDono !== quem) { return; }
+      var r = rows.filter(function (x) { return x.slot === n; })[0];
+      if (!r) { slotCloud = null; return; }
+      if (!(r.data && r.data.state)) { slotCloud = +r.saved_at; return; }
+      save(); copia(n, quem, JSON.parse(ultimo.json));
+      var d = r.data; d.savedAt = +r.saved_at; d.cloud = d.savedAt; grava(n, quem, d);
+      st = null; slot = 0; play(n);
+      toast('Este save foi jogado em outro aparelho: abrindo a versão mais nova.', 5);
+    });
   }
   // abre um save (ou começa um novo, com nome) no espaço n; o tempo fora de cada save conta desde a última vez que ele rodou
   function play(n, name) {
     var saved = name ? null : load(n);
     if (!name && !saved) { showTitle(); return; }
-    slot = n; away = null; acc = 0; prev = null; dailyNext = 0; keys = {}; pad = {}; lineTxt = null;
+    var env = ler(n);
+    slot = n; slotDono = dono(); slotCloud = env && env.cloud !== undefined ? env.cloud : null; ultimo = null; nuvemT = 0;
+    away = null; acc = 0; prev = null; dailyNext = 0; keys = {}; pad = {}; lineTxt = null;
     if (saved) { st = NZ.settle(world, NZ.migrate(saved.state)); lastReal = saved.lastReal || clockNow(); }
     else { st = NZ.newState(world, (Date.now() % 2147483647) | 0); st.player.name = name; lastReal = clockNow(); }
     titleOn = false; hide(); $('w-title').hidden = true; $('hud').hidden = false;
@@ -105,8 +245,8 @@
     save();
   }
   function toTitle() {
-    save(); hide(); closeAllMarks();
-    st = null; slot = 0; away = null; document.title = baseTitle;
+    save(); sobe(); hide(); closeAllMarks();
+    st = null; slot = 0; slotDono = ''; ultimo = null; away = null; document.title = baseTitle;
     showTitle();
   }
   function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('hover').hidden = true; $('toast').hidden = true; }
@@ -141,6 +281,8 @@
     var msg = !free ? 'Os ' + SLOTS + ' espaços estão ocupados: apague um save para começar outro jogo.' : '';
     if (newVersion) { msg = 'Versão nova do protótipo (' + VERSION + '): os saves antigos recomeçaram do zero.' + (msg ? ' ' + msg : ''); }
     $('t-msg').textContent = msg; $('t-msg').hidden = !msg;
+    if (contaUi && contaUi.aberto()) { contaUi.fechar(); }
+    nuvemTexto();
   }
   function titleNewGame(n) {
     titleNew = n; $('t-list').hidden = true; $('new-form').hidden = false;
@@ -154,7 +296,19 @@
     $('t-del-txt').textContent = 'Apagar ' + s.name + ' (nível ' + s.lv + ', espaço ' + n + ')? Não dá para desfazer.';
   }
   // Esc, B ou Voltar: do nome ou da confirmação volta à lista; na lista não há para onde voltar
-  function titleBack() { if (titleNew || titleDel) { showTitle(); } }
+  function titleBack() { if (contaUi && contaUi.fechar()) { return; } if (titleNew || titleDel) { showTitle(); } }
+  // painel da conta (js/conta.js) na tela inicial: aberto, ele toma o lugar da lista de saves
+  var contaUi = null;
+  function bindConta() {
+    if (!window.Conta) { return; }
+    contaUi = Conta.painel($('t-conta'), {
+      semConta: 'Sem conta: os saves ficam só neste navegador. Entre para levá-los a qualquer aparelho.',
+      comConta: 'Conta',
+      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
+    });
+    Conta.aoMudar(function () { if (titleOn && !st) { showTitle(); nuvem(); } else { nuvemTexto(); } });
+    Conta.pronto.then(function () { if (!st) { nuvem(); } });
+  }
   function bindTitle() {
     $('t-slots').addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) { return; }
@@ -166,13 +320,14 @@
     });
     Array.prototype.forEach.call(document.querySelectorAll('[data-t-back]'), function (b) { b.addEventListener('click', titleBack); });
     $('t-del-ok').addEventListener('click', function () {
-      try { localStorage.removeItem(slotKey(titleDel)); } catch (e) { /* nada */ }
-      showTitle();
+      apagaSlot(titleDel);
+      showTitle(); nuvem();
     });
     $('new-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var n = $('new-name').value.replace(/\s+/g, ' ').trim();
       if (n.length < 2 || n.length > 20) { $('new-err').textContent = 'Escolha um nome de 2 a 20 letras.'; $('new-err').hidden = false; return; }
+      if (load(titleNew)) { showTitle(); $('t-msg').textContent = 'Esse espaço acabou de receber um save da nuvem. Escolha outro.'; $('t-msg').hidden = false; return; }
       $('new-name').blur(); play(titleNew, n);
     });
   }

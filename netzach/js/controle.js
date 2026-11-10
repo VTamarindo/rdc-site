@@ -27,7 +27,7 @@
   }
   function visivel(el) { return !el.disabled && el.getClientRects().length > 0; }
   function ajustavel(el) { return el.tagName === 'INPUT' && (el.type === 'range' || el.type === 'number'); }
-  function digitavel(el) { return el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')); }
+  function digitavel(el) { return el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|email|password)$/.test(el.type)); }
 
   NZ.controle = function (api) {
     var antes = [], ativo = false, avisou = false, foco = null, indice = 0, raizAntes = null, dir = null, espera = 0, rolar = 0, zoom = 0;

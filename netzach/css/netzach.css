@@ -439,3 +439,16 @@ body.touch #q-toggle { min-height: 34px; }
 #new-form label { color: var(--dim); font-size: 15px; font-variant: small-caps; letter-spacing: .04em; }
 #new-name { font: inherit; font-size: 18px; color: var(--ink); background: #f8efd8; border: 1px solid var(--edge); border-radius: 2px; padding: 8px 10px; box-shadow: inset 0 1px 3px rgba(60, 30, 10, .35); user-select: text; -webkit-user-select: text; }
 #new-name:focus { outline: 2px solid var(--wax); outline-offset: 1px; }
+
+/* conta (js/conta.js) na tela inicial: linha da conta embaixo dos saves; o formulário toma o lugar da lista */
+#t-nuvem { margin: 10px 0 0; }
+.conta { margin-top: 10px; border-top: 1px solid rgba(74, 44, 20, .35); padding-top: 8px; }
+.conta .conta-st { margin: 0 0 6px; font-size: 14px; color: var(--dim); overflow-wrap: anywhere; }
+.conta .conta-st b { color: var(--ink); font-weight: normal; }
+.conta > button { width: 100%; }
+.conta-form { display: flex; flex-direction: column; gap: 8px; }
+.conta-form h3 { margin: 4px 0 0; }
+.conta-form label { display: flex; flex-direction: column; gap: 3px; color: var(--dim); font-size: 15px; font-variant: small-caps; letter-spacing: .04em; }
+.conta-form input { font: inherit; font-size: 17px; font-variant: normal; letter-spacing: 0; color: var(--ink); background: #f8efd8; border: 1px solid var(--edge); border-radius: 2px; padding: 7px 10px; box-shadow: inset 0 1px 3px rgba(60, 30, 10, .35); user-select: text; -webkit-user-select: text; }
+.conta-form button.main { margin-top: 2px; }
+.conta-msg { margin: 0; font-size: 14px; color: var(--wax); }

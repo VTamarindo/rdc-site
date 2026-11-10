@@ -9,7 +9,7 @@ recarregou o navegador. Textos e comentários em português.
    - `index.html`: todos os `?v=20261109-9` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
-3. Os arquivos do site são públicos: nunca coloque senha ou chave no código.
+3. Os arquivos do site são públicos: nunca coloque senha ou chave secreta no código. A única exceção é a chave **publishable** (ou "anon") do Supabase em `js/conta.js`, que é feita para ficar à vista; a `secret`/`service_role` nunca.
 4. Publicar: commit e **Push origin** no GitHub Desktop; espere uns 2 minutos e confira a versão no Menu do jogo.
 
 ## Testar no seu computador
@@ -33,6 +33,7 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 | `js/view.js` | O desenho 3D: construções, chão, plantações, figuras, céu, espada na mão, clique nas coisas. |
 | `js/ui.js` | Interface: tela inicial e saves, laço do jogo, HUD, mapa, janelas, lojas, teclado, mouse e toque. |
 | `js/controle.js` | Controle (Xbox/gamepad): botões, foco nas janelas, cursor do mapa, câmera invertida. |
+| `js/conta.js` | Conta do site (Supabase): entrar, criar conta, sair, trocar senha e gravar/ler os saves na nuvem. Usado também pelo portal. O endereço e a chave do projeto ficam no topo. A tabela é criada por `supabase/conta.sql` (na raiz do site). |
 | `js/ceu.js` | Céu: cores de cada hora, sol, lua, estrelas, nuvens e montanhas. |
 | `sw.js`, `manifest.webmanifest`, `icons/` | App instalável no celular e abertura sem internet. |
 | `art/` | Imagens prontas: `sprites.png` (figuras), `walls.png` (texturas), `atlas.json` (onde cada figura está). |
@@ -100,6 +101,7 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Botões do controle:** `js/controle.js`, função `noJogo` (fora das janelas); velocidade da câmera em `OLHAR_X`/`OLHAR_Y`.
 - **Saves:** `js/ui.js`, seção "save" (3 espaços, chaves `zg-vila-proto-v1-1` a `-3`); conversão de saves antigos em
   `js/sim.js` (`NZ.migrate`, `NZ.migrateGear`, `NZ.settle`).
+  **Com conta**, cada conta tem as suas chaves (`zg-vila-proto-v1-u<id>-1`...), que espelham a nuvem: `nuvem()` acerta os três espaços na tela inicial (vence o lado que mudou; se os dois mudaram, o gravado por último) e `sobe()` manda o save aberto a cada minuto, ao esconder a aba e ao sair. Se outro aparelho gravou o mesmo espaço enquanto ele estava aberto, o jogo abre a versão de lá. O lado que perde nunca some: fica numa cópia (`NZ.debug.copias()` no console). Os saves feitos sem conta passam para a conta ao entrar.
 
 ## Arte
 A arte é desenhada por código em `tools/gerar_arte.py` (uma função por figura: `padre`, `ferreiro`, `mulher_velha`…) e

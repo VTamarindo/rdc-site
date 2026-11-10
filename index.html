@@ -4,45 +4,145 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Romance de Cavalaria</title>
-<meta name="description" content="Os jogos da franquia Romance de Cavalaria.">
+<meta name="description" content="Os jogos da franquia Romance de Cavalaria: novidades, Netzach e os projetos em desenvolvimento.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="portal.css">
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <h1>Romance de Cavalaria</h1>
-    <p>Os jogos da franquia</p>
-  </header>
-  <main class="grid">
-    <article class="card">
-      <img class="thumb" src="prev-netzach.jpg" alt="Netzach: um cavaleiro de espada em punho diante de um dragão que incendeia a fazenda" width="320" height="200" style="image-rendering:auto">
-      <div class="body">
-        <h2>Netzach <small>protótipo da vila</small></h2>
-        <span class="tag">No ar &middot; no navegador &middot; protótipo</span>
-        <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
-        <a class="btn" id="netzach-btn" href="netzach/">Jogar</a>
+<header class="site-top">
+  <div class="bar">
+    <a class="marca" href="./" aria-label="Romance de Cavalaria, início">
+      <img src="favicon.svg" alt="" width="28" height="28"><span>Romance de Cavalaria</span>
+    </a>
+    <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Abrir o menu">&#9776;</button>
+    <nav id="nav" class="nav">
+      <a href="#noticias">Novidades</a>
+      <a href="#projetos">Projetos</a>
+      <a href="#quem-somos">Quem somos</a>
+      <a href="#feedback">Feedback</a>
+      <a class="btn" id="netzach-top" href="netzach/">Jogar Netzach</a>
+      <div class="login">
+        <button type="button" class="btn ghost" id="login-btn" aria-expanded="false" aria-controls="login-caixa">Entrar</button>
+        <!-- O formulário da conta é montado aqui por netzach/js/conta.js (Conta.painel) -->
+        <div class="login-caixa" id="login-caixa" hidden>
+          <div id="conta-portal" class="conta"></div>
+          <p class="login-breve" id="login-breve">As contas estão chegando: em breve você vai poder entrar e guardar seus saves na nuvem.</p>
+        </div>
       </div>
-    </article>
-    <article class="card">
-      <div class="thumb ph" aria-hidden="true">&#9876;</div>
-      <div class="body">
-        <h2>Echad</h2>
-        <span class="tag"><span id="echad-status">Em desenvolvimento</span></span>
-        <p>Um RPG em 3D, maior e mais complexo. Em desenvolvimento.</p>
-        <button type="button" class="btn" id="echad-btn" disabled>Em breve</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="noticias" class="hero" aria-roledescription="carrossel" aria-label="Novidades dos jogos">
+    <div class="trilho" id="trilho"></div>
+    <button type="button" class="seta ant" id="ant" aria-label="Notícia anterior">&#8249;</button>
+    <button type="button" class="seta prox" id="prox" aria-label="Próxima notícia">&#8250;</button>
+    <div class="pontos" id="pontos" role="tablist" aria-label="Escolher notícia"></div>
+  </section>
+
+  <div class="wrap">
+    <section id="projetos" class="secao">
+      <h2 class="titulo">Os jogos</h2>
+      <div class="grid">
+        <article class="card destaque">
+          <img class="thumb" src="prev-netzach.jpg" alt="Netzach: um cavaleiro de espada em punho diante de um dragão que incendeia a fazenda" width="320" height="200">
+          <div class="body">
+            <h3>Netzach <small>protótipo da vila</small></h3>
+            <span class="tag on">No ar &middot; no navegador</span>
+            <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
+            <a class="btn" id="netzach-btn" href="netzach/">Jogar</a>
+          </div>
+        </article>
+        <article class="card">
+          <div class="thumb ph" aria-hidden="true">&#9876;</div>
+          <div class="body">
+            <h3>Echad <small>RPG em 3D</small></h3>
+            <span class="tag"><span id="echad-status">Em desenvolvimento</span></span>
+            <p>Um RPG em 3D, maior e mais complexo. Os primeiros modelos já podem ser vistos abaixo.</p>
+            <button type="button" class="btn" id="echad-btn" disabled>Em breve</button>
+          </div>
+        </article>
       </div>
-    </article>
-  </main>
-  <footer>&copy; Romance de Cavalaria</footer>
-</div>
+
+      <h2 class="titulo">Em desenvolvimento</h2>
+      <div class="grid tres">
+        <a class="card mini" href="modelos/dragao/">
+          <div class="thumb ph" aria-hidden="true">&#128009;</div>
+          <div class="body"><h3>Dragão-galo</h3><span class="tag">Modelo 3D</span><p>Gire e veja de perto a criatura que incendeia a fazenda.</p></div>
+        </a>
+        <a class="card mini" href="modelos/monstro/">
+          <div class="thumb ph" aria-hidden="true">&#128126;</div>
+          <div class="body"><h3>Monstro</h3><span class="tag">Modelo 3D</span><p>Um dos inimigos em produção, das quatro vistas ao modelo.</p></div>
+        </a>
+        <div class="card mini">
+          <div class="thumb ph" aria-hidden="true">&#128272;</div>
+          <div class="body"><h3>Contas e saves na nuvem</h3><span class="tag on">Novo</span><p>Entre uma vez e continue sua partida em qualquer aparelho.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quem-somos" class="secao sobre">
+      <h2 class="titulo">Quem somos</h2>
+      <div class="sobre-grid">
+        <div class="sobre-txt">
+          <p>O Romance de Cavalaria é um estúdio pequeno e independente, tocado por quem cresceu nos anos 2000 entre RPGs de computador, servidores lotados e manuais lidos de capa a capa. Daquela época ficaram as horas de caça e mineração, as vilas que pareciam vivas e muitas ideias de “e se o jogo deixasse fazer isso?”.</p>
+          <p>É isso que estamos construindo, um passo de cada vez e à vista de todos. O <b>Netzach</b> já está no ar como protótipo: uma vila medieval com moradores que têm nome e personalidade, fazenda, fauna, interiores e uma macro que deixa o herói trabalhar sozinho mesmo com a aba fechada. O <b>Echad</b>, um RPG em 3D maior, está em desenvolvimento. Cada atualização sai direto no navegador, sem instalar nada.</p>
+        </div>
+        <blockquote class="missao">
+          <span class="tag on">Nossa missão</span>
+          <p>Jogos de fantasia acessíveis, com mecânicas que nasceram dos sonhos de um jogador dos anos 2000.</p>
+          <ul>
+            <li><b>Acessíveis:</b> rodam no navegador, no computador e no celular.</li>
+            <li><b>Feitos com calma:</b> protótipos jogáveis desde o começo, melhorados a cada versão.</li>
+            <li><b>Ouvindo quem joga:</b> o feedback de vocês decide o que vem depois.</li>
+          </ul>
+        </blockquote>
+      </div>
+    </section>
+
+    <section id="feedback" class="secao">
+      <h2 class="titulo">Feedback</h2>
+      <div class="card feedback">
+        <div class="body">
+          <p>Achou um bug, teve uma ideia ou quer contar o que achou? Escreva: lemos tudo.</p>
+          <form id="fb-form" class="fb-form">
+            <div class="fb-linha">
+              <label>Sobre
+                <select name="sobre">
+                  <option>Netzach</option><option>Echad</option><option>O site</option><option>Outro</option>
+                </select>
+              </label>
+              <label>Tipo
+                <select name="tipo">
+                  <option>Ideia</option><option>Bug</option><option>Elogio</option><option>Outro</option>
+                </select>
+              </label>
+            </div>
+            <label>Mensagem<textarea name="msg" rows="5" maxlength="4000" required placeholder="Conte o que aconteceu ou o que você gostaria de ver"></textarea></label>
+            <label>Seu e-mail <small>(opcional, se quiser resposta)</small><input name="email" type="email" autocomplete="email"></label>
+            <button type="submit" class="btn">Enviar feedback</button>
+            <p class="fb-msg" id="fb-msg" role="status" hidden></p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>&copy; Romance de Cavalaria</footer>
+
 <script src="config.js"></script>
+<script src="noticias.js"></script>
+<script src="netzach/js/conta.js?v=20261110-1"></script>
 <script>
+// endereços do config.js
 (function () {
   var z = window.SITE && window.SITE.netzachUrl;
-  if (typeof z === 'string' && z) { document.getElementById('netzach-btn').href = z; }
-})();
-(function () {
+  if (typeof z === 'string' && z) {
+    document.getElementById('netzach-btn').href = z;
+    document.getElementById('netzach-top').href = z;
+  }
   var url = window.SITE && window.SITE.echadUrl;
   if (typeof url === 'string' && /^https:\/\//i.test(url)) {
     var b = document.getElementById('echad-btn');
@@ -51,6 +151,130 @@
     b.parentNode.replaceChild(a, b);
     var s = document.getElementById('echad-status'); if (s) s.textContent = 'No ar';
   }
+})();
+
+// menu no celular
+(function () {
+  var b = document.getElementById('menu-btn'), nav = document.getElementById('nav');
+  b.addEventListener('click', function () {
+    var abre = !nav.classList.contains('aberto');
+    nav.classList.toggle('aberto', abre); b.setAttribute('aria-expanded', abre);
+  });
+  nav.addEventListener('click', function (e) {
+    if (e.target.closest('a')) { nav.classList.remove('aberto'); b.setAttribute('aria-expanded', 'false'); }
+  });
+})();
+
+// login: abre a caixa; o formulário vem de Conta.painel quando o Supabase estiver ligado
+(function () {
+  var b = document.getElementById('login-btn'), caixa = document.getElementById('login-caixa');
+  var C = window.Conta, ligada = !!(C && C.ligada && C.ligada());
+  function abre(sim) { caixa.hidden = !sim; b.setAttribute('aria-expanded', sim); }
+  b.addEventListener('click', function (e) { e.stopPropagation(); abre(caixa.hidden); });
+  document.addEventListener('click', function (e) { if (!caixa.hidden && !e.target.closest('.login')) { abre(false); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { abre(false); } });
+  if (!ligada) { return; }
+  document.getElementById('login-breve').hidden = true;
+  C.painel(document.getElementById('conta-portal'), { semConta: 'Entre para guardar seus saves na nuvem.', comConta: 'Conta', direto: true });
+  function rotulo(u) { b.textContent = u ? (u.email.split('@')[0] || 'Conta') : 'Entrar'; b.title = u ? u.email : ''; }
+  rotulo(C.usuario()); C.aoMudar(rotulo);
+})();
+
+// feedback: grava na tabela public.feedback do Supabase (config.js → supabaseUrl / supabaseKey; supabase/feedback.sql)
+(function () {
+  var f = document.getElementById('fb-form'), m = document.getElementById('fb-msg'), btn = f.querySelector('button[type=submit]');
+  var S = window.SITE || {}, url = S.supabaseUrl, chave = S.supabaseKey;
+  var ESPERA = 30000, ultimo = 0; // um envio a cada 30 s por aba
+  function diz(t) { m.hidden = false; m.textContent = t; }
+  // com conta entrada, manda o token dela: o feedback fica ligado à conta
+  function token() {
+    try { var s = JSON.parse(localStorage.getItem('rdc-conta')); return s && s.access_token && s.expires_at * 1000 > Date.now() ? s.access_token : ''; } catch (e) { return ''; }
+  }
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!url || !chave || !window.fetch) { diz('O envio de feedback ainda está sendo ligado. Volte em breve!'); return; }
+    if (Date.now() - ultimo < ESPERA) { diz('Obrigado! Espere alguns segundos antes de mandar outro.'); return; }
+    var msg = f.msg.value.trim(), email = f.email.value.trim();
+    if (!msg) { diz('Escreva a mensagem antes de enviar.'); return; }
+    var corpo = { sobre: f.sobre.value, tipo: f.tipo.value, mensagem: msg.slice(0, 4000), email: email || null, navegador: navigator.userAgent.slice(0, 300) };
+    var tk = token();
+    btn.disabled = true; diz('Enviando…');
+    var cab = { 'Content-Type': 'application/json', apikey: chave, Prefer: 'return=minimal' };
+    if (tk) { cab.Authorization = 'Bearer ' + tk; }
+    fetch(url.replace(/\/$/, '') + '/rest/v1/feedback', {
+      method: 'POST',
+      headers: cab,
+      body: JSON.stringify(corpo)
+    }).then(function (r) {
+      if (!r.ok) { throw new Error(r.status); }
+      ultimo = Date.now(); f.msg.value = '';
+      diz('Recebemos seu feedback. Muito obrigado!');
+    }).catch(function () {
+      diz('Não deu para enviar agora. Confira a internet e o e-mail (se preencheu) e tente de novo.');
+    }).then(function () { btn.disabled = false; });
+  });
+})();
+
+// carrossel de notícias
+(function () {
+  var lista = (window.NOTICIAS || []).slice(0, 8);
+  var sec = document.getElementById('noticias'), trilho = document.getElementById('trilho'), pontos = document.getElementById('pontos');
+  if (!lista.length) { sec.hidden = true; return; }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function data(d) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? (+m[3]) + ' ' + meses[+m[2] - 1] + ' ' + m[1] : ''; }
+  lista.forEach(function (n, i) {
+    var s = document.createElement('article');
+    s.className = 'slide'; s.id = 'slide-' + i;
+    s.setAttribute('role', 'group'); s.setAttribute('aria-roledescription', 'notícia');
+    s.setAttribute('aria-label', (i + 1) + ' de ' + lista.length);
+    var fundo = n.imagem ? '<img class="slide-img" src="' + esc(n.imagem) + '" alt="" loading="' + (i ? 'lazy' : 'eager') + '">'
+      : '<div class="slide-img simb" aria-hidden="true">' + esc(n.simbolo || '⚔') + '</div>';
+    s.innerHTML = fundo + '<div class="slide-txt"><p class="meta"><span class="tag on">' + esc(n.jogo) + '</span> <time datetime="' + esc(n.data) + '">' + data(n.data) + '</time></p>' +
+      '<h2>' + esc(n.titulo) + '</h2><p>' + esc(n.texto) + '</p>' +
+      (n.link ? '<a class="btn" href="' + esc(n.link) + '">' + esc(n.botao || 'Saiba mais') + '</a>' : '') + '</div>';
+    trilho.appendChild(s);
+    var p = document.createElement('button');
+    p.type = 'button'; p.setAttribute('role', 'tab'); p.setAttribute('aria-controls', s.id);
+    p.setAttribute('aria-label', n.titulo);
+    p.addEventListener('click', function () { vai(i); reinicia(); });
+    pontos.appendChild(p);
+  });
+  var atual = 0, timer = null, ESPERA = 7000;
+  var slides = trilho.children, bolas = pontos.children;
+  var parado = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function vai(i) {
+    atual = (i + lista.length) % lista.length;
+    trilho.style.transform = 'translateX(' + (-100 * atual) + '%)';
+    for (var k = 0; k < slides.length; k++) {
+      var on = k === atual;
+      slides[k].setAttribute('aria-hidden', !on);
+      slides[k].inert = !on;
+      bolas[k].setAttribute('aria-selected', on);
+    }
+  }
+  function reinicia() { clearInterval(timer); if (!parado && lista.length > 1) { timer = setInterval(function () { vai(atual + 1); }, ESPERA); } }
+  document.getElementById('ant').addEventListener('click', function () { vai(atual - 1); reinicia(); });
+  document.getElementById('prox').addEventListener('click', function () { vai(atual + 1); reinicia(); });
+  if (lista.length < 2) { sec.classList.add('so-um'); }
+  // pausa ao passar o mouse ou focar; arrastar com o dedo troca
+  sec.addEventListener('mouseenter', function () { clearInterval(timer); });
+  sec.addEventListener('mouseleave', reinicia);
+  sec.addEventListener('focusin', function () { clearInterval(timer); });
+  sec.addEventListener('focusout', reinicia);
+  sec.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { vai(atual - 1); } else if (e.key === 'ArrowRight') { vai(atual + 1); }
+  });
+  var x0 = null;
+  sec.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; clearInterval(timer); }, { passive: true });
+  sec.addEventListener('touchend', function (e) {
+    if (x0 == null) { return; }
+    var dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 40) { vai(atual + (dx < 0 ? 1 : -1)); }
+    reinicia();
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { clearInterval(timer); } else { reinicia(); } });
+  vai(0); reinicia();
 })();
 </script>
 </body>
