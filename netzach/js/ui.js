@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-12', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-13', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -1489,7 +1489,7 @@
   // ---------- conversa: árvore de diálogo, missões e serviços ----------
   function openNpc(id) {
     show('w-npc'); npcOpen = id;
-    $('npc-name').textContent = G.npcs[id].name; $('npc-res').textContent = '';
+    $('npc-name').textContent = G.npcs[id].name; $('npc-res').textContent = ''; $('npc-rosto').hidden = true; // objeto: sem rosto
     talk(id);
   }
   function setTalk(text, opts, prog) {
@@ -1578,6 +1578,7 @@
     show('w-npc'); npcOpen = id;
     if (!world.personById[id].fixed) { view.segura(id); } // quem anda para e espera a conversa acabar
     $('npc-name').textContent = personName(id);
+    var ro = $('npc-rosto'), img = view.retrato(id); ro.hidden = !img; if (img) { ro.src = img; } // a cabeça de quem fala
     personMenu(id);
   }
   function personMenu(id, said) {

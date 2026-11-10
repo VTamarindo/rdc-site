@@ -1125,6 +1125,32 @@
     o.userData.img = img; o.userData.k = h / (SIZE[img] || h);
     return o;
   };
+  // retrato(nome, tinta): a cabeça da figura, recortada do atlas, para mostrar ao lado da fala de quem diz (imagem em
+  // data URL, guardada). A cabeça é o primeiro pixel opaco de cima no meio da figura (lanças e cajados ficam nas bordas);
+  // RETRATO = lado do recorte em pixels do atlas (as figuras de gente têm todas a mesma escala). Sem figura: null
+  var RETRATO = 48;
+  View.prototype.retrato = function (name, tinta) {
+    var R = this.retratos || (this.retratos = {}), key = name + ':' + (tinta === undefined ? '' : tinta);
+    if (key in R) { return R[key]; }
+    var img = name;
+    while (this.art && !this.art.sprites[img] && SUBSTITUTA[img]) { img = SUBSTITUTA[img]; }
+    var src = this.art && this.art.sprites[img], A = this.art && this.art.alpha[img];
+    if (!src || !A) { return (R[key] = null); }
+    var w = A.w, h = A.h, x0 = Math.round(w * 0.22), x1 = Math.round(w * 0.78), top = -1, x, y;
+    for (y = 0; y < h && top < 0; y++) { for (x = x0; x < x1; x++) { if (A.data[y * w + x]) { top = y; break; } } }
+    var lado = Math.min(RETRATO, w, h), sx = 0, n = 0;
+    top = Math.max(0, top);
+    for (y = top; y < Math.min(h, top + lado * 0.7); y++) { for (x = x0; x < x1; x++) { if (A.data[y * w + x]) { sx += x; n++; } } }
+    var cx = n ? sx / n : w / 2, px = Math.round(Math.max(0, Math.min(w - lado, cx - lado / 2))), py = Math.max(0, Math.min(h - lado, top - 3));
+    var c = document.createElement('canvas'); c.width = c.height = lado;
+    var g = c.getContext('2d');
+    g.drawImage(src, px, py, lado, lado, 0, 0, lado, lado);
+    if (tinta !== undefined) { // a mesma tinta da figura no mundo (a figura misteriosa é uma sombra)
+      g.globalCompositeOperation = 'multiply'; g.fillStyle = '#' + ('00000' + tinta.toString(16)).slice(-6); g.fillRect(0, 0, lado, lado);
+      g.globalCompositeOperation = 'destination-in'; g.drawImage(src, px, py, lado, lado, 0, 0, lado, lado);
+    }
+    return (R[key] = c.toDataURL());
+  };
   // deita (ko = true) ou levanta a figura; o quadro em pé fica guardado para a volta
   View.prototype.deita = function (o, ko) {
     if (!!o.userData.deitado === ko) { return; }

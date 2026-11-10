@@ -475,6 +475,19 @@ body.touch #q-toggle { min-height: 34px; }
 #cena-texto { font-size: 17px; margin: 6px 0 10px; }
 #cena-opts { gap: 6px; }
 body.touch .win.cena { bottom: 8px; }
+/* rosto de quem fala (View.retrato, js/view.js): a cabeça da figura em pixel art ao lado do nome e da fala, para saber quem
+   diz numa conversa de muitos. Fica dentro da caixa (que está na frente do analógico e dos botões), nunca atrás deles */
+.rosto { flex: none; display: block; width: 72px; height: 72px; image-rendering: pixelated; border: 3px double var(--edge); border-radius: 3px; background: radial-gradient(circle at 50% 35%, #f6ebcd, #c9ab72); box-shadow: inset 0 0 8px rgba(95, 50, 12, .45), 0 2px 5px rgba(0, 0, 0, .35); }
+.rosto[hidden] { display: none; }
+.cena-fala { display: flex; gap: 12px; align-items: flex-start; }
+.cena-fala > div { flex: 1; min-width: 0; }
+.cena-fala .rosto { margin-top: 4px; }
+#w-npc header .rosto { width: 52px; height: 52px; }
+#w-npc header h2 { margin-right: auto; }
+/* celular (deitado, tela baixa): rosto menor, para a caixa não subir demais e tapar a cena */
+body.touch .rosto { width: 56px; height: 56px; }
+body.touch #w-npc header .rosto { width: 44px; height: 44px; }
+body.touch .cena-fala { gap: 10px; }
 body.touch #cena-dica { bottom: auto; top: 8px; max-width: 40%; font-size: 13px; padding: 5px 12px; } /* no alto, entre o status e o minimapa: o meio fica livre para a barra da colheita */
 #cena-preto { position: absolute; inset: 0; z-index: 8; background: #000; display: grid; place-items: center; opacity: 0; pointer-events: none; }
 #cena-preto p { margin: 0 8%; color: var(--light); font-size: clamp(18px, 3vw, 28px); font-style: italic; text-align: center; letter-spacing: .02em; }

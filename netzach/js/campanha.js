@@ -120,6 +120,16 @@
 
     // ---------- falas: caixa de conversa embaixo da tela ----------
     function quem(n) { return /protagonista|\(nome/i.test(n || '') ? p.name : n; }
+    // o rosto de quem fala (view.retrato): os atores do capítulo e, pelo nome, qualquer pessoa da vila.
+    // O protagonista (o jogador), a narração e nome desconhecido ficam sem rosto
+    function rosto(n) {
+      if (!n || /protagonista|\(nome/i.test(n)) { return null; }
+      var k = n.trim().toLowerCase();
+      if (k === F.nome.toLowerCase()) { return view.retrato(F.img, parseInt(F.tinta, 16)); }
+      if (k === FZ.nome.toLowerCase()) { return view.retrato(FZ.img); }
+      var P = world.personById || {}, id = Object.keys(P).filter(function (i) { return String(P[i].name || '').toLowerCase() === k; })[0];
+      return id ? view.retrato(id) : null;
+    }
     function fill(t) { return String(t || '').replace(/\((nome( do jogador)?)\)|\{nome\}/gi, p.name); }
     function falas(L, fim, titulo) {
       L = (L || []).filter(pode);
@@ -130,10 +140,11 @@
           if (!ultima) { i++; mostra(); return; }
           fechaCaixa(); fim();
         } }];
-        caixa(f ? quem(f.personagem) : '', f ? fill(f.texto) : (titulo || ''), ops);
+        caixa(f ? quem(f.personagem) : '', f ? fill(f.texto) : (titulo || ''), ops, f ? rosto(f.personagem) : null);
       })();
     }
-    function caixa(nome, texto, ops) {
+    function caixa(nome, texto, ops, img) {
+      var r = $('cena-rosto'); r.hidden = !img; if (img) { r.src = img; }
       $('cena-nome').textContent = nome || ''; $('cena-nome').hidden = !nome;
       $('cena-texto').textContent = texto;
       var box = $('cena-opts'); box.innerHTML = '';

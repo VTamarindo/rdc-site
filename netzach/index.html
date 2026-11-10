@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-12">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-13">
 </head>
 <body>
 <div id="app">
@@ -160,7 +160,7 @@
   </section>
 
   <section id="w-npc" class="win small" hidden aria-label="Conversa">
-    <header><h2 id="npc-name"></h2><button type="button" class="x" data-close>Fechar</button></header>
+    <header><img id="npc-rosto" class="rosto" alt="" hidden><h2 id="npc-name"></h2><button type="button" class="x" data-close>Fechar</button></header>
     <p id="npc-text"></p>
     <p id="npc-prog" class="hint" hidden></p>
     <div id="npc-opts" class="col"></div>
@@ -170,8 +170,10 @@
 
   <!-- campanha (js/campanha.js): a caixa das falas e escolhas, a tela preta das passagens, a dica do tutorial e o aviso de missão completada -->
   <section id="w-cena" class="win small cena" hidden aria-label="Cena">
-    <h2 id="cena-nome" hidden></h2>
-    <p id="cena-texto"></p>
+    <div class="cena-fala">
+      <img id="cena-rosto" class="rosto" alt="" hidden>
+      <div><h2 id="cena-nome" hidden></h2><p id="cena-texto"></p></div>
+    </div>
     <div id="cena-opts" class="col"></div>
   </section>
   <div id="cena-preto" hidden><p id="cena-preto-t"></p></div>
@@ -321,13 +323,13 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-12"></script>
-<script src="js/sim.js?v=20261110-12"></script>
-<script src="js/ceu.js?v=20261110-12"></script>
-<script src="js/view.js?v=20261110-12"></script>
-<script src="js/controle.js?v=20261110-12"></script>
-<script src="js/som.js?v=20261110-12"></script>
-<script src="js/campanha.js?v=20261110-12"></script>
-<script src="js/ui.js?v=20261110-12"></script>
+<script src="js/conta.js?v=20261110-13"></script>
+<script src="js/sim.js?v=20261110-13"></script>
+<script src="js/ceu.js?v=20261110-13"></script>
+<script src="js/view.js?v=20261110-13"></script>
+<script src="js/controle.js?v=20261110-13"></script>
+<script src="js/som.js?v=20261110-13"></script>
+<script src="js/campanha.js?v=20261110-13"></script>
+<script src="js/ui.js?v=20261110-13"></script>
 </body>
 </html>
