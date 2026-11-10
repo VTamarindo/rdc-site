@@ -887,6 +887,21 @@
 
   // papel envelhecido: textura gerada uma vez por tamanho (manchas, fibras e bordas queimadas)
   var parchCache = {};
+  // a cor das regiões no mundo inteiro, uma vez só: TINTA_PX pixels por metro, borda esfumada de TINTA_BORDA metros
+  var tintaCache = null, TINTA_PX = 3, TINTA_BORDA = 4;
+  function tintaRegioes() {
+    if (tintaCache) { return tintaCache; }
+    var B = world.B, T = B * 2 * TINTA_PX, cv = document.createElement('canvas'); cv.width = cv.height = T;
+    var c = cv.getContext('2d');
+    c.filter = 'blur(' + TINTA_BORDA * TINTA_PX + 'px)';
+    (V.regions || []).forEach(function (r) {
+      if (r.kind === 'vila' || !r.poly || !REGIAO[r.kind]) { return; }
+      c.fillStyle = REGIAO[r.kind]; c.beginPath();
+      r.poly.forEach(function (q, i) { var x = (q[0] + B) * TINTA_PX, z = (q[1] + B) * TINTA_PX; if (i) { c.lineTo(x, z); } else { c.moveTo(x, z); } });
+      c.closePath(); c.fill();
+    });
+    return (tintaCache = cv);
+  }
   function parchment(S) {
     if (parchCache[S]) { return parchCache[S]; }
     var cv = document.createElement('canvas'); cv.width = cv.height = S;
@@ -951,25 +966,33 @@
     var cx0 = Math.max(0, sx), cz0 = Math.max(0, sz), cx1 = Math.min(S, sx + pw), cz1 = Math.min(S, sz + pw), q = S / pw;
     if (cx1 > cx0 && cz1 > cz0) { c.drawImage(parchment(S), cx0, cz0, cx1 - cx0, cz1 - cz0, (cx0 - sx) * q, (cz0 - sz) * q, (cx1 - cx0) * q, (cz1 - cz0) * q); }
 
-    // regiões: floresta com copinhas, pedregal com pedrinhas, campina com tufos de capim. Cada uma é um polígono
-    // pintado com a borda esfumada (o degradê do chão), e os desenhos ficam por dentro dele
-    var passo = Math.max(5, 26 / k); // um desenho a cada ~26 px, nunca mais denso que 5 m
+    // regiões: floresta com copinhas, pedregal com pedrinhas, campina com tufos de capim. A cor de cada uma, com a borda
+    // esfumada (o degradê do chão), vem pronta do mundo inteiro (tintaRegioes) e só se amplia o pedaço à vista, como o
+    // papel: assim fica igual em qualquer zoom (o desfoque refeito a cada zoom sumia nos zooms grandes). Os desenhos
+    // ficam por dentro do polígono
+    var tr = tintaRegioes(), f = tr.width / S;
+    if (cx1 > cx0 && cz1 > cz0) { c.drawImage(tr, cx0 * f, cz0 * f, (cx1 - cx0) * f, (cz1 - cz0) * f, (cx0 - sx) * q, (cz0 - sz) * q, (cx1 - cx0) * q, (cz1 - cz0) * q); }
+    // os desenhos têm lugar fixo no mundo (um sorteio por quadrado de PASSO metros); o zoom só decide quantos aparecem
+    // (densidade: ~1 a cada 26 px), então ao ampliar os que já estavam ficam e outros surgem entre eles. Crescem um pouco
+    // com o zoom, até o dobro
+    var passo = 5, dens = Math.min(1, Math.pow(passo * k / 26, 2)), cresce = Math.min(2, Math.max(1, k / 6));
     function poli(P) { c.beginPath(); P.forEach(function (q, i) { if (i) { c.lineTo(X(q[0]), Z(q[1])); } else { c.moveTo(X(q[0]), Z(q[1])); } }); c.closePath(); }
     (V.regions || []).forEach(function (r) {
       if (r.kind === 'vila' || !r.poly) { return; }
       var xs = r.poly.map(function (q) { return q[0]; }), zs = r.poly.map(function (q) { return q[1]; });
       var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), bz0 = Math.min.apply(null, zs), bz1 = Math.max.apply(null, zs);
       if (!vis((bx0 + bx1) / 2, (bz0 + bz1) / 2, Math.max(bx1 - bx0, bz1 - bz0) / 2)) { return; }
-      c.save(); c.fillStyle = REGIAO[r.kind] || 'rgba(0,0,0,0)'; c.filter = 'blur(' + Math.max(1, Math.round(4 * k)) + 'px)'; poli(r.poly); c.fill(); c.restore();
       c.save(); poli(r.poly); c.clip();
       var gx0 = Math.floor(Math.max(bx0, ox - hw) / passo), gx1 = Math.ceil(Math.min(bx1, ox + hw) / passo);
       var gz0 = Math.floor(Math.max(bz0, oz - hw) / passo), gz1 = Math.ceil(Math.min(bz1, oz + hw) / passo);
       c.lineWidth = 1; c.strokeStyle = r.kind === 'floresta' ? 'rgba(52,74,30,.4)' : r.kind === 'rochas' ? 'rgba(80,70,60,.45)' : 'rgba(96,120,40,.45)';
       c.beginPath();
       for (var i = gx0; i <= gx1; i++) { for (var j = gz0; j <= gz1; j++) {
-        var n = i * 7919 + j * 104729, wx = (i + sorteMapa(n)) * passo, wz = (j + sorteMapa(n + 0.5)) * passo;
+        var n = i * 7919 + j * 104729;
+        if (sorteMapa(n + 0.7) > dens) { continue; } // longe: só uma parte deles, sempre os mesmos
+        var wx = (i + sorteMapa(n)) * passo, wz = (j + sorteMapa(n + 0.5)) * passo;
         if (NZ.distPoligono(r.poly, wx, wz) < 4) { continue; } // perto da divisa o desenho rareia, como o chão
-        var x = X(wx), z = Z(wz), s = 3 + sorteMapa(n + 0.3) * 2;
+        var x = X(wx), z = Z(wz), s = (3 + sorteMapa(n + 0.3) * 2) * cresce;
         if (r.kind === 'floresta') { c.moveTo(x + s, z); c.arc(x, z, s, 0, 6.3); }
         else if (r.kind === 'rochas') { c.moveTo(x - s, z + s * 0.5); c.lineTo(x - s * 0.2, z - s * 0.6); c.lineTo(x + s, z + s * 0.5); c.closePath(); }
         else { c.moveTo(x - s * 0.6, z - s * 0.8); c.lineTo(x, z); c.lineTo(x + s * 0.6, z - s * 0.8); c.moveTo(x, z - s); c.lineTo(x, z); }

@@ -9,7 +9,7 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 
 - Os moradores agora têm frente, lado e costas, e andam com passos de verdade (desenhos provisórios).
 - Quem para para falar com você fica de frente; na carroça, a câmera vira para o fazendeiro devagar.
-- O mapa amplia e afasta com a rodinha do mouse, em volta do ponto embaixo do mouse.
+- O mapa amplia e afasta com a rodinha do mouse, em volta do ponto embaixo do mouse; a cor e os desenhos das regiões não pulam mais com o zoom.
 - Som de vento e de trigo farfalhando perto do campo, com distância e direção (já na tela inicial).
 - Jogo novo: o menu escurece, ficam dois segundos só com o som do campo, e então o texto (aparecendo devagar) e o acordar.
 - Dá para entrar de novo na padaria, na igreja, na ferraria e na taverna (estavam fechadas desde o mapa novo).
