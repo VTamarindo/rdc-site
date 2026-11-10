@@ -34,7 +34,7 @@ window.NOTICIAS = [
   {
     jogo: "Echad", data: "2026-11-01",
     titulo: "Echad em desenvolvimento",
-    texto: "Um RPG em 3D, maior e mais complexo, está sendo feito. Os primeiros modelos, como o dragão e o monstro, já saíram do forno.",
-    simbolo: "✦", link: "#projetos", botao: "Ver projetos"
+    texto: "Um RPG em 3D, maior e mais complexo, está sendo feito. Ele vai ter a sua própria página quando estiver pronto para ser jogado.",
+    simbolo: "✦", link: "projetos.html", botao: "Ver projetos"
   }
 ];

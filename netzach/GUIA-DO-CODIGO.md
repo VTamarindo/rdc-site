@@ -6,7 +6,7 @@ recarregou o navegador. Textos e comentários em português.
 ## Regras de ouro
 1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
    - `js/ui.js`, linha 6: `var VERSION = '20261109-9'` → por exemplo `'20261109-10'`;
-   - `index.html`: todos os `?v=20261109-9` (são 6) → o mesmo número novo. Use "Substituir tudo" no editor;
+   - `index.html`: todos os `?v=` (são 7) → o mesmo número novo. Use "Substituir tudo" no editor;
    - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
 2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
 3. Os arquivos do site são públicos: nunca coloque senha ou chave secreta no código. A única exceção é a chave **publishable** (ou "anon") do Supabase em `js/conta.js`, que é feita para ficar à vista; a `secret`/`service_role` nunca.
@@ -101,6 +101,7 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Botões do controle:** `js/controle.js`, função `noJogo` (fora das janelas); velocidade da câmera em `OLHAR_X`/`OLHAR_Y`.
 - **Saves:** `js/ui.js`, seção "save" (3 espaços, chaves `zg-vila-proto-v1-1` a `-3`); conversão de saves antigos em
   `js/sim.js` (`NZ.migrate`, `NZ.migrateGear`, `NZ.settle`).
+- **Uma aba só:** `js/ui.js`, seção "uma aba só". Abrir o jogo em outra aba faz a antiga salvar, subir o save para a nuvem (até 5 s), parar e passar o espaço aberto para a nova, que abre direto nele. A antiga mostra o aviso `#w-aba` (o navegador não deixa fechá-la sozinha). Só no mesmo navegador (BroadcastChannel). Em outro aparelho continua valendo a regra da nuvem acima.
   **Com conta**, cada conta tem as suas chaves (`zg-vila-proto-v1-u<id>-1`...), que espelham a nuvem: `nuvem()` acerta os três espaços na tela inicial (vence o lado que mudou; se os dois mudaram, o gravado por último) e `sobe()` manda o save aberto a cada minuto, ao esconder a aba e ao sair. Se outro aparelho gravou o mesmo espaço enquanto ele estava aberto, o jogo abre a versão de lá. O lado que perde nunca some: fica numa cópia (`NZ.debug.copias()` no console). Os saves feitos sem conta passam para a conta ao entrar.
 
 ## Arte

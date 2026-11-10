@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Ao mudar portal.css, config.js ou noticias.js, troque o ?v= deles aqui (senão o navegador pode usar a cópia velha). -->
+<!-- Ao mudar portal.css, portal.js, config.js ou noticias.js, troque o ?v= deles aqui e em projetos.html (senão o navegador pode usar a cópia velha). -->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -7,7 +7,7 @@
 <title>Romance de Cavalaria</title>
 <meta name="description" content="Os jogos da franquia Romance de Cavalaria: novidades, Netzach e os projetos em desenvolvimento.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="portal.css?v=20261110-3">
+<link rel="stylesheet" href="portal.css?v=20261110-4">
 </head>
 <body>
 <header class="site-top">
@@ -17,10 +17,10 @@
     </a>
     <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Abrir o menu">&#9776;</button>
     <nav id="nav" class="nav">
-      <a href="#noticias">Novidades</a>
-      <a href="#projetos">Projetos</a>
-      <a href="#quem-somos">Quem somos</a>
-      <a href="#feedback">Feedback</a>
+      <a href="./#noticias">Novidades</a>
+      <a href="projetos.html">Projetos</a>
+      <a href="./#quem-somos">Quem somos</a>
+      <a href="./#feedback">Feedback</a>
       <a class="btn" id="netzach-top" href="netzach/">Jogar Netzach</a>
       <div class="login">
         <button type="button" class="btn ghost" id="login-btn" aria-expanded="false" aria-controls="login-caixa">Entrar</button>
@@ -43,46 +43,6 @@
   </section>
 
   <div class="wrap">
-    <section id="projetos" class="secao">
-      <h2 class="titulo">Os jogos</h2>
-      <div class="grid">
-        <article class="card destaque">
-          <img class="thumb" src="prev-netzach.jpg" alt="Netzach: um cavaleiro de espada em punho diante de um dragão que incendeia a fazenda" width="320" height="200">
-          <div class="body">
-            <h3>Netzach <small>protótipo da vila</small></h3>
-            <span class="tag on">No ar &middot; no navegador</span>
-            <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
-            <a class="btn" id="netzach-btn" href="netzach/">Jogar</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="thumb ph" aria-hidden="true">&#9876;</div>
-          <div class="body">
-            <h3>Echad <small>RPG em 3D</small></h3>
-            <span class="tag"><span id="echad-status">Em desenvolvimento</span></span>
-            <p>Um RPG em 3D, maior e mais complexo. Os primeiros modelos já podem ser vistos abaixo.</p>
-            <button type="button" class="btn" id="echad-btn" disabled>Em breve</button>
-          </div>
-        </article>
-      </div>
-
-      <h2 class="titulo">Em desenvolvimento</h2>
-      <div class="grid tres">
-        <a class="card mini" href="modelos/dragao/">
-          <div class="thumb ph" aria-hidden="true">&#128009;</div>
-          <div class="body"><h3>Dragão-galo</h3><span class="tag">Modelo 3D</span><p>Gire e veja de perto a criatura que incendeia a fazenda.</p></div>
-        </a>
-        <a class="card mini" href="modelos/monstro/">
-          <div class="thumb ph" aria-hidden="true">&#128126;</div>
-          <div class="body"><h3>Monstro</h3><span class="tag">Modelo 3D</span><p>Um dos inimigos em produção, das quatro vistas ao modelo.</p></div>
-        </a>
-        <div class="card mini">
-          <div class="thumb ph" aria-hidden="true">&#128272;</div>
-          <div class="body"><h3>Contas e saves na nuvem</h3><span class="tag on">Novo</span><p>Entre uma vez e continue sua partida em qualquer aparelho.</p></div>
-        </div>
-      </div>
-    </section>
-
     <section id="quem-somos" class="secao sobre">
       <h2 class="titulo">Quem somos</h2>
       <div class="sobre-grid">
@@ -133,54 +93,11 @@
 
 <footer>&copy; Romance de Cavalaria</footer>
 
-<script src="config.js?v=20261110-3"></script>
-<script src="noticias.js?v=20261110-3"></script>
+<script src="config.js?v=20261110-4"></script>
+<script src="noticias.js?v=20261110-4"></script>
 <script src="netzach/js/conta.js?v=20261110-2"></script>
+<script src="portal.js?v=20261110-4"></script>
 <script>
-// endereços do config.js
-(function () {
-  var z = window.SITE && window.SITE.netzachUrl;
-  if (typeof z === 'string' && z) {
-    document.getElementById('netzach-btn').href = z;
-    document.getElementById('netzach-top').href = z;
-  }
-  var url = window.SITE && window.SITE.echadUrl;
-  if (typeof url === 'string' && /^https:\/\//i.test(url)) {
-    var b = document.getElementById('echad-btn');
-    var a = document.createElement('a');
-    a.className = 'btn'; a.href = url; a.rel = 'noopener'; a.textContent = 'Ver no itch.io';
-    b.parentNode.replaceChild(a, b);
-    var s = document.getElementById('echad-status'); if (s) s.textContent = 'No ar';
-  }
-})();
-
-// menu no celular
-(function () {
-  var b = document.getElementById('menu-btn'), nav = document.getElementById('nav');
-  b.addEventListener('click', function () {
-    var abre = !nav.classList.contains('aberto');
-    nav.classList.toggle('aberto', abre); b.setAttribute('aria-expanded', abre);
-  });
-  nav.addEventListener('click', function (e) {
-    if (e.target.closest('a')) { nav.classList.remove('aberto'); b.setAttribute('aria-expanded', 'false'); }
-  });
-})();
-
-// login: abre a caixa; o formulário vem de Conta.painel quando o Supabase estiver ligado
-(function () {
-  var b = document.getElementById('login-btn'), caixa = document.getElementById('login-caixa');
-  var C = window.Conta, ligada = !!(C && C.ligada && C.ligada());
-  function abre(sim) { caixa.hidden = !sim; b.setAttribute('aria-expanded', sim); }
-  b.addEventListener('click', function (e) { e.stopPropagation(); abre(caixa.hidden); });
-  document.addEventListener('click', function (e) { if (!caixa.hidden && !e.target.closest('.login')) { abre(false); } });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { abre(false); } });
-  if (!ligada) { return; }
-  document.getElementById('login-breve').hidden = true;
-  C.painel(document.getElementById('conta-portal'), { semConta: 'Entre para guardar seus saves na nuvem.', comConta: 'Conta', direto: true });
-  function rotulo(u) { b.textContent = u ? (u.email.split('@')[0] || 'Conta') : 'Entrar'; b.title = u ? u.email : ''; }
-  rotulo(C.usuario()); C.aoMudar(rotulo);
-})();
-
 // feedback: grava na tabela public.feedback do Supabase (config.js → supabaseUrl / supabaseKey; supabase/feedback.sql)
 (function () {
   var f = document.getElementById('fb-form'), m = document.getElementById('fb-msg'), btn = f.querySelector('button[type=submit]');

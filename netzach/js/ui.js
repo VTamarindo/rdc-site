@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-2', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-3', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -27,6 +27,24 @@
   var openWin = null, npcOpen = null, toastT = 0, baseTitle = document.title;
   var dpr = Math.min(2, window.devicePixelRatio || 1);
   var isTouch = ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+
+  // ---------- uma aba só ----------
+  // Ao abrir, a aba avisa as outras ('nova'). Cada aba antiga responde 'fechando' na hora, salva, sobe o save para a nuvem
+  // (até 5 s), para o jogo e manda 'passa' com o espaço que estava aberto: a aba nova abre direto nele, sem a tela inicial.
+  // Mesmo navegador só (BroadcastChannel): o save passa pelo localStorage, que as abas dividem. Sem o canal, nada muda.
+  var aba = { id: Math.random().toString(36).slice(2) + Date.now().toString(36), canal: null, fechada: false, espera: false, entrega: null, pronto: false };
+  try { aba.canal = new BroadcastChannel('netzach-aba'); } catch (e) { /* navegador antigo: as abas não se falam */ }
+  function abaManda(m) { try { aba.canal.postMessage(m); } catch (e) { /* canal fechado */ } }
+  if (aba.canal) {
+    aba.canal.onmessage = function (e) {
+      var m = e.data || {};
+      if (m.tipo === 'nova' && m.id !== aba.id) { if (!aba.fechada) { passaAdiante(m.id); } return; }
+      if (m.para !== aba.id) { return; }
+      if (m.tipo === 'fechando') { aba.espera = true; }
+      else if (m.tipo === 'passa') { aba.espera = false; if (!aba.entrega || !aba.entrega.slot) { aba.entrega = m; } if (aba.pronto) { usaEntrega(); } }
+    };
+    abaManda({ tipo: 'nova', id: aba.id });
+  }
 
   // ---------- carregar ----------
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function () { /* sem ele, o jogo só não abre sem internet */ }); }
@@ -52,17 +70,18 @@
       copias: function () { var o = {}; for (var i = 1; i <= SLOTS; i++) { try { var c = JSON.parse(localStorage.getItem(slotKey(i) + '-copia')); if (c) { o[i] = c; } } catch (e) { /* nada */ } } return o; },
       nuvem: function () { return st ? sobe() : nuvem(); } }; // para testes
 
-    showTitle();
+    $('aba-volta').addEventListener('click', function () { location.reload(); }); // recarregar = abrir de novo: a outra aba passa o jogo para cá
+    abreInicio();
 
     // na tela inicial não há jogo rodando: nada a salvar nem tempo fora a contar (cada save conta o seu ao ser aberto)
     document.addEventListener('visibilitychange', function () {
-      if (!st) { return; }
+      if (!st || aba.fechada) { return; }
       if (document.hidden) { beginAway(clockNow()); save(); sobe(true); }
       else { if (away) { endAway(clockNow()); } document.title = baseTitle; clockSync(); save(); sobe(); } // voltar à aba confere se outro aparelho jogou
     });
-    window.addEventListener('pagehide', function () { save(); sobe(true); });
+    window.addEventListener('pagehide', function () { if (!aba.fechada) { save(); sobe(true); } });
     setInterval(function () {
-      if (!st) { return; }
+      if (!st || aba.fechada) { return; }
       if (away) { catchUp(clockNow()); }
       save();
       if ((nuvemT += 5) >= NUVEM_SEG) { sobe(); }
@@ -203,18 +222,67 @@
     el.textContent = t; el.hidden = !t;
     var onde = $('save-onde'); if (onde) { onde.textContent = u ? 'neste navegador e na sua conta' : 'neste navegador'; }
   }
-  // sobe o save aberto, se mudou. fechando: a aba está indo embora (uma tacada só, sem esperar resposta)
+  // sobe o save aberto, se mudou. fechando: a aba está indo embora (uma tacada só, sem esperar resposta).
+  // Devolve a promessa do envio (a que já estava indo, se houver), ou nada quando não há o que subir.
+  var subida = null;
   function sobe(fechando) {
-    if (!st || !slot || !ultimo || subindo || !slotDono || slotDono !== dono() || !(window.Conta && Conta.online())) { return; }
+    if (subindo) { return subida; }
+    if (!st || !slot || !ultimo || !slotDono || slotDono !== dono() || !(window.Conta && Conta.online())) { return; }
     if (ultimo.t === slotCloud) { return; }
     var u = ultimo, n = slot, quem = slotDono;
     subindo = true; nuvemT = 0;
-    Conta.saves.gravar(GAME, n, slotCloud, corpo(u.t, u.json), fechando).then(function (res) {
+    subida = Conta.saves.gravar(GAME, n, slotCloud, corpo(u.t, u.json), fechando).then(function (res) {
       subindo = false;
       if (!st || slot !== n || slotDono !== quem) { return; }
       if (res === 'ok') { slotCloud = u.t; nuvemSt = 'ok'; return; }
+      if (aba.fechada) { return; } // esta aba está passando o jogo adiante: a aba nova resolve a briga com a nuvem
       return outroAparelho(n, quem);
     }).catch(function () { subindo = false; nuvemSt = 'off'; });
+    return subida;
+  }
+
+  // ---------- uma aba só: passar o jogo para a aba nova ----------
+  function passaAdiante(para) {
+    aba.fechada = true;
+    abaManda({ tipo: 'fechando', para: para });
+    if (!G || !st || !slot) { fechaAba(); abaManda({ tipo: 'passa', para: para, slot: 0 }); return; }
+    var n = slot, quem = slotDono;
+    save();
+    var limite = new Promise(function (ok) { setTimeout(ok, 5000); });
+    Promise.race([Promise.resolve(sobe()), limite]).catch(function () { /* sem nuvem: o save local basta */ }).then(function () {
+      if (st && slot === n) { save(); } // grava de novo com o carimbo da nuvem já atualizado, para a aba nova não ver briga
+      fechaAba();
+      abaManda({ tipo: 'passa', para: para, slot: n, dono: quem });
+    });
+  }
+  // para o jogo desta aba e mostra o aviso (o navegador só deixa fechar sozinha a aba que um script abriu)
+  function fechaAba() {
+    aba.fechada = true;
+    if (!G) { return; } // ainda carregando: start() vê aba.fechada e mostra o aviso
+    if (st) { hide(); closeAllMarks(); }
+    st = null; slot = 0; slotDono = ''; ultimo = null; away = null; titleOn = false; openWin = null;
+    $('hud').hidden = true; $('w-title').hidden = true; $('loading').hidden = true; $('w-aba').hidden = false;
+    document.title = baseTitle;
+    try { window.close(); } catch (e) { /* não deixou: fica o aviso */ }
+  }
+  // depois de carregar: abre o save que veio da outra aba, espera por ele um pouco, ou mostra a tela inicial
+  function abreInicio() {
+    aba.pronto = true;
+    if (aba.fechada) { fechaAba(); return; }
+    if (aba.entrega) { usaEntrega(); return; }
+    if (aba.espera) {
+      $('loading').textContent = 'Trazendo o jogo da outra aba…'; $('loading').hidden = false;
+      setTimeout(function () { if (!st && !titleOn && !aba.fechada) { $('loading').hidden = true; showTitle(); } }, 6000);
+      return;
+    }
+    showTitle();
+  }
+  function usaEntrega() {
+    var m = aba.entrega; aba.entrega = null;
+    if (!m || st || aba.fechada || titleNew || titleDel) { return; }
+    $('loading').hidden = true;
+    if (m.slot && m.dono === dono() && load(m.slot)) { play(m.slot); toast('O jogo veio da outra aba.', 3); return; }
+    if (!titleOn) { showTitle(); }
   }
   // outro aparelho gravou este espaço enquanto ele estava aberto aqui: vale o de lá (se lá foi apagado, este continua e recria)
   function outroAparelho(n, quem) {
@@ -381,6 +449,7 @@
   var lastFrame = performance.now();
   function frame(t) {
     requestAnimationFrame(frame);
+    if (aba.fechada) { return; } // passou o jogo para outra aba: nada roda nem desenha aqui
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
     if (!st) { // tela inicial: a vila gira devagar atrás dos saves, e o controle só navega
       ctrl.tick(fdt);

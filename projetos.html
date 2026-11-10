@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projetos · Romance de Cavalaria</title>
+<meta name="description" content="Todos os jogos da franquia Romance de Cavalaria: Netzach, no ar, e Echad, em desenvolvimento.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="portal.css?v=20261110-4">
+</head>
+<body>
+<header class="site-top">
+  <div class="bar">
+    <a class="marca" href="./" aria-label="Romance de Cavalaria, início">
+      <img src="favicon.svg" alt="" width="28" height="28"><span>Romance de Cavalaria</span>
+    </a>
+    <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Abrir o menu">&#9776;</button>
+    <nav id="nav" class="nav">
+      <a href="./#noticias">Novidades</a>
+      <a href="projetos.html" aria-current="page">Projetos</a>
+      <a href="./#quem-somos">Quem somos</a>
+      <a href="./#feedback">Feedback</a>
+      <a class="btn" id="netzach-top" href="netzach/">Jogar Netzach</a>
+      <div class="login">
+        <button type="button" class="btn ghost" id="login-btn" aria-expanded="false" aria-controls="login-caixa">Entrar</button>
+        <!-- O formulário da conta é montado aqui por netzach/js/conta.js (Conta.painel) -->
+        <div class="login-caixa" id="login-caixa" hidden>
+          <div id="conta-portal" class="conta"></div>
+          <p class="login-breve" id="login-breve">As contas estão chegando: em breve você vai poder entrar e guardar seus saves na nuvem.</p>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="projetos" class="secao">
+    <h1 class="titulo">Projetos da franquia</h1>
+    <p class="intro">Todos os jogos do Romance de Cavalaria, os que já estão no ar e os que ainda estão sendo feitos.</p>
+    <div class="grid">
+      <article class="card destaque">
+        <img class="thumb" src="prev-netzach.jpg" alt="Netzach: um cavaleiro de espada em punho diante de um dragão que incendeia a fazenda" width="320" height="200">
+        <div class="body">
+          <h2>Netzach <small>protótipo da vila</small></h2>
+          <span class="tag on">No ar &middot; no navegador</span>
+          <p>Uma vila cercada, em primeira pessoa. Ande pelo teclado e clique para interagir, ou marque uma área no mapa e deixe o herói caçar, cortar e minerar sozinho, mesmo com a aba fechada.</p>
+          <a class="btn" id="netzach-btn" href="netzach/">Jogar</a>
+        </div>
+      </article>
+      <article class="card">
+        <div class="thumb ph" aria-hidden="true">&#9876;</div>
+        <div class="body">
+          <h2>Echad <small>RPG em 3D</small></h2>
+          <span class="tag"><span id="echad-status">Em desenvolvimento</span></span>
+          <p>Um RPG em 3D, maior e mais complexo. Em desenvolvimento.</p>
+          <button type="button" class="btn" id="echad-btn" disabled>Em breve</button>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer>&copy; Romance de Cavalaria</footer>
+
+<script src="config.js?v=20261110-4"></script>
+<script src="netzach/js/conta.js?v=20261110-2"></script>
+<script src="portal.js?v=20261110-4"></script>
+</body>
+</html>

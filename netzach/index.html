@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261110-2">
+<link rel="stylesheet" href="css/netzach.css?v=20261110-3">
 </head>
 <body>
 <div id="app">
@@ -169,6 +169,16 @@
   </section>
 
   <!-- tela inicial: cobre tudo até escolher um save. Para o controle e o Esc é uma janela (foco nos botões, B volta) -->
+  <!-- uma aba só: quando o jogo abre em outra aba, esta salva, entrega o save para lá e para (js/ui.js, "uma aba só") -->
+  <div id="w-aba" hidden>
+    <section class="win small" aria-label="Jogo aberto em outra aba">
+      <h1 class="t-logo">Netzach</h1>
+      <p class="t-sub">aberto em outra aba</p>
+      <p id="aba-txt">O jogo foi aberto em outra aba. Para não rodarem dois ao mesmo tempo, esta parou: o progresso foi salvo e seguiu para a aba nova.</p>
+      <button type="button" id="aba-volta" class="main">Jogar nesta aba</button>
+    </section>
+  </div>
+
   <div id="w-title" hidden>
     <section class="win small" aria-label="Netzach">
       <h1 class="t-logo">Netzach</h1>
@@ -284,11 +294,11 @@
   </section>
 </div>
 
-<script src="js/conta.js?v=20261110-2"></script>
-<script src="js/sim.js?v=20261110-2"></script>
-<script src="js/ceu.js?v=20261110-2"></script>
-<script src="js/view.js?v=20261110-2"></script>
-<script src="js/controle.js?v=20261110-2"></script>
-<script src="js/ui.js?v=20261110-2"></script>
+<script src="js/conta.js?v=20261110-3"></script>
+<script src="js/sim.js?v=20261110-3"></script>
+<script src="js/ceu.js?v=20261110-3"></script>
+<script src="js/view.js?v=20261110-3"></script>
+<script src="js/controle.js?v=20261110-3"></script>
+<script src="js/ui.js?v=20261110-3"></script>
 </body>
 </html>

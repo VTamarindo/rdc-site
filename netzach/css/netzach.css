@@ -404,6 +404,10 @@ body.touch #q-toggle { min-height: 34px; }
 /* tela inicial: escurece a vila que gira atrás; o cartão é uma janela de pergaminho como as outras */
 #w-title { position: absolute; inset: 0; z-index: 8; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, rgba(10, 6, 2, .25), rgba(10, 6, 2, .72)); }
 #w-title .win { max-height: calc(100% - 16px); overflow-x: hidden; }
+/* aviso de jogo aberto em outra aba: cobre tudo, inclusive a tela inicial */
+#w-aba { position: absolute; inset: 0; z-index: 30; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, rgba(10, 6, 2, .55), rgba(10, 6, 2, .9)); }
+#w-aba .win { max-height: calc(100% - 16px); overflow-x: hidden; }
+#w-aba .main { width: 100%; }
 .t-logo { margin: 4px 0 0; text-align: center; font-size: 44px; font-weight: normal; font-variant: small-caps; letter-spacing: .08em; color: var(--wax); text-shadow: 0 1px 0 rgba(255, 245, 220, .7); }
 .t-logo::before, .t-logo::after { content: '❧'; font-size: .5em; vertical-align: middle; color: var(--ink2); margin: 0 .4em; }
 .t-logo::before { display: inline-block; transform: scaleX(-1); }
