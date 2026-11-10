@@ -178,7 +178,12 @@
       var el = $('cena-dica'); el.textContent = t || ''; el.hidden = !t; clearTimeout(el._t);
       if (t && document.body.classList.contains('touch')) { el._t = setTimeout(function () { el.hidden = true; }, DICA_SEG * 1000); }
     }
-    function missao(t, prog) { S().missao = t ? { t: t, p: prog || '' } : null; api.quests(); }
+    // objetivo da campanha; um objetivo diferente do anterior ganha o aviso de missão nova (reabrir o save não repete)
+    function missao(t, prog) {
+      var antes = S().missao && S().missao.t;
+      S().missao = t ? { t: t, p: prog || '' } : null; api.quests();
+      if (t && t !== antes && api.novaMissao) { api.novaMissao(t); }
+    }
     function feito(titulo, linha) {
       var el = $('cena-feito');
       $('cena-feito-t').textContent = titulo; $('cena-feito-l').textContent = linha || ''; $('cena-feito-l').hidden = !linha;
@@ -298,7 +303,7 @@
         colheu: function () {
           if (S().passo !== 'colher') { return; }
           S().n++; missao(CF.missoes.colher, prog(S().n, N1));
-          if (S().n >= N1) { dica(null); S().passo = 'carroca'; missao(CF.missoes.carroca); api.toast(CF.missoes.carroca + '.', 3); }
+          if (S().n >= N1) { dica(null); S().passo = 'carroca'; missao(CF.missoes.carroca); }
           api.save();
         },
         tick: function () { if (S().passo === 'colher' && !fugindo && !noCampo()) { volta(CF.naoFuja); } },
@@ -333,7 +338,7 @@
           if (S().passo !== 'colher') { return; }
           var falta = dePe();
           missao(CF.missoes.terminar, prog(S().meta - falta, S().meta));
-          if (!falta) { S().passo = 'carroca'; missao(CF.missoes.carroca2); api.toast(CF.missoes.carroca2 + '.', 3); }
+          if (!falta) { S().passo = 'carroca'; missao(CF.missoes.carroca2); }
           api.save();
         },
         tick: function () { if (S().passo === 'colher' && !fugindo && !noCampo()) { volta(CF.naoFuja); } },
@@ -391,6 +396,23 @@
       if (id === 'faz') { api.toast(S().missao ? FZ.nome + ': "' + S().missao.t + '."' : FZ.nome + '.', 3); return; }
       if (id === 'figura') { api.toast('…'); }
     }
+    // onde fica o objetivo da missão atual (a seta na borda da tela e no minimapa, em js/ui.js): seguir a figura, o trigo de
+    // pé mais perto, a carroça. Nada no meio de uma cena (trava) nem depois do fim do capítulo
+    function objetivo() {
+      if (!ativa() || S().fim || trava || fugindo) { return null; }
+      var ps = S().passo, o;
+      if (ps === 'figura') { o = ator('figura').o; return o.visible ? { x: o.pos[0], z: o.pos[2], y: 1.2, nome: F.nome } : null; }
+      if (ps === 'carroca') { o = ator('carroca').o; return { x: o.pos[0], z: o.pos[2], y: 1, nome: CR.nome }; }
+      if (ps === 'colher') {
+        var melhor = null, md = 1e9;
+        world.nodes.forEach(function (n) {
+          if (n.field !== CF.campo || !st.nodes[n.id].alive) { return; }
+          var d = Math.hypot(n.x - p.x, n.z - p.z); if (d < md) { md = d; melhor = n; }
+        });
+        return melhor ? { x: melhor.x, z: melhor.z, y: 0.6, nome: 'Trigo', perto: 2.5 } : null;
+      }
+      return null;
+    }
     function marcas() {
       if (!ativa() || S().fim) { return []; }
       var out = [], c = ator('carroca').o;
@@ -398,7 +420,7 @@
       return out;
     }
     return {
-      novo: novo, abre: abre, tick: tick, evento: evento, interage: interage, marcas: marcas, ativa: ativa,
+      novo: novo, abre: abre, tick: tick, evento: evento, interage: interage, marcas: marcas, objetivo: objetivo, ativa: ativa,
       trava: function () { return ativa() && trava; },
       deitado: function () { return ativa() ? deit : 0; },
       missao: function () { return ativa() ? S().missao : null; },

@@ -72,7 +72,7 @@
     vitrine.player.x = G.campanha.inicio.x; vitrine.player.z = G.campanha.inicio.z;
     camp = NZ.campanha({
       G: G, world: world, view: view, sim: sim, dados: campDados,
-      save: function () { save(); }, toast: function (t, s) { toast(t, s); }, quests: function () { renderQuests(); },
+      save: function () { save(); }, toast: function (t, s) { toast(t, s); }, quests: function () { renderQuests(); }, novaMissao: function (t) { avisoMissao(t); },
       eventos: function () { handleEvents(); hudT = 0; },
       janela: cenaJanela, janelaAberta: function () { return openWin; },
       guardado: function () { return performance.now() < guardUntil; },
@@ -441,7 +441,7 @@
     st = null; camp.abre(null); slot = 0; slotDono = ''; ultimo = null; away = null; document.title = baseTitle;
     showTitle();
   }
-  function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('hover').hidden = true; $('toast').hidden = true; }
+  function closeAllMarks() { $('marks').innerHTML = ''; markEls = {}; $('seta-obj').hidden = true; $('missao-nova').hidden = true; $('hover').hidden = true; $('toast').hidden = true; }
 
   // ---------- tela inicial ----------
   var titleOn = false, titleDel = 0, titleNew = 0, titleCfg = false;
@@ -1199,6 +1199,22 @@
     // destino: um X de lacre
     var gt = st.player.goto;
     if (gt) { var gx = X(gt.x), gz = Z(gt.z), xq = big ? 6 : 3; c.strokeStyle = WAX; c.lineWidth = big ? 3 : 1.8; c.lineCap = 'round'; c.beginPath(); c.moveTo(gx - xq, gz - xq); c.lineTo(gx + xq, gz + xq); c.moveTo(gx + xq, gz - xq); c.lineTo(gx - xq, gz + xq); c.stroke(); c.lineCap = 'butt'; }
+    // objetivo da campanha: uma marca dourada no lugar dele; fora do que o mapa mostra, uma seta na borda apontando para ele
+    var ob = camp.objetivo();
+    if (ob && Math.hypot(ob.x - p.x, ob.z - p.z) >= (ob.perto || SETA.perto)) {
+      var obx = X(ob.x), obz = Z(ob.z), mg = big ? 16 : 9, rr = big ? 7 : 4.5;
+      c.strokeStyle = '#5a3a0a'; c.lineWidth = big ? 2 : 1.4; c.fillStyle = '#f0c64e';
+      if (obx > mg && obx < S - mg && obz > mg && obz < S - mg) {
+        c.beginPath(); c.arc(obx, obz, rr + 3.5, 0, 7); c.fillStyle = 'rgba(240,198,78,.35)'; c.fill();
+        c.beginPath(); c.arc(obx, obz, rr, 0, 7); c.fillStyle = '#f0c64e'; c.fill(); c.stroke();
+      } else {
+        var vx = obx - S / 2, vz = obz - S / 2, h2 = S / 2 - mg, tt = Math.min(h2 / Math.max(1e-6, Math.abs(vx)), h2 / Math.max(1e-6, Math.abs(vz)));
+        var L = big ? 13 : 9;
+        c.save(); c.translate(S / 2 + vx * tt, S / 2 + vz * tt); c.rotate(Math.atan2(vx, -vz));
+        c.beginPath(); c.moveTo(0, -L); c.lineTo(L * 0.7, L * 0.6); c.lineTo(0, L * 0.25); c.lineTo(-L * 0.7, L * 0.6); c.closePath();
+        c.fill(); c.stroke(); c.restore();
+      }
+    }
     // jogador: seta vermelho-lacre
     var px = X(p.x), pz = Z(p.z), y = view ? view.yaw : p.yaw, r2 = big ? 10 * u : 6.5;
     c.fillStyle = WAX; c.strokeStyle = '#f6ead0'; c.lineWidth = big ? 1.6 : 1.1; c.lineJoin = 'round';
@@ -1614,7 +1630,7 @@
   }
   function dailyShow(id, q) {
     var Q = G.daily.quests[q], r = sim.dailyReward(q, 0, st), s = sim.dailyState(st, q), back = { text: 'Voltar', fn: function () { dailyTalk(id); } };
-    setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); dailyTalk(id); } }, back] : [back],
+    setTalk(Q.text, s === 'available' ? [{ text: 'Aceitar: ' + Q.title, cls: 'main', fn: function () { sim.dailyAccept(st, q); handleEvents(); save(); avisoMissao(Q.title); dailyTalk(id); } }, back] : [back],
       s === 'active' ? 'Missão: ' + Q.title + ' · ' + dailyProg(q) : s === 'done' ? 'Concluída hoje.' : s === 'closed' ? 'Encerrada até o reinício.' :
       'Recompensa: ' + r.moedas + ' moedas, ' + r.xp + ' XP e ' + r.rp + ' rp.');
   }
@@ -1693,7 +1709,7 @@
     else if (q && q.state === 'available') {
       var Q = G.quests[q.id];
       setTalk(Q.offer, [
-        { text: 'Aceitar: ' + Q.title, fn: function () { sim.acceptQuest(st, q.id); handleEvents(); save(); talk(id, Q.active); } },
+        { text: 'Aceitar: ' + Q.title, fn: function () { sim.acceptQuest(st, q.id); handleEvents(); save(); avisoMissao(Q.title); talk(id, Q.active); } },
         { text: 'Agora não', fn: function () { personMenu(id); } }
       ]);
     } else if (q && q.state === 'ready') {
@@ -1729,8 +1745,9 @@
     return parts.length ? ' (Recebeu ' + parts.join(', ') + '.)' : '';
   }
   // a escolha de recolher a lista vale para este navegador, como os controles; fora do save
-  var QUESTS_KEY = 'zg-vila-missoes', questsClosed = false;
-  try { questsClosed = localStorage.getItem(QUESTS_KEY) === '1'; } catch (e) { /* sem armazenamento: começa aberta */ }
+  var QUESTS_KEY = 'zg-vila-missoes', questsClosed = true;
+  // a lista começa fechada (o aviso de missão nova já mostra o objetivo); abre quando o jogador abrir, e lembra
+  try { questsClosed = localStorage.getItem(QUESTS_KEY) !== '0'; } catch (e) { /* sem armazenamento: começa fechada */ }
   function toggleQuests() {
     questsClosed = !questsClosed;
     try { localStorage.setItem(QUESTS_KEY, questsClosed ? '1' : '0'); } catch (e) { /* sem armazenamento: vale até fechar */ }
@@ -1765,7 +1782,35 @@
     el.hidden = false; el.textContent = sym; el.className = sym === '?' ? 'q' : '';
     el.style.left = (pos.x * 100) + '%'; el.style.top = (pos.y * 100) + '%';
   }
+  // seta do objetivo da campanha (camp.objetivo): só quando ele não está à vista (fora da tela ou atrás), presa numa elipse
+  // perto da borda (SETA: meia largura e meia altura, em fração da tela) e apontando para o lado dele, com a distância.
+  // Perto dele (o.perto, ou SETA.perto metros) ou com uma janela aberta, some
+  var SETA = { rx: 0.42, ry: 0.36, cy: 0.52, perto: 3, margem: 0.06 };
+  function direcaoTela(x, z) { // ângulo na tela: 0 = em frente (para cima), positivo = para a direita
+    var p = st.player, dx = x - p.x, dz = z - p.z, y = view.yaw;
+    return Math.atan2(dx * -Math.cos(y) + dz * Math.sin(y), dx * Math.sin(y) + dz * Math.cos(y));
+  }
+  function seta() {
+    var el = $('seta-obj'), o = camp.objetivo(), p = st.player;
+    if (!o || openWin || Math.hypot(o.x - p.x, o.z - p.z) < (o.perto || SETA.perto)) { el.hidden = true; return; }
+    var v = view.project(o.x, o.y, o.z), m = SETA.margem;
+    if (v && v.x > m && v.x < 1 - m && v.y > m && v.y < 1 - m) { el.hidden = true; return; } // à vista: sem seta
+    var a = direcaoTela(o.x, o.z);
+    el.hidden = false;
+    el.style.left = ((0.5 + Math.sin(a) * SETA.rx) * 100) + '%'; el.style.top = ((SETA.cy - Math.cos(a) * SETA.ry) * 100) + '%';
+    el.firstChild.style.setProperty('--rot', a + 'rad');
+    el.lastChild.textContent = Math.round(Math.hypot(o.x - p.x, o.z - p.z)) + ' m';
+  }
+  // missão nova: um aviso rápido no alto, ao centro, com o objetivo em vermelho (AVISO_SEG segundos à vista)
+  var AVISO_SEG = 3.2;
+  function avisoMissao(t) {
+    var el = $('missao-nova'); if (!t) { return; }
+    $('missao-nova-t').textContent = t;
+    el.hidden = false; el.classList.remove('sai', 'entra'); void el.offsetWidth; el.classList.add('entra');
+    clearTimeout(el._t); el._t = setTimeout(function () { el.classList.remove('entra'); el.classList.add('sai'); el._t = setTimeout(function () { el.hidden = true; }, 650); }, AVISO_SEG * 1000);
+  }
   function marks() {
+    seta();
     mark('camp:carroca', '', 0, 0, 0); // campanha: a carroça ganha '!' quando é hora de levar o trigo
     camp.marcas().forEach(function (m) { mark(m.id, m.sym, m.x, m.y, m.z); });
     var qd = dailyBoard();

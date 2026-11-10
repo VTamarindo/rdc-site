@@ -13,6 +13,8 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Som de vento e de trigo farfalhando perto do campo, com distância e direção (já na tela inicial).
 - Jogo novo: o menu escurece, ficam dois segundos só com o som do campo, e então o texto (aparecendo devagar) e o acordar.
 - Dá para entrar de novo na padaria, na igreja, na ferraria e na taverna (estavam fechadas desde o mapa novo).
+- Seta para o objetivo: na borda da tela quando ele não está à vista, e no minimapa (marca dourada, ou seta na borda quando fica fora dele).
+- Missão nova: aviso rápido no alto da tela, com o objetivo em vermelho. A lista de missões começa recolhida.
 
 ## Por dentro
 - Arte desenhada no Aseprite (`art/fonte/`), montada no atlas por `tools/montar_atlas.py`; atlas 10% menor.
