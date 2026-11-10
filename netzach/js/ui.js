@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-5', SAVE_VER = '20261105-3';
+  var VERSION = '20261110-6', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -802,27 +802,52 @@
     var cx0 = Math.max(0, sx), cz0 = Math.max(0, sz), cx1 = Math.min(S, sx + pw), cz1 = Math.min(S, sz + pw), q = S / pw;
     if (cx1 > cx0 && cz1 > cz0) { c.drawImage(parchment(S), cx0, cz0, cx1 - cx0, cz1 - cz0, (cx0 - sx) * q, (cz0 - sz) * q, (cx1 - cx0) * q, (cz1 - cz0) * q); }
 
-    // regiões: floresta com copinhas, pedregal com pedrinhas, campina com tufos de capim
+    // regiões: floresta com copinhas, pedregal com pedrinhas, campina com tufos de capim. Cada uma é um polígono
+    // pintado com a borda esfumada (o degradê do chão), e os desenhos ficam por dentro dele
     var passo = Math.max(5, 26 / k); // um desenho a cada ~26 px, nunca mais denso que 5 m
+    function poli(P) { c.beginPath(); P.forEach(function (q, i) { if (i) { c.lineTo(X(q[0]), Z(q[1])); } else { c.moveTo(X(q[0]), Z(q[1])); } }); c.closePath(); }
     (V.regions || []).forEach(function (r) {
-      c.fillStyle = REGIAO[r.kind] || 'rgba(0,0,0,0)';
-      r.rects.forEach(function (q) {
-        if (!vis((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, Math.max(q[2] - q[0], q[3] - q[1]) / 2)) { return; }
-        rect(q[0], q[1], q[2], q[3]);
-        if (r.kind === 'vila') { return; }
-        c.save(); c.beginPath(); c.rect(X(q[0]), Z(q[1]), (q[2] - q[0]) * k, (q[3] - q[1]) * k); c.clip();
-        var gx0 = Math.floor(Math.max(q[0], ox - hw) / passo), gx1 = Math.ceil(Math.min(q[2], ox + hw) / passo);
-        var gz0 = Math.floor(Math.max(q[1], oz - hw) / passo), gz1 = Math.ceil(Math.min(q[3], oz + hw) / passo);
-        c.lineWidth = 1; c.strokeStyle = r.kind === 'floresta' ? 'rgba(52,74,30,.4)' : r.kind === 'rochas' ? 'rgba(80,70,60,.45)' : 'rgba(96,120,40,.45)';
-        c.beginPath();
-        for (var i = gx0; i <= gx1; i++) { for (var j = gz0; j <= gz1; j++) {
-          var n = i * 7919 + j * 104729, x = X((i + sorteMapa(n)) * passo), z = Z((j + sorteMapa(n + 0.5)) * passo), s = 3 + sorteMapa(n + 0.3) * 2;
-          if (r.kind === 'floresta') { c.moveTo(x + s, z); c.arc(x, z, s, 0, 6.3); }
-          else if (r.kind === 'rochas') { c.moveTo(x - s, z + s * 0.5); c.lineTo(x - s * 0.2, z - s * 0.6); c.lineTo(x + s, z + s * 0.5); c.closePath(); }
-          else { c.moveTo(x - s * 0.6, z - s * 0.8); c.lineTo(x, z); c.lineTo(x + s * 0.6, z - s * 0.8); c.moveTo(x, z - s); c.lineTo(x, z); }
-        } }
-        c.stroke(); c.restore();
-      });
+      if (r.kind === 'vila' || !r.poly) { return; }
+      var xs = r.poly.map(function (q) { return q[0]; }), zs = r.poly.map(function (q) { return q[1]; });
+      var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), bz0 = Math.min.apply(null, zs), bz1 = Math.max.apply(null, zs);
+      if (!vis((bx0 + bx1) / 2, (bz0 + bz1) / 2, Math.max(bx1 - bx0, bz1 - bz0) / 2)) { return; }
+      c.save(); c.fillStyle = REGIAO[r.kind] || 'rgba(0,0,0,0)'; c.filter = 'blur(' + Math.max(1, Math.round(4 * k)) + 'px)'; poli(r.poly); c.fill(); c.restore();
+      c.save(); poli(r.poly); c.clip();
+      var gx0 = Math.floor(Math.max(bx0, ox - hw) / passo), gx1 = Math.ceil(Math.min(bx1, ox + hw) / passo);
+      var gz0 = Math.floor(Math.max(bz0, oz - hw) / passo), gz1 = Math.ceil(Math.min(bz1, oz + hw) / passo);
+      c.lineWidth = 1; c.strokeStyle = r.kind === 'floresta' ? 'rgba(52,74,30,.4)' : r.kind === 'rochas' ? 'rgba(80,70,60,.45)' : 'rgba(96,120,40,.45)';
+      c.beginPath();
+      for (var i = gx0; i <= gx1; i++) { for (var j = gz0; j <= gz1; j++) {
+        var n = i * 7919 + j * 104729, wx = (i + sorteMapa(n)) * passo, wz = (j + sorteMapa(n + 0.5)) * passo;
+        if (NZ.distPoligono(r.poly, wx, wz) < 4) { continue; } // perto da divisa o desenho rareia, como o chão
+        var x = X(wx), z = Z(wz), s = 3 + sorteMapa(n + 0.3) * 2;
+        if (r.kind === 'floresta') { c.moveTo(x + s, z); c.arc(x, z, s, 0, 6.3); }
+        else if (r.kind === 'rochas') { c.moveTo(x - s, z + s * 0.5); c.lineTo(x - s * 0.2, z - s * 0.6); c.lineTo(x + s, z + s * 0.5); c.closePath(); }
+        else { c.moveTo(x - s * 0.6, z - s * 0.8); c.lineTo(x, z); c.lineTo(x + s * 0.6, z - s * 0.8); c.moveTo(x, z - s); c.lineTo(x, z); }
+      } }
+      c.stroke(); c.restore();
+    });
+    // fora do limite jogável: papel sombreado, com a borda em tinta
+    if (V.limite) {
+      c.save(); c.beginPath(); c.rect(-10, -10, S + 20, S + 20);
+      V.limite.slice().reverse().forEach(function (q, i) { if (i) { c.lineTo(X(q[0]), Z(q[1])); } else { c.moveTo(X(q[0]), Z(q[1])); } }); c.closePath();
+      c.fillStyle = 'rgba(70,58,34,.32)'; c.fill('evenodd');
+      poli(V.limite); c.strokeStyle = INK; c.lineWidth = big ? 2 : 1.2; c.stroke(); c.restore();
+    }
+    // rio: azul com a margem em tinta; a ponte em tábuas e os vaus em pontinhos de pedra
+    (V.rios || []).forEach(function (Ri) {
+      c.save(); c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath();
+      Ri.pts.forEach(function (q, i) { if (i) { c.lineTo(X(q[0]), Z(q[1])); } else { c.moveTo(X(q[0]), Z(q[1])); } });
+      c.strokeStyle = INK2; c.lineWidth = Ri.w * k + (big ? 2.4 : 1.4); c.stroke();
+      c.strokeStyle = 'rgba(92,140,180,.95)'; c.lineWidth = Ri.w * k; c.stroke(); c.restore();
+    });
+    (V.travessias || []).forEach(function (t) {
+      if (!vis(t.x, t.z)) { return; }
+      var a = (t.ang + 90) * Math.PI / 180;
+      c.save(); c.translate(X(t.x), Z(t.z)); c.rotate(a);
+      if (t.tipo === 'ponte') { c.fillStyle = 'rgba(122,72,34,.9)'; c.fillRect(-t.len / 2 * k, -t.w / 2 * k, t.len * k, t.w * k); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(-t.len / 2 * k, -t.w / 2 * k, t.len * k, t.w * k); }
+      else { c.fillStyle = 'rgba(120,112,98,.95)'; for (var s = -t.len / 2 + 0.5; s < t.len / 2; s += 1) { c.beginPath(); c.arc(s * k, 0, Math.max(1, k * 0.4), 0, 7); c.fill(); } }
+      c.restore();
     });
     // estrada: duas linhas de tinta
     var rx0 = X(V.road.x - V.road.w / 2), rx1 = X(V.road.x + V.road.w / 2), rz0 = Z(V.road.z0), rz1 = Z(V.road.z1);
@@ -958,11 +983,10 @@
       var perto = k >= 3.2;
       (V.regions || []).forEach(function (r) {
         if (r.kind === 'vila' && perto) { return; }
-        var q = r.rects.slice().sort(function (a, b) { return (b[2] - b[0]) * (b[3] - b[1]) - (a[2] - a[0]) * (a[3] - a[1]); })[0];
-        var lx = (q[0] + q[2]) / 2, lz = (q[1] + q[3]) / 2;
-        if (r.kind === 'vila') { lx = V.plaza.x - 40; lz = V.plaza.z + 10; } // no vão entre as moradias e a horta, longe dos outros nomes
+        var lx = r.label ? r.label[0] : V.plaza.x, lz = r.label ? r.label[1] : V.plaza.z; // vila.json → regions → label
         label(c, r.name, X(lx), Z(lz), Math.round((perto ? 16 : 14) * u), true);
       });
+      (V.rios || []).slice(0, 1).forEach(function (Ri) { var q = Ri.pts[Math.floor(Ri.pts.length * 0.62)]; label(c, Ri.name, X(q[0]) + 16, Z(q[1]), Math.round(13 * u), true); });
       if (perto) {
         var NOME = { igreja: 'Igreja', ferreiro: 'Ferreiro', bar: 'Bar', casa_senhor: 'Casa do senhor', padaria: 'Padaria', alfaiate: 'Alfaiate' };
         // o nome fica logo ao norte da pegada, para não cobrir a porta nem o vizinho

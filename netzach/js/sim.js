@@ -17,6 +17,43 @@
   function dist(ax, az, bx, bz) { var dx = bx - ax, dz = bz - az; return Math.sqrt(dx * dx + dz * dz); }
   // sorteio fixo pelo índice (sem mexer na semente do save): os bichos das regiões nascem sempre no mesmo lugar
   function sorte(i) { var t = Math.sin(i * 12.9898) * 43758.5453; return t - Math.floor(t); }
+  // polígono [[x, z], ...] (o limite e os terrenos de vila.json): o ponto está dentro? E a distância até a borda,
+  // positiva dentro e negativa fora (o desenho usa para o degradê entre terrenos e a mata do limite)
+  NZ.noPoligono = function (P, x, z) {
+    var c = false;
+    for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+      var xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1];
+      if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) { c = !c; }
+    }
+    return c;
+  };
+  NZ.distSegmento = function (x, z, a, b) {
+    var dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L));
+    return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz);
+  };
+  // distância até um rio (curva aberta), em m
+  NZ.distRio = function (R, x, z) {
+    var d = 1e9;
+    for (var k = 0; k + 1 < R.pts.length; k++) { d = Math.min(d, NZ.distSegmento(x, z, R.pts[k], R.pts[k + 1])); }
+    return d;
+  };
+  // o ponto está numa travessia (ponte ou vau)? ang = direção do rio ali; a passagem corre de través, len de comprimento
+  NZ.naTravessia = function (T, x, z) {
+    return (T || []).some(function (t) {
+      var a = t.ang * Math.PI / 180, dx = x - t.x, dz = z - t.z, ao = dx * Math.cos(a) + dz * Math.sin(a), tr = -dx * Math.sin(a) + dz * Math.cos(a);
+      return Math.abs(ao) < t.w / 2 && Math.abs(tr) < t.len / 2;
+    });
+  };
+  NZ.distPoligono = function (P, x, z) {
+    var d = 1e9;
+    for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+      var ax = P[j][0], az = P[j][1], dx = P[i][0] - ax, dz = P[i][1] - az, L = dx * dx + dz * dz || 1;
+      var t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L)), ex = x - ax - t * dx, ez = z - az - t * dz;
+      d = Math.min(d, ex * ex + ez * ez);
+    }
+    d = Math.sqrt(d);
+    return NZ.noPoligono(P, x, z) ? d : -d;
+  };
   // recurso: o ponto dele mais perto de (x, z). Retalho de plantação é um retângulo; árvore e veio, o centro da célula
   function nodePoint(n, x, z) { var r = n.rect; return r ? { x: Math.max(r.x0, Math.min(r.x1, x)), z: Math.max(r.z0, Math.min(r.z1, z)) } : n; }
   function nodeDist(n, x, z) { var q = nodePoint(n, x, z); return dist(x, z, q.x, q.z); }
@@ -32,6 +69,21 @@
 
     // borda do mundo
     for (i = 0; i < N; i++) { this.grid[i] = 1; this.grid[(N - 1) * N + i] = 1; this.grid[i * N] = 1; this.grid[i * N + N - 1] = 1; }
+    // limite jogável (vila.json → limite): a borda natural do rascunho; toda célula com o centro fora dela bloqueia
+    if (vila.limite) {
+      for (var cz = 0; cz < N; cz++) { for (var cx = 0; cx < N; cx++) { if (!NZ.noPoligono(vila.limite, cx - B + 0.5, cz - B + 0.5)) { this.grid[cz * N + cx] = 1; } } }
+    }
+    // rios (vila.json → rios): a água bloqueia; nas travessias (ponte ou vau) a passagem fica livre
+    (vila.rios || []).forEach(function (R) {
+      for (var k = 0; k + 1 < R.pts.length; k++) {
+        var a = R.pts[k], b = R.pts[k + 1], m = R.w / 2 + 1;
+        for (var x = Math.floor(Math.min(a[0], b[0]) - m); x <= Math.max(a[0], b[0]) + m; x++) {
+          for (var z = Math.floor(Math.min(a[1], b[1]) - m); z <= Math.max(a[1], b[1]) + m; z++) {
+            if (NZ.distSegmento(x + 0.5, z + 0.5, a, b) < R.w / 2 && !NZ.naTravessia(vila.travessias, x + 0.5, z + 0.5)) { self.block(x, z); }
+          }
+        }
+      }
+    });
 
     // a vila não tem mais cerca: só o pasto e o aprisco são cercados, nas células da borda, abertos na porteira
     [vila.pasture].concat(vila.folds || []).forEach(function (P) { self.cercado(P); });
@@ -197,6 +249,12 @@
   // id da construção cuja sala (ou vão da porta) contém o ponto; '' fora de qualquer sala
   World.prototype.salaEm = function (x, z) { var i = this.idx(x, z), n = i < 0 ? 0 : this.sala[i]; return n ? this.salas[n - 1].id : ''; };
   World.prototype.salaDe = function (x, z) { var i = this.idx(x, z), n = i < 0 ? 0 : this.sala[i]; return n ? this.salas[n - 1] : null; };
+  // terreno do ponto ('floresta', 'rochas', 'campina' ou 'vila'): o último polígono da lista que o contém
+  World.prototype.terreno = function (x, z) {
+    var R = this.vila.regions || [], k = 'vila';
+    for (var i = 0; i < R.length; i++) { if (R[i].poly && R[i].kind !== 'vila' && NZ.noPoligono(R[i].poly, x, z)) { k = R[i].kind; } }
+    return k;
+  };
   World.prototype.block = function (x, z) { var i = this.idx(x, z); if (i >= 0) { this.grid[i] = 1; } };
   World.prototype.blocked = function (x, z) { var i = this.idx(x, z); return i < 0 || this.grid[i] === 1; };
   World.prototype.addNode = function (kind, id, p) {
@@ -301,7 +359,7 @@
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
     var st = {
-      v: 1, mapa: 3, seed: seed | 0, t: 0,
+      v: 1, mapa: 4, seed: seed | 0, t: 0,
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), stance: 'ofensiva',
@@ -1433,7 +1491,7 @@
     return st;
   };
 
-  // acerta um save com o mapa atual (st.mapa: 2 = a cidade cercada, 3 = a vila aberta com floresta, pedregal e campina).
+  // acerta um save com o mapa atual (st.mapa: 2 = a cidade cercada, 3 = a vila aberta com floresta, pedregal e campina, 4 = a planta do rascunho de 10/11).
   // Recursos e coelhos seguem a lista da planta: o que é novo nasce vivo, o que sumiu sai do save. Save de mapa antigo:
   // coelhos voltam à toca e a área da macro, se não tiver mais nada para colher, vai para o recurso mais perto.
   // Em qualquer save, quem parou dentro de algo sai para a célula livre mais perto.
@@ -1457,8 +1515,11 @@
       if (!st.rules.some(function (r) { return r.id === id; })) { st.rules.push({ id: id, on: true, val: G.macro.rules[id].val }); }
     });
     if (p.poison && !(p.poison.t > 0)) { p.poison = null; }
-    if (!(st.mapa >= 3)) {
-      st.mapa = 3;
+    if (!(st.mapa >= 4)) {
+      st.mapa = 4;
+      // a planta foi refeita (mapa 4, 10/11/2026): quem estava no mundo volta para a praça; no meio da campanha, para o começo do trigo
+      var ini = st.modo === 'campanha' && st.camp && !st.camp.fim && G.campanha ? G.campanha.inicio : world.vila.spawn;
+      if (ini) { p.x = ini.x; p.z = ini.z; }
       st.mobs.forEach(function (b) { var s = world.spawns[b.sp]; if (s) { b.x = b.wx = s.x; b.z = b.wz = s.z; b.fight = false; } });
       var a = m.area;
       if (a && !world.nodes.some(function (n) { return dist(a.x, a.z, n.x, n.z) <= a.r; })) {

@@ -189,15 +189,21 @@
   // vento no trigo (vf = 1 nas malhas do trigal): a ponta da planta balança mais que o pé, com rajadas que correm pelo campo.
   // vt = segundos do relógio da tela. É só desenho: o clique e a colheita usam o retalho, que não se mexe
   var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;uniform float vt;uniform float vf;varying vec3 vn;varying vec3 vw;varying vec2 vu;' +
-    'void main(){vec4 w=M*vec4(p,1.0);if(vf>0.5){float h=max(w.y,0.0);float k=h*h;float g=0.55+0.45*sin(vt*0.7-w.x*0.11+w.z*0.05);' +
+    'void main(){vec4 w=M*vec4(p,1.0);if(vf>0.5&&vf<1.5){float h=max(w.y,0.0);float k=h*h;float g=0.55+0.45*sin(vt*0.7-w.x*0.11+w.z*0.05);' +
     'w.x+=k*(0.075*g+0.05*sin(vt*2.1+w.x*0.9+w.z*0.4));w.z+=k*0.04*sin(vt*1.6+w.z*0.8-w.x*0.3);}' +
-    'vn=N*n;vw=w.xyz;vu=uv;gl_Position=VP*w;}';
+    'vn=N*n;vw=w.xyz;vu=uv;if(vf>1.5){vu-=vec2(0.02,0.09)*vt;}gl_Position=VP*w;}'; // vf = 2: a água do rio corre para o sul
   var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;uniform vec3 tint;' +
     'uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;uniform vec3 fogCol;uniform vec2 fog;' +
     // dentro: peça de interior, iluminada pela luz da casa (ambiente + lareira/velas), não pelo céu, que à noite apagaria a sala
     'uniform float dentro;uniform vec3 amb;uniform vec4 l1;uniform vec3 c1;uniform vec4 l2;uniform vec3 c2;' +
+    // chão de um terreno (mch != 0): a máscara (msk, um canal por terreno) diz quanto dele há ali; o degradê vira pontilhado,
+    // um ponto por pixel da textura do chão (64 px a cada 3 m), como os pontinhos do rascunho
+    'uniform sampler2D msk;uniform vec4 mch;uniform vec4 mxf;' +
     'vec3 lp(vec4 L,vec3 C,vec3 nn){vec3 d=L.xyz-vw;float r=max(length(d),0.01);float a=clamp(1.0-r/L.w,0.0,1.0);return C*a*a*(0.4+0.6*max(dot(nn,d/r),0.0));}' +
-    'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;vec3 nn=normalize(vn);' +
+    'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;' +
+    'if(dot(mch,mch)>0.0){float m=dot(texture2D(msk,vw.xz*mxf.xy+mxf.zw),mch);vec2 q=mod(floor(vw.xz*21.333),256.0);' +
+    'if(m<=fract(sin(dot(q,vec2(12.9898,78.233)))*43758.5453))discard;}' +
+    'vec3 nn=normalize(vn);' +
     'vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vec3 b=col*t.rgb;' +
     'if(dentro>0.5){l=amb*(0.82+0.18*nn.y)+lp(l1,c1,nn)+lp(l2,c2,nn);}' +
     'vec3 c=mix(b*l,b*tint,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
@@ -210,12 +216,13 @@
     var pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
     var u = this.u = {};
-    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
+    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2', 'msk', 'mch', 'mxf'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
     this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
     gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.uniform1i(u.tex, 0);
+    gl.uniform1i(u.msk, 1); gl.uniform4fv(u.mch, SEM_MASCARA); this.mchAgora = SEM_MASCARA;
     var white = document.createElement('canvas'); white.width = white.height = 1;
     var wc = white.getContext('2d'); wc.fillStyle = '#fff'; wc.fillRect(0, 0, 1, 1);
     this.addTexture('_branco', white, false);
@@ -228,6 +235,17 @@
     var w = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w);
     this.tex[name] = t;
+  };
+  // máscara dos terrenos (canvas: um canal por terreno), na unidade 1, esticada sem degraus (LINEAR) sobre o quadrado de
+  // lado 'lado' m que começa em (x0, z0); fora dele vale a borda (CLAMP), então o chão além do limite continua o terreno
+  Renderer.prototype.mascara = function (canvas, x0, z0, lado) {
+    var gl = this.gl, t = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform4fv(this.u.mxf, [1 / lado, 1 / lado, -x0 / lado, -z0 / lado]);
   };
   Renderer.prototype.buffer = function (geo) {
     if (!geo.buf) { var gl = this.gl; geo.buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, geo.buf); gl.bufferData(gl.ARRAY_BUFFER, geo.data, gl.STATIC_DRAW); }
@@ -257,7 +275,7 @@
     if (late.length) { gl.enable(gl.BLEND); gl.depthMask(false); late.forEach(function (n) { self.mesh(n); }); gl.depthMask(true); gl.disable(gl.BLEND); }
   };
   // fundo: desenhado antes do mundo, sem profundidade, por uma câmera parada na origem; tudo o que vem depois passa por cima
-  var SEM_NEVOA = [1e6, 2e6], BRANCO = [1, 1, 1];
+  var SEM_NEVOA = [1e6, 2e6], BRANCO = [1, 1, 1], SEM_MASCARA = [0, 0, 0, 0];
   Renderer.prototype.ceu = function (nodes, cam) {
     var gl = this.gl, u = this.u, self = this;
     gl.disable(gl.DEPTH_TEST); gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.skyVp));
@@ -290,7 +308,8 @@
     gl.bindTexture(gl.TEXTURE_2D, this.tex[n.tex] || this.tex._branco);
     gl.uniformMatrix4fv(u.M, false, new Float32Array(n.world)); gl.uniformMatrix3fv(u.N, false, new Float32Array(normalMat(n.world)));
     gl.uniform3fv(u.col, n.color); gl.uniform3fv(u.emi, n.emissive);
-    var vf = n.vento ? 1 : 0; if (vf !== this.vfAgora) { gl.uniform1f(u.vf, vf); this.vfAgora = vf; }
+    var vf = n.agua ? 2 : n.vento ? 1 : 0; if (vf !== this.vfAgora) { gl.uniform1f(u.vf, vf); this.vfAgora = vf; }
+    var mc = n.mask || SEM_MASCARA; if (mc !== this.mchAgora) { gl.uniform4fv(u.mch, mc); this.mchAgora = mc; }
     gl.uniform1f(u.alpha, n.alpha); gl.uniform1f(u.unlit, n.unlit ? 1 : 0);
     // peça de interior: as luzes da sala e, nas sem sombra (chamas, figuras), o brilho próprio no lugar da tinta do céu
     if (n.dentro) {
@@ -575,25 +594,6 @@
         if (veio) { r *= 0.62; gg *= 0.62; b *= 0.64; }
         if (suave(x, y, 8, 6) > 0.74 && h(x, y, 7) > 0.35) { r = r * 0.8 + 30; gg = gg * 0.8 + 38; b = b * 0.7; } // líquen
         var i = (y * S + x) * 4; d[i] = r; d[i + 1] = gg; d[i + 2] = b; d[i + 3] = 255;
-      }
-    }
-    g.putImageData(im, 0, 0);
-    return c;
-  }
-  // franja do chão de uma região: a textura do chão repetida 4 vezes (12 m; 256 px, potência de 2, senão o WebGL não repete),
-  // com a borda recortada em dentes e pontos,
-  // ondulando devagar; v = 0 na linha da região (cheio) e v = 1 a 3 m para fora (vazio)
-  function texFranja(base, semente) {
-    var W = 256, H = 64, c = document.createElement('canvas'); c.width = W; c.height = H;
-    var g = c.getContext('2d');
-    for (var k = 0; k < 4; k++) { g.drawImage(base, k * 64, 0, 64, 64); }
-    var im = g.getImageData(0, 0, W, H), d = im.data;
-    for (var x = 0; x < W; x++) {
-      var u = x / W * Math.PI * 2, s = semente;
-      var lim = 0.42 + 0.16 * Math.sin(u * 2 + s) + 0.1 * Math.sin(u * 5 + s * 2.3) + 0.06 * Math.sin(u * 11 + s * 0.7);
-      for (var y = 0; y < H; y++) {
-        var t = y / H, r = sorte(x * 1.731 + y * 0.917 + s), cheio = t < lim + (r - 0.5) * 0.22 || (r > 0.965 - 0.05 * (1 - t) && t < lim + 0.3);
-        d[(y * W + x) * 4 + 3] = cheio ? 255 : 0;
       }
     }
     g.putImageData(im, 0, 0);
@@ -1103,8 +1103,7 @@
     var self = this;
     if (!art.walls.placa_alfaiate && art.walls.tabuas) { art.walls.placa_alfaiate = placaTesoura(art.walls.tabuas); }
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
-    this.r.addTexture('rocha', texRocha(), true);
-    Object.keys(CHAO).forEach(function (k, i) { if (art.walls[CHAO[k][0]]) { self.r.addTexture('franja_' + k, texFranja(art.walls[CHAO[k][0]], i * 1.7 + 0.4), true); } });
+    this.r.addTexture('rocha', texRocha(), true); this.r.addTexture('agua', texAgua(), true);
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {}; this.npcO = {}; this.held = null;
     this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1], amb: [0.6, 0.57, 0.52] };
@@ -1149,89 +1148,182 @@
     var e = ESPECIES[Math.floor(sorte(x * 0.731 + z * 1.37 + 0.5) * ESPECIES.length)];
     return art.sprites['arvore' + e] && art.sprites['toco' + e] ? e : '';
   }
-  // limite do mundo: além de ±bounds (onde o jogador para) fica uma mata fechada de três fileiras; no pedregal, uma
-  // serra de rochas grandes; na campina, uma sebe de moitas na frente das árvores. Tudo entra no lote (planos em cruz e
-  // rochas fundidas), então custa poucas chamadas de desenho por setor, e só os setores à vista são desenhados
+  // limite do mundo: fora da borda jogável (vila.json → limite, a linha preta do rascunho) fica uma mata fechada de
+  // quatro fileiras que acompanha a curva; no pedregal, uma serra de rochas grandes; na campina, uma sebe de moitas na
+  // frente das árvores. Mais para fora, até o fim do chão, árvores e rochas soltas tapam o vazio. Tudo entra no lote
+  // (planos em cruz e rochas fundidas), então custa poucas chamadas de desenho por setor
   function limite(self, L, V) {
-    var B = V.bounds, art = self.art, n = 0, sebe = art.sprites.arbusto && self.dim('arbusto');
-    function regiao(x, z) {
-      x = Math.max(-B + 0.5, Math.min(B - 0.5, x)); z = Math.max(-B + 0.5, Math.min(B - 0.5, z));
-      var r = (V.regions || []).filter(function (g) { return g.rects.some(function (q) { return x >= q[0] && x <= q[2] && z >= q[1] && z <= q[3]; }); })[0];
-      return r ? r.kind : 'vila';
-    }
+    var B = V.bounds, art = self.art, n = 0, sebe = art.sprites.arbusto && self.dim('arbusto'), w = self.w;
+    var P = V.limite || [[-B, -B], [B, -B], [B, B], [-B, B]];
     function arvore(x, z, k) {
       var e = especie(art, x, z), d = self.dim('arvore' + e), h = SIZE.arvore * (0.95 + sorte(k + 0.3) * 0.4);
       L.pe(L.get('s:arvore' + e, CLARO, true).v, x, z, h * d.w / d.h, 0, h, sorte(k + 0.9) * 3, sorte(k + 0.4) > 0.5);
     }
-    // cada lado: posição ao longo (a) e distância para fora (o) -> ponto do mundo
-    [function (a, o) { return [a, -B - o]; }, function (a, o) { return [a, B + o]; }, function (a, o) { return [-B - o, a]; }, function (a, o) { return [B + o, a]; }].forEach(function (lado) {
-      for (var a = -B - 10; a <= B + 10; a += 3.4) {
-        for (var fila = 0; fila < 3; fila++) {
-          var k = ++n, o = 1.6 + fila * 3.6 + sorte(k + 0.1) * 1.6, p = lado(a + (fila % 2) * 1.7 + (sorte(k + 0.2) - 0.5) * 1.6, o);
-          var kind = regiao(p[0], p[1]);
-          if (kind === 'rochas') {
-            if (fila === 2 && sorte(k + 0.5) > 0.4) { arvore(p[0], p[1], k); continue; }
-            var s = 2.2 + sorte(k + 0.6) * 2.6;
-            L.funde(rocha(k, s * 0.7, s * (0.55 + sorte(k + 0.7) * 0.4), s * 0.6, p[0], p[1], sorte(k + 0.8) * 6.28, COR_ROCHA));
-          } else if (kind === 'campina' && fila === 0 && sebe) {
-            var h = 1.5 + sorte(k + 0.6) * 0.8;
-            L.pe(L.get('s:arbusto', CLARO, true).v, p[0], p[1], h * sebe.w / sebe.h * 1.3, 0, h, sorte(k + 0.9) * 3, sorte(k + 0.4) > 0.5);
-          } else { arvore(p[0], p[1], k); }
+    function poe(x, z, k, fila) {
+      if (rioPerto(V, x, z, 1.2)) { return; } // a mata do limite não entra na água
+      var kind = w.terreno(x, z);
+      if (kind === 'rochas') {
+        if (fila >= 2 && sorte(k + 0.5) > 0.4) { arvore(x, z, k); return; }
+        var s = 2.2 + sorte(k + 0.6) * 2.6;
+        L.funde(rocha(k, s * 0.7, s * (0.55 + sorte(k + 0.7) * 0.4), s * 0.6, x, z, sorte(k + 0.8) * 6.28, COR_ROCHA));
+      } else if (kind === 'campina' && fila === 0 && sebe) {
+        var h = 1.5 + sorte(k + 0.6) * 0.8;
+        L.pe(L.get('s:arbusto', CLARO, true).v, x, z, h * sebe.w / sebe.h * 1.3, 0, h, sorte(k + 0.9) * 3, sorte(k + 0.4) > 0.5);
+      } else { arvore(x, z, k); }
+    }
+    // sentido do polígono: a normal de cada lado aponta para fora
+    var area = 0;
+    P.forEach(function (a, i) { var b = P[(i + 1) % P.length]; area += a[0] * b[1] - b[0] * a[1]; });
+    var sg = area > 0 ? -1 : 1, resto = 0;
+    P.forEach(function (a, i) {
+      var b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz) || 1;
+      var ux = dx / len, uz = dz / len, nx = -uz * sg, nz = ux * sg;
+      for (var s = resto; s < len; s += 3.4) {
+        for (var fila = 0; fila < 4; fila++) {
+          var k = ++n, o = 1.4 + fila * 3.4 + sorte(k + 0.1) * 1.6, t = s + (fila % 2) * 1.7 + (sorte(k + 0.2) - 0.5) * 1.6;
+          var x = a[0] + ux * t + nx * o, z = a[1] + uz * t + nz * o;
+          if (NZ.distPoligono(P, x, z) > -1.2) { continue; } // na curva para dentro, a fileira não invade a borda
+          poe(x, z, k, fila);
+        }
+      }
+      resto = s - len;
+    });
+    // o resto do chão fora da borda: soltas a cada ~6 m, até 40 m além do quadrado do mundo
+    for (var gx = -B - 40; gx <= B + 40; gx += 6) {
+      for (var gz = -B - 40; gz <= B + 40; gz += 6) {
+        var k2 = ++n, x2 = gx + (sorte(k2 + 0.1) - 0.5) * 5, z2 = gz + (sorte(k2 + 0.2) - 0.5) * 5;
+        if (NZ.distPoligono(P, x2, z2) > -15 || sorte(k2 + 0.3) > 0.6) { continue; }
+        poe(x2, z2, k2, 3);
+      }
+    }
+  }
+  // ---------- rio: faixa de água sobre a margem de terra, ponte de tábuas e vaus de pedras (vila.json → rios, travessias) ----------
+  // água em pixels: azul com reflexos claros e ondinhas, periódica em 64 px (3 m); corre devagar para o sul (ver VS, vf = 2)
+  function texAgua() {
+    var S = 64, c = document.createElement('canvas'); c.width = c.height = S;
+    var g = c.getContext('2d'), im = g.createImageData(S, S), d = im.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var o = (y * S + x) * 4, u = x / S * Math.PI * 2, v = y / S * Math.PI * 2;
+        var on = Math.sin(v * 3 + Math.sin(u * 2) * 1.4) * 0.5 + Math.sin(u * 5 + v * 2) * 0.25 + (sorte(x * 0.71 + y * 13.13) - 0.5) * 0.35;
+        var r = 62, gg = 118, b = 176;
+        if (on > 0.55) { r = 150; gg = 196; b = 228; } else if (on > 0.3) { r = 92; gg = 150; b = 204; } else if (on < -0.5) { r = 46; gg = 96; b = 150; }
+        d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  // faixa no chão ao longo de uma curva aberta, de largura w, virada para cima
+  function faixa(pts, w) {
+    var g = new Geo(), L = [], Rr = [];
+    pts.forEach(function (p, i) {
+      var a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
+      var nx = -dz / l * w / 2, nz = dx / l * w / 2;
+      L.push([p[0] + nx, 0, p[1] + nz]); Rr.push([p[0] - nx, 0, p[1] - nz]);
+    });
+    for (var i = 0; i + 1 < pts.length; i++) {
+      var q = [L[i], L[i + 1], Rr[i + 1], Rr[i]], ux = q[1][0] - q[0][0], uz = q[1][2] - q[0][2], vx = q[2][0] - q[0][0], vz = q[2][2] - q[0][2];
+      if (uz * vx - ux * vz < 0) { q.reverse(); } // a normal tem de apontar para cima, senão a face some
+      g.quad(q[0], q[1], q[2], q[3]);
+    }
+    return g.done(3);
+  }
+  function rioPerto(V, x, z, folga) { return (V.rios || []).some(function (R) { return NZ.distRio(R, x, z) < R.w / 2 + folga; }); }
+  function ponte(t) {
+    var g = new Node().at(t.x, 0, t.z), L = t.len + 1.2, W = t.w, a = (t.ang + 90) * Math.PI / 180;
+    g.rotY = -a; // o comprimento (x local) corre de margem a margem, de través do rio
+    g.add(box(L, 0.14, W, 'tabuas', 1, 0, 0.1, 0));
+    for (var x = -L / 2 + 0.3; x < L / 2; x += 0.62) { g.add(box(0.08, 0.03, W + 0.1, 'tabuas', PX, x, 0.185, 0, 0x8a6a48)); } // juntas das tábuas
+    [-1, 1].forEach(function (s) {
+      var z = s * (W / 2 - 0.08);
+      for (var x2 = -L / 2 + 0.15; x2 <= L / 2; x2 += L / 4 - 0.075) { g.add(box(0.14, 1.05, 0.14, 'tabuas', 1, x2, 0.6, z)); }
+      g.add(box(L, 0.1, 0.1, 'tabuas', 1, 0, 1.05, z)); g.add(box(L, 0.07, 0.07, 'tabuas', 1, 0, 0.62, z));
+      g.add(box(0.5, 0.5, W + 0.4, 'pedra', 1, s * (L / 2 + 0.1), 0.05, 0, 0x9a9a9a)); // cabeceiras de pedra nas margens
+    });
+    return g;
+  }
+  function vau(t, k) {
+    var g = new Node(), a = (t.ang + 90) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), n = 0;
+    for (var s = -t.len / 2 + 0.4; s <= t.len / 2 - 0.3; s += 0.85) {
+      [-0.55, 0.45].forEach(function (o) {
+        var j = k * 31 + ++n, ox = -sa * o, oz = ca * o, sz = 0.42 + sorte(j) * 0.2;
+        g.add(rocha(j, sz, 0.32 + sorte(j + 0.4) * 0.1, sz * 0.9, t.x + ca * s + ox + (sorte(j + 0.7) - 0.5) * 0.25, t.z + sa * s + oz, sorte(j + 0.9) * 6, COR_ROCHA));
+      });
+    }
+    return g;
+  }
+  function rios(self, R, L, V) {
+    (V.rios || []).forEach(function (Ri) {
+      R.add(new Node(faixa(Ri.pts, Ri.w + 2.6), 0xd8c8a8, { tex: 'terra' }).at(0, 0.03, 0));   // margem de terra úmida
+      var ag = new Node(faixa(Ri.pts, Ri.w), 0xffffff, { tex: 'agua' }).at(0, 0.04, 0); ag.agua = true; R.add(ag);
+    });
+    (V.travessias || []).forEach(function (t, i) { L.funde(t.tipo === 'ponte' ? ponte(t) : vau(t, i)); });
+  }
+
+  // máscara dos terrenos para o sombreador: canal R = floresta, G = pedregal, B = campina, a 2 m por pixel num quadrado
+  // de 256 m em volta da praça. O peso sai da distância até a borda do polígono, entortada por um ruído suave, e cai
+  // de 1 a 0 em TRANSICAO m: a divisa vira um degradê irregular, sem linha reta
+  var MASCARA = { lado: 256, px: 128, transicao: 16 };
+  function ruido(x, z) { // ruído de valor, suave, entre -1 e 1
+    var ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+    function h(a, b) { return sorte(a * 157.31 + b * 31.77 + 0.5) * 2 - 1; }
+    fx = fx * fx * (3 - 2 * fx); fz = fz * fz * (3 - 2 * fz);
+    return (h(ix, iz) * (1 - fx) + h(ix + 1, iz) * fx) * (1 - fz) + (h(ix, iz + 1) * (1 - fx) + h(ix + 1, iz + 1) * fx) * fz;
+  }
+  var CANAL = { floresta: 0, rochas: 1, campina: 2 };
+  function mascaraTerrenos(V) {
+    var M = MASCARA, c = document.createElement('canvas'); c.width = c.height = M.px;
+    var g = c.getContext('2d'), im = g.createImageData(M.px, M.px), d = im.data, t = M.lado / M.px;
+    for (var i = 3; i < d.length; i += 4) { d[i] = 255; }
+    (V.regions || []).forEach(function (r) {
+      var ch = CANAL[r.kind]; if (ch === undefined || !r.poly) { return; }
+      for (var j = 0; j < M.px; j++) {
+        for (var i = 0; i < M.px; i++) {
+          var x = -M.lado / 2 + (i + 0.5) * t, z = -M.lado / 2 + (j + 0.5) * t;
+          var e = NZ.distPoligono(r.poly, x, z) + ruido(x / 13, z / 13) * 4.5 + ruido(x / 4.5 + 9, z / 4.5) * 1.8;
+          var p = Math.max(0, Math.min(1, e / M.transicao + 0.5)), o = (j * M.px + i) * 4 + ch;
+          d[o] = Math.max(d[o], Math.round(p * p * (3 - 2 * p) * 255));
         }
       }
     });
-  }
-  // franja de uma região: faixas de 3 m para fora de cada lado que dá para outra região (nunca entre dois retângulos
-  // da mesma região nem além do limite do mundo), com a textura 'franja_*' recortada: a divisa deixa de ser uma linha reta.
-  // Só uma das duas regiões avança sobre a outra (a de FRANJA maior; a vila nunca): 'acima' são os retângulos das que
-  // ganham desta, onde ela não entra
-  var FRANJA = { vila: 0, campina: 1, floresta: 2, rochas: 3 };
-  function franjas(rects, B, acima) {
-    var v = [], L = 3, PASSO = 3;
-    function dentro(x, z) { return rects.concat(acima).some(function (q) { return x > q[0] && x < q[2] && z > q[1] && z < q[3]; }); }
-    function poe(x0, z0, x1, z1, uv) { // retângulo no chão (anti-horário visto de cima); uv(x, z) -> [u, v]
-      var a = [x0, z1], b = [x1, z1], c = [x1, z0], d = [x0, z0];
-      [a, b, c, a, c, d].forEach(function (p) { var t = uv(p[0], p[1]); v.push(p[0], 0, p[1], 0, 1, 0, t[0], t[1]); });
-    }
-    rects.forEach(function (q) {
-      // cada lado: eixo ao longo ('x' ou 'z'), posição da linha, sentido para fora e o trecho
-      [['x', q[1], -1, q[0], q[2]], ['x', q[3], 1, q[0], q[2]], ['z', q[0], -1, q[1], q[3]], ['z', q[2], 1, q[1], q[3]]].forEach(function (s) {
-        var e = s[1], o = s[2];
-        if (Math.abs(e) >= B) { return; }
-        for (var a = s[3]; a < s[4] - 0.01; a += PASSO) {
-          var b = Math.min(s[4], a + PASSO), m = (a + b) / 2;
-          if (s[0] === 'x' ? dentro(m, e + o * 0.5) : dentro(e + o * 0.5, m)) { continue; }
-          var f = e + o * L;
-          if (s[0] === 'x') { poe(a, Math.min(e, f), b, Math.max(e, f), function (x, z) { return [x / 12, Math.abs(z - e) / L * 0.98]; }); }
-          else { poe(Math.min(e, f), a, Math.max(e, f), b, function (x, z) { return [z / 12, Math.abs(x - e) / L * 0.98]; }); }
-        }
-      });
-    });
-    return v.length ? { data: new Float32Array(v), count: v.length / 8 } : null;
+    g.putImageData(im, 0, 0);
+    return c;
   }
 
-  // chão de cada região: a mesma grama com outra tinta (floresta escura, campina clara) e terra acinzentada no pedregal
-  var CHAO ={ vila: ['grama', 0xe6eccc], floresta: ['grama', 0xa4bc8c], rochas: ['terra', 0xf0e6d0], campina: ['grama', 0xf4f4c4] };
+  // chão de cada terreno: a mesma grama com outra tinta (floresta escura, campina clara) e terra acinzentada no pedregal.
+  // A vila é o chão de baixo; os outros vêm por cima, cada um com o seu canal da máscara
+  var CHAO = { vila: ['grama', 0xe6eccc], floresta: ['grama', 0xa4bc8c], rochas: ['terra', 0xf0e6d0], campina: ['grama', 0xf4f4c4] };
+  var CAMADAS = [['campina', [0, 0, 1, 0]], ['floresta', [1, 0, 0, 0]], ['rochas', [0, 1, 0, 0]]];
+  // rua ao longo de x (a avenida) sem o pedaço dentro da praça: a rotatória fica inteira por cima do cruzamento
+  function semPraca(r, pl) {
+    var e = Math.max(Math.abs(r.z0 - pl.z), Math.abs(r.z1 - pl.z));
+    if (e >= pl.r || pl.x <= r.x0 || pl.x >= r.x1) { return [r]; }
+    var c = Math.sqrt(pl.r * pl.r - e * e) - 0.05;
+    return [{ x0: r.x0, x1: pl.x - c, z0: r.z0, z1: r.z1 }, { x0: pl.x + c, x1: r.x1, z0: r.z0, z1: r.z1 }].filter(function (q) { return q.x1 > q.x0; });
+  }
   View.prototype.buildStatic = function () {
     var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2;
-    R.add(new Node(planeGeo(S, S, 3), 0xffffff, { tex: 'grama' }));
-    (V.regions || []).forEach(function (r) {
-      var c = CHAO[r.kind]; if (!c) { return; }
-      R.add(new Node(chao(r.rects.map(function (q) { return { x0: q[0], z0: q[1], x1: q[2], z1: q[3] }; }), 3), c[1], { tex: c[0] }).at(0, 0.01, 0));
-      var fr = r.kind === 'vila' ? null : franjas(r.rects, V.bounds, [].concat.apply([], (V.regions || []).filter(function (g) { return (FRANJA[g.kind] || 0) > FRANJA[r.kind]; }).map(function (g) { return g.rects; })));
-      if (fr && self.r.tex['franja_' + r.kind]) { R.add(new Node(fr, c[1], { tex: 'franja_' + r.kind }).at(0, 0.013, 0)); }
-    });
-    var rd = V.road; R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
+    R.add(new Node(planeGeo(S, S, 3), CHAO.vila[1], { tex: CHAO.vila[0] }));
+    if (V.regions && V.regions.some(function (r) { return r.poly; })) {
+      this.r.mascara(mascaraTerrenos(V), -MASCARA.lado / 2, -MASCARA.lado / 2, MASCARA.lado);
+      CAMADAS.forEach(function (k, i) {
+        var c = CHAO[k[0]], o = new Node(planeGeo(S, S, 3), c[1], { tex: c[0] }).at(0, 0.004 + i * 0.002, 0);
+        o.mask = k[1]; R.add(o);
+      });
+    }
+    var pl = V.plaza, rd = V.road;
+    R.add(new Node(planeGeo(rd.w, rd.z1 - rd.z0, 3), 0xffffff, { tex: 'terra' }).at(rd.x, 0.02, (rd.z0 + rd.z1) / 2));
     R.add(new Node(chao(V.streets, 3), 0xffffff, { tex: 'terra' }).at(0, 0.015, 0));
-    // avenida calçada de ponta a ponta, com meio-fio de pedra dos dois lados
+    rios(self, R, L, V);
+    // avenida calçada de ponta a ponta, com meio-fio de pedra dos dois lados; os dois trechos param na borda da praça
     var av = V.avenue;
     if (av) {
-      R.add(new Node(chao([av], 2.5), 0xe8e4dc, { tex: 'pavimento' }).at(0, 0.025, 0));
-      var mf = new Node(), aw = av.x1 - av.x0;
-      [av.z0, av.z1].forEach(function (z) { mf.add(box(aw, 0.12, 0.24, 'pedra', 1, (av.x0 + av.x1) / 2, 0.06, z, 0x9a9a9a)); });
+      var tr = semPraca(av, pl), mf = new Node();
+      R.add(new Node(chao(tr, 2.5), 0xe8e4dc, { tex: 'pavimento' }).at(0, 0.025, 0));
+      tr.forEach(function (q) { [q.z0, q.z1].forEach(function (z) { mf.add(box(q.x1 - q.x0, 0.12, 0.24, 'pedra', 1, (q.x0 + q.x1) / 2, 0.06, z, 0x9a9a9a)); }); });
       L.funde(mf);
     }
-    var pl = V.plaza;
     R.add(cyl(pl.r + 0.35, pl.r + 0.35, 0.06, 40, 'pedra', 1.5, 0, 0x9a9a9a).at(pl.x, 0.03, pl.z));
     R.add(cyl(pl.r, pl.r, 0.1, 40, 'pavimento', 2.5).at(pl.x, 0.05, pl.z));
     if (V.gate) { L.funde(portao(V.gate)); }

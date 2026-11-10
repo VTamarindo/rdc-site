@@ -68,13 +68,22 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 
 ### Lugares (`data/vila.json`)
 Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da praça é (0, 0). `rot` gira em graus.
-- `bounds`: metade do tamanho do mundo (120 = 240 × 240 m).
+- `bounds`: metade do tamanho do mundo (120 = 240 × 240 m), fixo.
+- `limite`: a borda jogável, um polígono `[x, z]` que segue a linha preta do rascunho do mapa (10/11). Fora dele tudo
+  bloqueia (`World`, em `js/sim.js`) e começa a mata do limite (`limite`, em `js/view.js`), que acompanha a curva.
 - `buildings`: construções (`type`, `x`, `z`, `rot`). Os tipos são desenhados em `js/view.js`
   (`church`, `smith`, `bar`, `casaSenhor`, `padaria`, `forno`, `alfaiate`, `moradia`).
 - `npcs`: onde cada NPC fica parado. `props`: quadro de avisos e baú.
-- `plaza`, `avenue`, `road`, `streets`, `gate`: praça, avenida, estrada, ruas e portão.
+- `plaza`, `avenue`, `road`, `streets`, `gate`: praça, avenida, estrada, ruas e portão. A praça é a rotatória do
+  cruzamento: a avenida (leste-oeste) para na borda dela, dos dois lados (`semPraca`, em `js/view.js`).
 - `pasture` (pasto das vacas) e `folds` (aprisco das ovelhas): as únicas cercas. `fields`: plantações.
-- `regions`: floresta, pedregal e campina, com pontos marcados (`spots`) para os animais.
+- `rios`: o rio (5 m) e o braço dele (3,6 m), curvas `[x, z]`; a água bloqueia. `travessias`: a ponte (no caminho de
+  terra que sai da avenida para o oeste) e os vaus de pedras, onde dá para atravessar. Desenho em `rios`, `ponte` e `vau`
+  (`js/view.js`); a água corre no sombreador (`vf = 2`, em `VS`).
+- `regions`: floresta, pedregal e campina, cada uma um polígono (`poly`, pode passar do limite), com pontos marcados
+  (`spots`) para os animais e `label` (onde o nome fica no mapa). A divisa entre dois terrenos é um degradê pontilhado:
+  `mascaraTerrenos` em `js/view.js` pinta uma máscara (largura do degradê em `MASCARA.transicao`) e o sombreador (`FS`)
+  mostra cada chão onde a máscara manda. `World.terreno(x, z)` diz o terreno de um ponto.
 - `trees`, `rocks`, `boulders`, `bushes`, `rabbits`: árvores, veios, pedras grandes, arbustos e coelhos.
 - `walkers` (moradores que andam), `trails` (os caminhos deles), `cows` (vacas); as ovelhas ficam em `folds` → `flock`.
 - `interiores`: a sala de cada construção (porta, teto, paredes, luzes e móveis `moveis`). Os móveis são desenhados pela

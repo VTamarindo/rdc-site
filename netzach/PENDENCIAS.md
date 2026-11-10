@@ -32,6 +32,24 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
     agora passeiam pelo relógio do jogo, então a macro e o tempo fora sabem onde estão.
   - **Ajuda** do Menu fala de animais, veneno, vacas, ovelhas, plantações e das regras novas da macro.
 
+## Mapa refeito pelo rascunho do usuário (10/11, versão `20261110-6`)
+- **Feito:** planta nova (`data/vila.json`, mapa 4): floresta a noroeste, pedregal a nordeste descendo pelo leste, campina ao sul,
+  pasto ao norte da vila e aprisco ao lado dele; cidade em cruz com a praça como rotatória no cruzamento (a avenida para na
+  borda da praça, dos dois lados); 3 moradias de cada lado da avenida a oeste, alfaiate e ferreiro junto à praça, igreja e
+  taverna do outro lado, padaria a leste e a Casa do senhor no fim da avenida; horta e trigo do mesmo tamanho (40 × 35 m),
+  um de cada lado da estrada; limite jogável com a forma da linha preta do rascunho (fora dela tudo bloqueia e a mata do
+  limite acompanha a curva); divisa entre terrenos em degradê pontilhado; bichos reposicionados (lobos e troll na floresta,
+  escorpiões e serpentes no pedregal, veados na campina, coelhos na mata rala do oeste) e as cenas da campanha no trigo novo.
+- **Rio** (segundo rascunho): nasce no norte da floresta, desce pelo oeste e se divide em dois braços na campina. A água
+  bloqueia; atravessa-se pela ponte (caminho de terra que sai da avenida para o oeste) e por três vaus de pedras (na floresta,
+  no braço do sudoeste e na campina). O troll e um covil de lobos ficariam em cima do rio e foram para o meio da floresta.
+  **Decisão minha:** a ponte e os vaus não estão no rascunho; sem eles o rio cortaria o oeste do mapa.
+- **Saves antigos:** ao abrir, quem estava no mundo volta para a praça (no meio da campanha, para o começo do trigo); os bichos
+  voltam às tocas. As árvores, veios e retalhos das plantações recomeçam inteiros.
+- **Decisões minhas, para confirmar:** eram 8 moradias, ficaram 6 (como no rascunho); o aprisco não aparece no rascunho e
+  ficou ao lado do pasto, a leste; a cidade ficou um pouco maior que no rascunho, porque as construções têm o tamanho de antes.
+- **Não testado:** celular (a máscara do chão usa uma segunda textura no sombreador) e a campanha inteira de novo com o campo novo.
+
 ## Campanha (começou em 10/11, versão `20261110-5`)
 - **Feito:** modo Campanha ou Modo livre no jogo novo; tela inicial com o fundo deitado no trigo; o capítulo do trigo inteiro
   (acordar, seguir a figura ou ficar 5 s parado, o puxão do fazendeiro, tutorial de colheita por aparelho, fuga do campo,
