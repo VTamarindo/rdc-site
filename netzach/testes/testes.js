@@ -84,6 +84,25 @@
         });
         lista(p);
       });
+      teste('animações: todo quadro citado existe no atlas e toda figura animada tem frente parada', function () {
+        var p = [];
+        keys(atlas.anims).forEach(function (n) {
+          var A = atlas.anims[n];
+          if (!sprites[n]) { p.push(n + ': a figura de base não está no atlas'); }
+          if (!(A.frente && A.frente.parado && A.frente.parado.length)) { p.push(n + ': sem frente parada'); }
+          keys(A).forEach(function (d) {
+            if (['frente', 'lado', 'costas'].indexOf(d) < 0) { p.push(n + ': direção "' + d + '"'); }
+            keys(A[d]).forEach(function (e) {
+              A[d][e].forEach(function (q) {
+                if (!sprites[q.s]) { p.push(n + '/' + d + '/' + e + ': quadro "' + q.s + '"'); }
+                else if (sprites[q.s].w !== sprites[n].w || sprites[q.s].h !== sprites[n].h) { p.push(q.s + ': tamanho diferente da figura'); }
+                if (!(q.ms > 0)) { p.push(q.s + ': duração ' + q.ms); }
+              });
+            });
+          });
+        });
+        lista(p);
+      });
       teste('regras da macro na ordem padrão existem', function () {
         lista(G.macro.defaultOrder.filter(function (id) { return !G.macro.rules[id]; }));
       });
@@ -228,6 +247,31 @@
         var hp = p.hp; p.hp = 1; sim.drink(st);
         confere(p.hp === 1 || p.inv.pocao === 1, 'bebeu duas seguidas');
         confere(hp <= mx, 'passou da vida máxima');
+      });
+      // câmera olhando para +z (yaw 0): a direita da tela é -x
+      teste('animação: o lado que a figura mostra depende de para onde ela olha e da câmera', function () {
+        var V = { yaw: 0 }, dir = function (r) { var d = NZ.View.prototype.direcao.call(V, r); return d.dir + (d.esp ? '<' : ''); };
+        confere(dir(undefined) === 'frente', 'sem rumo: ' + dir(undefined));
+        confere(dir(Math.PI) === 'frente', 'olhando para a câmera: ' + dir(Math.PI));
+        confere(dir(0) === 'costas', 'olhando para longe: ' + dir(0));
+        confere(dir(-Math.PI / 2) === 'lado', 'indo para a direita da tela: ' + dir(-Math.PI / 2));
+        confere(dir(Math.PI / 2) === 'lado<', 'indo para a esquerda (espelhada): ' + dir(Math.PI / 2));
+        V.yaw = Math.PI; // a câmera virou: quem ia para longe agora vem para ela
+        confere(dir(0) === 'frente', 'câmera virada: ' + dir(0));
+      });
+      teste('animação: os passos trocam pela duração de cada quadro e param no quadro parado', function () {
+        var A = { frente: { parado: [{ s: 'p', ms: 500 }], andar: [{ s: 'a0', ms: 100 }, { s: 'a1', ms: 200 }] } };
+        var V = Object.create(NZ.View.prototype), o = { userData: { img: 'x' }, scale: [1, 1, 1], tex: '' };
+        V.yaw = 0; V.art = { anims: { x: A } };
+        var an = function (anda, dt) { NZ.View.prototype.anima.call(V, o, undefined, anda, dt); return o.tex; };
+        confere(an(false, 0.016) === 's:p', 'parado: ' + o.tex);
+        confere(an(true, 0.05) === 's:a0', 'começo do passo: ' + o.tex);
+        confere(an(true, 0.06) === 's:a1', 'depois de 110 ms: ' + o.tex);
+        confere(an(true, 0.18) === 's:a1', 'ainda no 2º (200 ms): ' + o.tex);
+        confere(an(true, 0.02) === 's:a0', 'volta ao 1º: ' + o.tex);
+        confere(an(false, 0.016) === 's:p', 'parou: ' + o.tex);
+        confere(an(true, 3600) === 's:a0' || o.tex === 's:a1', 'muito tempo de uma vez: ' + o.tex);
+        o.userData.deitado = true; confere(an(true, 0.1) === 's:x', 'desacordado: ' + o.tex);
       });
       teste('save de um jogo jogado cabe no armazenamento (menos de 60 KB)', function () {
         var st = novo(); sim.advance(st, 600);

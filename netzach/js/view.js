@@ -1142,6 +1142,9 @@
     top = Math.max(0, top);
     for (y = top; y < Math.min(h, top + lado * 0.7); y++) { for (x = x0; x < x1; x++) { if (A.data[y * w + x]) { sx += x; n++; } } }
     var cx = n ? sx / n : w / 2, px = Math.round(Math.max(0, Math.min(w - lado, cx - lado / 2))), py = Math.max(0, Math.min(h - lado, top - 3));
+    // rosto desenhado no Aseprite (marca "rosto"): vai inteiro, no lugar do recorte
+    var proprio = this.art.sprites[img + '@rosto'];
+    if (proprio) { src = proprio; px = py = 0; lado = Math.min(proprio.width, proprio.height); }
     var c = document.createElement('canvas'); c.width = c.height = lado;
     var g = c.getContext('2d');
     g.drawImage(src, px, py, lado, lado, 0, 0, lado, lado);
@@ -1150,6 +1153,46 @@
       g.globalCompositeOperation = 'destination-in'; g.drawImage(src, px, py, lado, lado, 0, 0, lado, lado);
     }
     return (R[key] = c.toDataURL());
+  };
+  // ---------- animação das figuras (arte de art/fonte/*.aseprite, montada por tools/montar_atlas.py) ----------
+  // anima(o, rumo, anda, dt): escolhe o quadro da figura o pelo lado que ela mostra à câmera e se está andando.
+  //   rumo: para onde a figura olha (ângulo como Sim: x = sin, z = cos); undefined = de frente para quem olha.
+  //   lado: o desenho olha para a direita da tela; indo para a esquerda, a figura é espelhada (scale[0] = -1).
+  //   Os quadros andam pela duração de cada um no Aseprite. Figura sem animação no atlas fica como sempre.
+  // A figura de base (o.userData.img) não muda: o clique, o retrato e o tamanho continuam os dela.
+  var ANIMA = { frente: Math.cos(Math.PI / 4) }; // dentro de 45° da câmera = de frente (ou de costas)
+  View.prototype.direcao = function (rumo) {
+    if (rumo === undefined) { return { dir: 'frente', esp: false }; }
+    var fx = Math.sin(rumo), fz = Math.cos(rumo);
+    var c = -(fx * Math.sin(this.yaw) + fz * Math.cos(this.yaw)); // olha para a câmera (> 0) ou para longe dela (< 0)
+    var r = fx * -Math.cos(this.yaw) + fz * Math.sin(this.yaw);   // olha para a direita da tela (> 0)
+    if (c >= ANIMA.frente) { return { dir: 'frente', esp: false }; }
+    if (c <= -ANIMA.frente) { return { dir: 'costas', esp: false }; }
+    return { dir: 'lado', esp: r < 0 };
+  };
+  View.prototype.anima = function (o, rumo, anda, dt) {
+    var u = o.userData, A = this.art.anims && this.art.anims[u.img];
+    if (!A) { return; }
+    if (u.deitado) { o.tex = 's:' + u.img; o.scale[0] = 1; return; } // desacordado: a figura de sempre, deitada
+    var lado = this.direcao(rumo), D = A[lado.dir] || A.frente;
+    if (!A[lado.dir]) { lado.esp = false; }
+    var L = (anda && D.andar) || D.parado || A.frente.parado;
+    if (u.animL !== L) { u.animL = L; u.animI = 0; u.animT = 0; }
+    u.animT += (dt || 0) * 1000;
+    for (var k = 0; k < L.length && u.animT >= L[u.animI].ms; k++) { u.animT -= L[u.animI].ms; u.animI = (u.animI + 1) % L.length; }
+    if (u.animT >= L[u.animI].ms) { u.animT = 0; } // depois de muito tempo parado (aba escondida): não corre atrás
+    o.tex = 's:' + L[u.animI].s;
+    o.scale[0] = lado.esp ? -1 : 1;
+  };
+  // rumo e passo de quem só tem posição (moradores, atores): pela diferença desde o último quadro
+  View.prototype.animaPos = function (o, x, z, dt) {
+    var u = o.userData;
+    if (!(this.art.anims && this.art.anims[u.img])) { return; }
+    var dx = u.ax === undefined ? 0 : x - u.ax, dz = u.ax === undefined ? 0 : z - u.az;
+    u.ax = x; u.az = z;
+    var v = dt > 0 ? Math.sqrt(dx * dx + dz * dz) / dt : 0;
+    if (v > 0.2) { u.rumo = Math.atan2(dx, dz); u.parou = 0; } else { u.parou = (u.parou === undefined ? 1 : u.parou) + (dt || 0); }
+    this.anima(o, u.rumo, (u.parou || 0) < 0.15, dt); // um quadro parado no meio do passo não interrompe a animação
   };
   // deita (ko = true) ou levanta a figura; o quadro em pé fica guardado para a volta
   View.prototype.deita = function (o, ko) {
@@ -1527,7 +1570,7 @@
   View.prototype.some = function (id, seg) { var a = this.atores[id]; if (a.o.visible) { a.desbota = seg || 1; } };
   View.prototype.esconde = function (id) { var a = this.atores && this.atores[id]; if (a) { a.o.visible = false; a.alvo = null; a.desbota = 0; } };
   View.prototype.atoresQuadro = function (dt) {
-    var A = this.atores; if (!A) { return; }
+    var A = this.atores, self = this; if (!A) { return; }
     Object.keys(A).forEach(function (k) {
       var a = A[k], o = a.o;
       if (!o.visible || o.userData.fixo) { return; }
@@ -1536,6 +1579,7 @@
         if (d <= s) { o.pos[0] = a.alvo[0]; o.pos[2] = a.alvo[1]; a.alvo = null; o.pos[1] = 0; }
         else { o.pos[0] += dx / d * s; o.pos[2] += dz / d * s; o.pos[1] = Math.abs(Math.sin(performance.now() / 140)) * 0.04; }
       }
+      if (o.userData.k !== undefined) { self.animaPos(o, o.pos[0], o.pos[2], dt); } // a carroça não é figura
       if (a.desbota > 0) {
         o.alpha = Math.max(0, o.alpha - dt / a.desbota);
         if (o.alpha <= 0.01) { o.visible = false; o.alpha = 1; a.desbota = 0; }
@@ -1591,17 +1635,19 @@
       if (!w.o.visible) { return; }
       self.deita(w.o, ko);
       piscar(self, w.o, d.id, dt || 0);
-      if (ko) { w.o.at(g.x !== undefined ? g.x : w.o.pos[0], 0, g.z !== undefined ? g.z : w.o.pos[2]); return; } // caído onde a briga o deixou
+      if (ko) { w.o.at(g.x !== undefined ? g.x : w.o.pos[0], 0, g.z !== undefined ? g.z : w.o.pos[2]); self.anima(w.o, undefined, false, dt); return; } // caído onde a briga o deixou
       if (H && g && g.x !== undefined) {
         var pv = prev && prev['p:' + d.id], x = g.x, z = g.z;
         if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
         var anda = pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
         w.o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
+        self.animaPos(w.o, x, z, dt);
         return;
       }
       var s = (seg - w.off) * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
       var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
       w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
+      self.animaPos(w.o, p[0], p[1], dt);
     });
     Object.keys(this.npcO).forEach(function (id) {
       var o = self.npcO[id], g = gente[id];
@@ -1618,8 +1664,10 @@
         var anda = !(g.ko > 0) && pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
         o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
         o.dentro = S && self.w.salaEm(x, z) === S.id ? S : null;
+        self.animaPos(o, x, z, dt);
       } else if (P) {
         o.at(P[0], g && g.ko > 0 ? 0 : P[1], P[2]); o.dentro = S || null;
+        o.userData.ax = undefined; self.anima(o, undefined, false, dt); // no posto: de frente, parado
       }
       piscar(self, o, id, dt || 0);
     });
@@ -1800,7 +1848,8 @@
       if (pv) { x = pv.x + (mb.x - pv.x) * alpha; z = pv.z + (mb.z - pv.z) * alpha; }
       var moving = pv && (Math.abs(mb.x - pv.x) + Math.abs(mb.z - pv.z) > 0.01);
       o.at(x, moving ? Math.abs(Math.sin(t / 110)) * (PULO[mb.kind] || 0) : 0, z);
-      if (DE_LADO[mb.kind]) { var fc = Math.sin(mb.face) * rx + Math.cos(mb.face) * rz; if (Math.abs(fc) > 0.05) { o.scale[0] = fc > 0 ? -1 : 1; } }
+      if (self.art.anims && self.art.anims[o.userData.img]) { self.anima(o, mb.face, moving, dt); } // desenhado no Aseprite
+      else if (DE_LADO[mb.kind]) { var fc = Math.sin(mb.face) * rx + Math.cos(mb.face) * rz; if (Math.abs(fc) > 0.05) { o.scale[0] = fc > 0 ? -1 : 1; } }
       var f = self.flash[mb.id] || 0;
       o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
       if (f > 0) { self.flash[mb.id] = f - dt; }
@@ -1887,7 +1936,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=10' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=11' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {
@@ -1902,6 +1951,7 @@
           for (var k = 0; k < a.length; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
           art.sprites[sp.name] = c; art.dims[sp.name] = { w: sp.w, h: sp.h }; art.alpha[sp.name] = { w: sp.w, h: sp.h, data: a };
         });
+        art.anims = atlas.anims || {}; // animações (tools/montar_atlas.py): figura -> direção -> parado/andar -> quadros
         return art;
       });
     });

@@ -56,8 +56,8 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
 | `js/conta.js` | Conta do site (Supabase): entrar, criar conta, sair, trocar senha e gravar/ler os saves na nuvem. Também a vez do aparelho (`sessao`: um aparelho por vez, tabela criada por `supabase/sessoes.sql`; a lógica fica em `js/ui.js`, seção "um aparelho por vez"). Usado também pelo portal. O endereço e a chave do projeto ficam no topo. A tabela é criada por `supabase/conta.sql` (na raiz do site). |
 | `js/ceu.js` | Céu: cores de cada hora, sol, lua, estrelas, nuvens e montanhas. |
 | `sw.js`, `manifest.webmanifest`, `icons/` | App instalável no celular e abertura sem internet. |
-| `art/` | Imagens prontas: `sprites.png` (figuras), `walls.png` (texturas), `atlas.json` (onde cada figura está). |
-| `tools/` | Ferramentas: `gerar_arte.py` (desenha a arte), `verificar_trilhas.py` (confere os caminhos dos moradores), `gerar_icones.py` (ícones do app), `servidor.ps1` (servidor de teste), `versao.ps1` (troca a versão em todos os lugares), `publicar.ps1` (junta o `dev` na `main`). |
+| `art/` | Imagens que o jogo carrega: `sprites.png` (figuras), `walls.png` (texturas), `atlas.json` (onde cada figura está e as animações), montadas por `tools/montar_atlas.py`. Fontes: `art/fonte/*.aseprite` (desenho à mão) e `art/gerado/` (arte provisória feita por código). Ver "Arte". |
+| `tools/` | Ferramentas: `gerar_arte.py` (desenha a arte provisória), `montar_atlas.py` (monta o atlas com a arte do Aseprite; `aseprite/` tem o script do Aseprite que ele usa), `verificar_trilhas.py` (confere os caminhos dos moradores), `gerar_icones.py` (ícones do app), `servidor.ps1` (servidor de teste), `versao.ps1` (troca a versão em todos os lugares), `publicar.ps1` (junta o `dev` na `main`). |
 | `js/erros.js` | Registro de erros dos jogadores (ver "Testar no seu computador"). Carrega antes de todos. |
 | `testes/` | Testes automáticos dos dados e da simulação (abra pelo servidor de teste). |
 | `PENDENCIAS.md` | O que falta fazer. |
@@ -164,7 +164,34 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   **Com conta**, cada conta tem as suas chaves (`zg-vila-proto-v1-u<id>-1`...), que espelham a nuvem: `nuvem()` acerta os três espaços na tela inicial (vence o lado que mudou; se os dois mudaram, o gravado por último) e `sobe()` manda o save aberto a cada minuto, ao esconder a aba e ao sair. Se outro aparelho gravou o mesmo espaço enquanto ele estava aberto, o jogo abre a versão de lá. O lado que perde nunca some: fica numa cópia (`NZ.debug.copias()` no console). Os saves feitos sem conta passam para a conta ao entrar.
 
 ## Arte
-A arte é desenhada por código em `tools/gerar_arte.py` (uma função por figura: `padre`, `ferreiro`, `mulher_velha`…) e
-gravada em `art/`. Gerar de novo exige o Python do Blender (`C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe`)
-e substitutos de Pillow/scipy que ficaram numa pasta temporária das conversas comigo; por isso, mexer na arte é mais
-trabalhoso que no resto. A arte nova (animais, alfaiate, árvores, roupas) está pela metade num ramo à parte: ver `PENDENCIAS.md`.
+**A arte nova é desenhada no Aseprite**, um arquivo por personagem, em `art/fonte/<nome>.aseprite` (o nome é o da figura:
+`ferreiro`, `faz_velho`, `menina`...). O jogo não lê esses arquivos: o montador junta tudo em `art/sprites.png` e
+`art/atlas.json`.
+
+**Como desenhar um personagem:**
+1. Abra `art/fonte/<nome>.aseprite` no Aseprite. Ele já vem com a figura de hoje em todos os quadros, separados em marcas
+   (as faixas coloridas em cima da linha do tempo):
+   - `frente_parado` (1 quadro) e `frente_andar` (4 passos): de frente;
+   - `lado_parado` e `lado_andar`: olhando para a **direita** da tela (o jogo espelha sozinho para a esquerda);
+   - `costas_parado` e `costas_andar`: de costas;
+   - opcional: uma marca `rosto` (1 quadro) com a cabeça desenhada em qualquer lugar: vira o retrato das falas (sem ela,
+     o jogo recorta a cabeça da figura de frente).
+2. Redesenhe por cima. A duração de cada quadro (clique com o botão direito no número do quadro → Propriedades) é a
+   velocidade da animação no jogo. Não mude o tamanho da tela: 100 px = 1 m, e o pé fica na base.
+3. Salve e rode, na pasta `netzach`: `python tools/montar_atlas.py`. Ele exporta pelo Aseprite, junta, comprime e troca a
+   versão da arte (`?a=` em `js/view.js`). Recarregue o jogo.
+
+Enquanto uma direção ou os passos estiverem iguais à figura de frente parada, eles ficam de fora e o jogo continua como
+antes; o que você redesenhar entra sozinho. **Personagem novo:** copie `art/fonte/_modelo.aseprite` (vazio, com as marcas)
+com o nome da figura. Para criar de uma vez o arquivo de toda pessoa que ainda não tem: `python tools/montar_atlas.py --criar-fontes`.
+
+**No jogo:** `View.prototype.anima` e `direcao` em `js/view.js` escolhem o quadro pelo lado que a figura mostra à câmera
+(dentro de 45° = frente ou costas) e se ela está andando; moradores, quem tem posto, atores da campanha e bichos já usam.
+
+**A arte provisória (feita por código)** fica em `art/gerado/` (`sprites.png`, `atlas.json`, `walls.png`), feita por
+`tools/gerar_arte.py` (uma função por figura). Ela é a base: o que não tem arquivo no Aseprite vem dela. Para gerar de novo:
+`python tools/gerar_arte.py <pasta art do zeitgeist1> art/gerado` e depois o montador. As texturas de pedra, tijolo e porta
+vêm do zeitgeist1.
+
+O montador precisa do Aseprite (procurado na Steam, no PATH ou na variável `ASEPRITE`), do Pillow e do pyoxipng
+(`pip install pillow pyoxipng`). O outro computador só precisa disso para mexer na arte; para jogar e testar, não.
