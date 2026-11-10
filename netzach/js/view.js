@@ -1194,6 +1194,11 @@
     if (v > 0.2) { u.rumo = Math.atan2(dx, dz); u.parou = 0; } else { u.parou = (u.parou === undefined ? 1 : u.parou) + (dt || 0); }
     this.anima(o, u.rumo, (u.parou || 0) < 0.15, dt); // um quadro parado no meio do passo não interrompe a animação
   };
+  // quem parou para o jogador (conversa, cena da campanha) fica de frente para ele; ao voltar a andar, o rumo recomeça
+  View.prototype.paraDeFrente = function (o, dt) {
+    o.userData.ax = undefined; o.userData.rumo = undefined;
+    this.anima(o, undefined, false, dt);
+  };
   // deita (ko = true) ou levanta a figura; o quadro em pé fica guardado para a volta
   View.prototype.deita = function (o, ko) {
     if (!!o.userData.deitado === ko) { return; }
@@ -1579,7 +1584,10 @@
         if (d <= s) { o.pos[0] = a.alvo[0]; o.pos[2] = a.alvo[1]; a.alvo = null; o.pos[1] = 0; }
         else { o.pos[0] += dx / d * s; o.pos[2] += dz / d * s; o.pos[1] = Math.abs(Math.sin(performance.now() / 140)) * 0.04; }
       }
-      if (o.userData.k !== undefined) { self.animaPos(o, o.pos[0], o.pos[2], dt); } // a carroça não é figura
+      if (o.userData.k !== undefined) { // a carroça não é figura
+        if (a.alvo) { self.animaPos(o, o.pos[0], o.pos[2], dt); }
+        else { self.paraDeFrente(o, dt); } // parado na cena (falando, dando a moeda): de frente para o jogador
+      }
       if (a.desbota > 0) {
         o.alpha = Math.max(0, o.alpha - dt / a.desbota);
         if (o.alpha <= 0.01) { o.visible = false; o.alpha = 1; a.desbota = 0; }
@@ -1647,7 +1655,7 @@
       var s = (seg - w.off) * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
       var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
       w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
-      self.animaPos(w.o, p[0], p[1], dt);
+      if (self.held === d.id) { self.paraDeFrente(w.o, dt); } else { self.animaPos(w.o, p[0], p[1], dt); } // parou para conversar: de frente
     });
     Object.keys(this.npcO).forEach(function (id) {
       var o = self.npcO[id], g = gente[id];
