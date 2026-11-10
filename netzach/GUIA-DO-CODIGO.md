@@ -188,6 +188,11 @@ com o nome da figura. Para criar de uma vez o arquivo de toda pessoa que ainda n
 **No jogo:** `View.prototype.anima` e `direcao` em `js/view.js` escolhem o quadro pelo lado que a figura mostra à câmera
 (dentro de 45° = frente ou costas) e se ela está andando; moradores, quem tem posto, atores da campanha e bichos já usam.
 
+**Poses provisórias:** as 22 pessoas já têm costas, perfil e passos desenhados por código (`tools/gerar_poses.py`, a
+partir da figura de frente e da ficha de cada pessoa em `FICHAS`: cabelo, barba, chapéu, roupa, o que leva na mão).
+`python tools/gerar_poses.py` grava de novo os arquivos do Aseprite (todos, ou só os nomes que você passar; `--previa` só
+desenha a folha de conferência). **Ele grava por cima:** depois de redesenhar alguém à mão, não passe essa pessoa por ele.
+
 **A arte provisória (feita por código)** fica em `art/gerado/` (`sprites.png`, `atlas.json`, `walls.png`), feita por
 `tools/gerar_arte.py` (uma função por figura). Ela é a base: o que não tem arquivo no Aseprite vem dela. Para gerar de novo:
 `python tools/gerar_arte.py <pasta art do zeitgeist1> art/gerado` e depois o montador. As texturas de pedra, tijolo e porta

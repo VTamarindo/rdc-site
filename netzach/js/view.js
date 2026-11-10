@@ -1909,13 +1909,21 @@
     }
     return t0 <= t1 ? t0 : null;
   };
+  // máscara de clique de um quadro (a de animação é feita na primeira vez que alguém clica nele)
+  View.prototype.mascara = function (nome) {
+    var A = this.art.alpha, c = this.art.sprites[nome];
+    if (A[nome] || !c) { return A[nome] || null; }
+    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, a = new Uint8Array(c.width * c.height);
+    for (var k = 0; k < a.length; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
+    return (A[nome] = { w: c.width, h: c.height, data: a });
+  };
   View.prototype.hitSprite = function (o, e, d) {
     var s = Math.sin(o.rotY), co = Math.cos(o.rotY), n = [s, 0, co];
     var den = d[0] * n[0] + d[2] * n[2]; if (Math.abs(den) < 1e-6) { return null; }
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
     var lu = ((hx - o.pos[0]) * co - (hz - o.pos[2]) * s) * (o.scale[0] < 0 ? -1 : 1), lv = hy - o.pos[1];
-    var g = o.geo, a = g.deitado ? null : this.art.alpha[o.userData.img];
+    var g = o.geo, a = g.deitado ? null : this.mascara(o.tex && o.tex.indexOf('s:') === 0 ? o.tex.slice(2) : o.userData.img) || this.art.alpha[o.userData.img];
     if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
     var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
     var tol = Math.max(2, Math.round(H / g.h * 0.08)); // folga de ~8 cm em volta dos pixels desenhados
@@ -1936,7 +1944,7 @@
   // carrega art/atlas.json + walls.png + sprites.png. Paredes: quadros quadrados de atlas.size lado a lado.
   // Figuras: cada uma com o seu quadro {name, x, y, w, h}; guarda a máscara de alfa (w*h) para o clique.
   NZ.loadArt = function (base, ver) {
-    var q = ver ? '?v=' + ver : '', iq = '?a=11' + (ver ? '-' + ver : '');
+    var q = ver ? '?v=' + ver : '', iq = '?a=12' + (ver ? '-' + ver : '');
     function img(src) { return new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { bad(new Error(src)); }; i.src = src; }); }
     return fetch(base + 'atlas.json' + q, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(base + 'atlas.json'); } return r.json(); }).then(function (atlas) {
       return Promise.all([img(base + 'walls.png' + iq), img(base + 'sprites.png' + iq)]).then(function (ims) {
@@ -1947,9 +1955,12 @@
         }
         atlas.walls.forEach(function (n, i) { art.walls[n] = cut(ims[0], i * S, 0, S, S); });
         atlas.sprites.forEach(function (sp) {
-          var c = cut(ims[1], sp.x, sp.y, sp.w, sp.h), d = c.getContext('2d').getImageData(0, 0, sp.w, sp.h).data, a = new Uint8Array(sp.w * sp.h);
+          var c = cut(ims[1], sp.x, sp.y, sp.w, sp.h);
+          art.sprites[sp.name] = c; art.dims[sp.name] = { w: sp.w, h: sp.h };
+          if (sp.name.indexOf('@') >= 0) { return; } // quadro de animação ou rosto: o clique usa a máscara da figura de base
+          var d = c.getContext('2d').getImageData(0, 0, sp.w, sp.h).data, a = new Uint8Array(sp.w * sp.h);
           for (var k = 0; k < a.length; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
-          art.sprites[sp.name] = c; art.dims[sp.name] = { w: sp.w, h: sp.h }; art.alpha[sp.name] = { w: sp.w, h: sp.h, data: a };
+          art.alpha[sp.name] = { w: sp.w, h: sp.h, data: a };
         });
         art.anims = atlas.anims || {}; // animações (tools/montar_atlas.py): figura -> direção -> parado/andar -> quadros
         return art;

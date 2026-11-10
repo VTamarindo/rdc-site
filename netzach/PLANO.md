@@ -169,8 +169,9 @@ Assim você trabalha "um em cada" e o jogo continua leve.
   - no jogo: `direcao` e `anima` em `js/view.js` (frente, lado espelhado e costas pela câmera; passos pela duração do
     Aseprite) em moradores, gente de posto, atores da campanha e bichos; rosto próprio nas falas;
   - testado de ponta a ponta com um lado e um rosto de mentira (depois desfeitos); 30 testes passam.
-  - **Falta (é desenho, do usuário):** redesenhar as figuras no Aseprite. Bichos ainda não têm arquivo (dá para criar
-    com o modelo, no tamanho de cada um).
+  - **Poses provisórias feitas (10/11):** `tools/gerar_poses.py` desenhou costas, perfil e passos das 22 pessoas pela
+    API do Aseprite (a partir da figura de frente e de uma ficha por pessoa). Atlas: 270 figuras, 429 KB. Qualquer um
+    pode ser redesenhado à mão depois no Aseprite. Bichos ainda sem animação.
   - **Para a Fase 2:** uma textura só para o atlas (hoje cada quadro vira uma textura própria; com muitos quadros, pesa).
 - **Próximo:** Fase 2 (mundo grande por blocos). O Aseprite 1.3.18 está em `D:\SteamLibrary\steamapps\common\Aseprite` e roda pela
   linha de comando (`Aseprite.exe -b`), então o montador do atlas pode exportar os arquivos `.aseprite` sozinho.

@@ -7,7 +7,7 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 ## Para o jogador
 - Os saves não recomeçam mais do zero quando sai uma versão nova: o progresso passa de uma versão para a outra.
 
-- Os personagens podem ter animação: de frente, de lado e de costas, parados e andando (aparece conforme forem redesenhados).
+- Os moradores agora têm frente, lado e costas, e andam com passos de verdade (desenhos provisórios).
 
 ## Por dentro
 - Arte desenhada no Aseprite (`art/fonte/`), montada no atlas por `tools/montar_atlas.py`; atlas 10% menor.
