@@ -182,12 +182,27 @@ body.touch .only-pc { display: none; }
 @media (max-width: 560px) { .maprow { column-gap: 8px; } .maprow button { padding: 8px 9px; font-size: 14px; } } /* os dois botões cabem na mesma linha */
 /* celular deitado: mapa à esquerda, controles à direita, para o mapa não ficar minúsculo */
 @media (orientation: landscape) and (max-height: 520px) {
-  body.touch #w-map { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 14px; width: min(860px, 96vw); max-height: 96vh; padding: 6px 14px 10px; --mapw: calc(96vh - 76px); }
+  /* mapa à esquerda; no meio, as missões e os botões; na borda direita, a barra de zoom em pé (+ em cima, − embaixo) */
+  body.touch #w-map { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 12px; width: min(900px, 97vw); max-height: 96vh; padding: 6px 10px 10px 14px; --mapw: calc(96vh - 76px); }
   body.touch #w-map header { grid-column: 1 / -1; }
   body.touch #w-map .mapbox { grid-row: 2 / span 2; }
-  body.touch #w-map .mapzoom, body.touch #w-map .maprow { grid-column: 2; width: auto; margin: 4px 0 0; align-self: start; }
+  body.touch #w-map #map-missoes { grid-column: 2; grid-row: 2; min-height: 0; overflow: auto; margin-top: 4px; }
+  body.touch #w-map .maprow { grid-column: 2; grid-row: 3; width: auto; margin: 6px 0 0; align-self: end; }
+  body.touch #w-map .mapzoom { grid-column: 3; grid-row: 2 / span 2; width: auto; margin: 4px 0 0; flex-direction: column-reverse; justify-content: flex-start; gap: 6px; }
+  body.touch #w-map .mapzoom [type=range] { flex: 1; width: 36px; height: auto; min-height: 80px; writing-mode: vertical-lr; direction: rtl; }
+  body.touch #w-map .mapzoom [type=range]::-webkit-slider-runnable-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
+  body.touch #w-map .mapzoom [type=range]::-moz-range-track { width: 12px; height: auto; background: linear-gradient(#b8382b, #7d1a12) 0 100% / 100% var(--p, 0%) no-repeat, rgba(70, 38, 12, .28); }
+  body.touch #w-map .mapzoom [type=range]::-webkit-slider-thumb { width: 30px; height: 26px; margin-top: 0; margin-left: -10px; }
+  body.touch #w-map .mapzoom [type=range]::-moz-range-thumb { width: 30px; height: 26px; }
   body.touch #w-map .popmenu::after { display: none; }
 }
+/* missões no mapa (só no celular): a mesma lista de embaixo da barra de vida */
+#map-missoes h3 { margin: 0 0 4px; }
+#map-quests { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+#map-quests li { padding: 4px 0; border-bottom: 1px dotted rgba(74, 44, 20, .4); line-height: 1.35; }
+#map-quests li small { color: var(--dim); }
+#map-quests li.camp { color: var(--wax); }
+#map-quests li.vazio { color: var(--dim); font-style: italic; border: 0; }
 .popmenu {
   position: absolute; left: 6px; bottom: 8px; z-index: 2; min-width: 210px;
   display: flex; flex-direction: column; gap: 6px; padding: 10px;

@@ -1767,6 +1767,7 @@
         (s === 'ready' ? 'entregar a ' + esc(G.npcs[Q.giver].name) : esc(objText(id))) + '</small></li>');
     });
     $('quests').innerHTML = html.join('');
+    $('map-quests').innerHTML = html.join('') || '<li class="vazio">Nenhuma missão agora.</li>'; // a mesma lista no mapa (celular)
     $('quests').hidden = questsClosed;
     $('q-toggle').hidden = !html.length;
     $('q-toggle').setAttribute('aria-expanded', String(!questsClosed));
