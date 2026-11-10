@@ -600,11 +600,36 @@
     for (var id in st.gente) { var g = st.gente[id]; if (g.x !== undefined) { o['p:' + id] = { x: g.x, z: g.z }; } } // moradores em luta
     return o;
   }
+  // som do campo de trigo (js/som.js, campo): a distância até o trigo mais perto e de que lado ele está em relação à câmera,
+  // dez vezes por segundo. Andando dentro do trigo, o farfalhar cresce; numa casa, fica abafado. Na tela inicial também (o fundo
+  // dela é deitado no trigo, como o começo da campanha): o som continua sem corte do menu para o jogo
+  var ambT = 0, ambPos = null, trigos = null;
+  function ambiente(dt) {
+    var S = NZ.som, s = st || vitrine; if (!S || !S.campo) { return; }
+    if (!s) { if (ambPos) { S.campo(null); ambPos = null; } return; }
+    ambT += dt; if (ambT < 0.1) { return; }
+    var p = s.player, best = null, bd = 1e9, cl = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+    trigos = trigos || (world.vila.fields || []).filter(function (f) { return f.kind === 'trigo'; });
+    trigos.forEach(function (f) {
+      var qx = cl(p.x, f.x0, f.x1), qz = cl(p.z, f.z0, f.z1), d = Math.hypot(p.x - qx, p.z - qz);
+      if (d < bd) { bd = d; best = { x: qx, z: qz }; }
+    });
+    var anda = !!ambPos && Math.hypot(p.x - ambPos[0], p.z - ambPos[1]) / ambT > 0.5;
+    ambPos = [p.x, p.z]; ambT = 0;
+    if (!best) { return; }
+    var dx = best.x - p.x, dz = best.z - p.z, L = Math.hypot(dx, dz) || 1, y = view.yaw, longe = Math.min(1, bd / 6); // dentro: envolve
+    S.campo({
+      d: bd, anda: anda && bd === 0, dentro: !!world.salaEm(p.x, p.z),
+      pan: (dx * -Math.cos(y) + dz * Math.sin(y)) / L * longe,                 // a direita da tela é (-cos, sin)
+      atras: Math.max(0, -(dx * Math.sin(y) + dz * Math.cos(y)) / L) * longe  // a câmera olha para (sin, cos)
+    });
+  }
   var lastFrame = performance.now();
   function frame(t) {
     requestAnimationFrame(frame);
     if (aba.fechada) { return; } // passou o jogo para outra aba: nada roda nem desenha aqui
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
+    ambiente(fdt);
     if (!st) { // tela inicial: deitado no trigo, olhando o céu (o começo da campanha), e o controle só navega
       ctrl.tick(fdt);
       view.yaw = G.campanha.inicio.yaw * Math.PI / 180 + Math.sin(t / 7000) * 0.05; view.pitch = -0.04;

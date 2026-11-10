@@ -2,6 +2,7 @@
    - musica(true/false): a trilha da tela inicial, um ciclo de 24 s que se repete (acordes longos, caixinha de música, eco);
    - criancas(): crianças rindo ao longe (o acordar da campanha);
    - missao(): o toque de missão completada;
+   - campo(...): o vento e o trigo farfalhando, com volume e lado pela distância até o campo (som 3D, ver "ambiente");
    - foco() e clique(): a navegação nos menus (ligados sozinhos a todos os botões das janelas e da tela inicial).
    O navegador só deixa tocar som depois do primeiro clique ou tecla: até lá, tudo fica mudo e a música espera.
    ligado(true/false) liga e desliga tudo; volume('musica' | 'efeitos', 0 a 1) acerta cada parte (tela de Configurações).
@@ -159,6 +160,53 @@
     });
   }
 
+  // ---------- ambiente: vento e trigo farfalhando perto do campo ----------
+  // campo({ d, pan, atras, anda, dentro }) a cada pouco (js/ui.js, ambienteCampo): d = metros até o trigo mais perto (0 = dentro),
+  // pan = de que lado ele está (-1 esquerda, 1 direita), atras = 0 a 1 (atrás da câmera fica mais abafado), anda = o jogador
+  // anda dentro do trigo (o farfalhar cresce), dentro = numa casa (bem abafado). campo(null) apaga devagar.
+  // Vento: ruído grave e abafado com rajadas lentas; farfalhar: ruído agudo que cresce e some em ondas (as espigas se esfregando)
+  var AMB = { alcance: 35, vento: 0.16, trigo: 0.1, andando: 1.8 }, amb = null;
+  function ruido(seg) {
+    var n = Math.floor(ctx.sampleRate * seg), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0), u = 0;
+    for (var i = 0; i < n; i++) { u = 0.97 * u + 0.03 * (Math.random() * 2 - 1); d[i] = (Math.random() * 2 - 1) * 0.6 + u * 4; } // branco com um pouco de grave
+    for (var k = 0; k < 2000; k++) { var a = k / 2000; d[k] = d[k] * a + d[n - 2000 + k] * (1 - a); } // emenda sem estalo no laço
+    return b;
+  }
+  function montaAmb() {
+    var A = { saida: ctx.createGain(), pan: ctx.createStereoPanner ? ctx.createStereoPanner() : null, lp: ctx.createBiquadFilter() };
+    A.saida.gain.value = 0.0001; A.lp.type = 'lowpass'; A.lp.frequency.value = 9000;
+    A.lp.connect(A.saida); if (A.pan) { A.saida.connect(A.pan); A.pan.connect(sfx); } else { A.saida.connect(sfx); }
+    var buf = ruido(5);
+    // vento
+    var v = ctx.createBufferSource(), vf = ctx.createBiquadFilter(), vg = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    v.buffer = buf; v.loop = true; vf.type = 'lowpass'; vf.frequency.value = 520; vf.Q.value = 0.7; vg.gain.value = AMB.vento;
+    lfo.frequency.value = 0.09; lg.gain.value = 260; lfo.connect(lg); lg.connect(vf.frequency); // o vento sobe e desce de tom
+    v.connect(vf); vf.connect(vg); vg.connect(A.lp); v.start(); lfo.start();
+    // farfalhar: a mesma fonte, em outro ponto do laço, pelo agudo
+    var t = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), bp = ctx.createBiquadFilter(), tg = ctx.createGain();
+    t.buffer = buf; t.loop = true; hp.type = 'highpass'; hp.frequency.value = 1800; bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.6;
+    tg.gain.value = 0.0001; t.connect(hp); hp.connect(bp); bp.connect(tg); tg.connect(A.lp); t.start(0, 2.3);
+    A.fontes = [v, t, lfo]; A.vg = vg; A.tg = tg; A.anda = 0;
+    // as ondas do farfalhar: a cada 0,4 a 1,6 s, um novo alvo de volume (mais alto e mais rápido quando o jogador anda no trigo)
+    A.timer = setInterval(function () {
+      if (!ctx || amb !== A) { return; }
+      var now = ctx.currentTime, forte = 1 + A.anda * (AMB.andando - 1);
+      tg.gain.setTargetAtTime(AMB.trigo * forte * (0.25 + Math.random() * 0.75), now, A.anda ? 0.12 : 0.35);
+      vg.gain.setTargetAtTime(AMB.vento * (0.6 + Math.random() * 0.6), now, 1.2);
+    }, 700);
+    return A;
+  }
+  function campo(o) {
+    if (!pronto()) { return; }
+    if (!o) { if (amb) { amb.saida.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.6); } return; }
+    if (!amb) { amb = montaAmb(); }
+    var now = ctx.currentTime, k = Math.max(0, 1 - o.d / AMB.alcance), vol = k * k * (o.dentro ? 0.3 : 1);
+    amb.saida.gain.setTargetAtTime(Math.max(0.0001, vol), now, 0.25);
+    if (amb.pan) { amb.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, o.pan || 0)), now, 0.15); }
+    amb.lp.frequency.setTargetAtTime(o.dentro ? 700 : 9000 - 5500 * (o.atras || 0), now, 0.2);
+    amb.anda = o.anda ? 1 : 0;
+  }
+
   // ---------- toques curtos ----------
   function toque(notas, tipo, vol, dur) {
     if (!pronto()) { return; }
@@ -184,7 +232,7 @@
 
   NZ.som = {
     musica: function (on) { querMusica = !!on; if (on) { tocaMusica(); } else if (ctx) { paraMusica(2.5); } },
-    criancas: criancas, missao: missao, foco: foco, clique: clique,
+    criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo,
     volume: function (k, v) {
       if (!(k in USER)) { return 0; }
       if (v === undefined) { return USER[k]; }

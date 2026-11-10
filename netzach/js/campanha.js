@@ -238,7 +238,8 @@
           if (voltou && S().passo === 'figura') { missao(CF.missoes.figura); return; }
           p.x = CF.inicio.x; p.z = CF.inicio.z; view.yaw = CF.inicio.yaw * Math.PI / 180; view.pitch = -0.05;
           S().passo = 'acordando'; trava = true; deit = 1;
-          preto(1, fill(CF.acordou), 0); som('criancas_rindo');
+          preto(1, '', 0); // no escuro, só o vento e o trigo por somAntesSeg; depois o texto e as crianças rindo
+          depois(CF.somAntesSeg === undefined ? 2 : CF.somAntesSeg, function () { preto(1, fill(CF.acordou), 0); som('criancas_rindo'); });
           depois(3.4, function () { preto(0, undefined, 2.6); });
           depois(2.8, function () { levanta(2.2); });
           depois(2.4, function () { trava = false; S().passo = 'figura'; parado = 0; ultimo = null; missao(CF.missoes.figura); api.save(); });

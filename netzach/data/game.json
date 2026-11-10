@@ -2,7 +2,7 @@
   "version": 1,
   "_nota": "Protótipo da vila. Todos os nomes e textos são provisórios.",
   "campanha": {
-    "_nota": "Modo história (js/campanha.js). As cenas vêm de data/campanha.json (gerado por tools/montar_campanha.ps1); aqui ficam os lugares, os números e os textos do jogo em volta delas. hora: a hora fixa do céu na campanha e na tela inicial (o dia só corre com o relógio no modo livre). inicio.yaw e carroca.rot em graus (90 = olhando para o leste).",
+    "_nota": "Modo história (js/campanha.js). As cenas vêm de data/campanha.json (gerado por tools/montar_campanha.ps1); aqui ficam os lugares, os números e os textos do jogo em volta delas. hora: a hora fixa do céu na campanha e na tela inicial (o dia só corre com o relógio no modo livre). inicio.yaw e carroca.rot em graus (90 = olhando para o leste). somAntesSeg: segundos de tela preta só com o vento e o trigo antes do texto do acordar.",
     "hora": 9.5,
     "campo": "trigo",
     "inicio": { "x": 14, "z": 52, "yaw": 90 },
@@ -17,6 +17,7 @@
     "alcance": 3.6,
     "colher": 5,
     "puxaoSeg": 0.55,
+    "somAntesSeg": 2,
     "acordou": "(Nome) acordou ao ouvir crianças rindo.",
     "missoes": {
       "figura": "Siga a figura misteriosa",
