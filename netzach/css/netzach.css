@@ -514,7 +514,10 @@ body.touch #cena-dica { bottom: auto; top: 8px; max-width: 40%; font-size: 13px;
 #cena-feito.entra { opacity: 1; transform: translate(-50%, 0); transition: opacity .35s, transform .35s; }
 #cena-feito.sai { opacity: 0; transition: opacity .6s; }
 #quests li.camp { color: var(--wax); }
-#t-cfg-abre { display: block; margin: 10px auto 0; padding: 4px 14px; font-size: 13px; }
+/* rodapé da tela inicial: Configurações e Retornar ao hub, lado a lado */
+.t-rodape { display: flex; justify-content: center; gap: 10px; margin: 10px 0 0; }
+#t-cfg-abre, #t-hub { padding: 4px 14px; font-size: 13px; }
+#t-cfg-abre[hidden], #t-hub[hidden] { display: none; }
 #t-dev-tap { touch-action: manipulation; cursor: default; }
 /* configurações na tela inicial: tomam o lugar da lista, como o jogo novo */
 #t-cfg { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }

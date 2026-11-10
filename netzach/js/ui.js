@@ -80,7 +80,6 @@
     });
     $('loading').hidden = true; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
-    if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); bindTitle(); bindConta(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     if (isTouch) { ['touchend', 'click'].forEach(function (ev) { window.addEventListener(ev, celularCheio, true); }); }
@@ -448,7 +447,7 @@
   // ---------- tela inicial ----------
   var titleOn = false, titleDel = 0, titleNew = 0, titleCfg = false;
   // a conta, o aviso da nuvem e o botão de configurações só aparecem na primeira parte da tela inicial (a lista de saves)
-  function titleRodape(naLista) { $('t-conta').hidden = !naLista; $('t-cfg-abre').hidden = !naLista; if (!naLista) { $('t-nuvem').hidden = true; } else { nuvemTexto(); } }
+  function titleRodape(naLista) { $('t-conta').hidden = !naLista; $('t-cfg-abre').hidden = !naLista; $('t-hub').hidden = !naLista; if (!naLista) { $('t-nuvem').hidden = true; } else { nuvemTexto(); } }
   function slotInfo(n) {
     var s = load(n); if (!s) { return { n: n }; }
     var c = s.state.modo === 'campanha' && s.state.camp;
@@ -511,7 +510,7 @@
     contaUi = Conta.painel($('t-conta'), {
       semConta: 'Sem conta: os saves ficam só neste navegador. Entre para levá-los a qualquer aparelho.',
       comConta: 'Conta',
-      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
+      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-hub').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
     });
     Conta.aoMudar(function () {
       if (!dono()) { vez.minha = false; } else if (dono() !== vez.uid && !aba.fechada) { vezPede(function () { /* entrou na conta: este aparelho fica com a vez */ }); }
@@ -544,6 +543,9 @@
     });
     // configurações (js/som.js): som ligado ou desligado e o volume da música e dos efeitos; valem para este navegador, fora do save
     $('t-cfg-abre').addEventListener('click', titleConfig);
+    // Retornar ao hub: a página inicial do site (a pasta acima do jogo; vale no site, na prévia e no servidor de teste).
+    // Só existe na tela inicial: com o jogo aberto, primeiro se volta ao menu inicial (e o jogo grava ao sair)
+    $('t-hub').addEventListener('click', function () { location.href = new URL('../', location.href).href; });
     if (NZ.som) {
       $('cfg-som').addEventListener('click', function () { NZ.som.ligado(!NZ.som.ligado()); cfgMostra(); });
       ['musica', 'efeitos'].forEach(function (k) { $('cfg-' + k).addEventListener('input', function () { NZ.som.volume(k, this.value / 100); cfgMostra(); }); });
