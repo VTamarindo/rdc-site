@@ -1,7 +1,8 @@
 /* Netzach · sons feitos por código (Web Audio), provisórios, para testar a experiência:
    - musica('menu' | 'campo' | false): a trilha que toca (uma de cada vez, com troca suave). 'menu': a da tela inicial,
-     medieval e épica (coro grave, tambores de guerra, cordas e trompas; 40 s em laço). 'campo': a do começo da campanha,
+     medieval e épica (pedal grave, coro, tambores de guerra, cordas, metais e trompas; ~104 s em laço). 'campo': a do começo da campanha,
      calma (acordes longos, caixinha de música, eco; 24 s em laço). false: a música some devagar;
+   - motivo(): o motivo do Netzach sozinho (~5 s), a frase que aparece no meio da música do menu, para momentos marcantes;
    - criancas(): crianças rindo ao longe (o acordar da campanha);
    - missao(): o toque de missão completada;
    - campo(...): o vento e o trigo farfalhando, com volume e lado pela distância até o campo (som 3D, ver "ambiente");
@@ -108,91 +109,191 @@
     c.m.forEach(function (n) { caixinha(M.bus, n[1], t + n[0] + (Math.random() - 0.5) * 0.03, 0.085); });
   }
 
-  // 'menu': medieval e épica, em Ré menor, 96 batidas por minuto, 16 compassos de 4 tempos (40 s). Metade A: tambores de
-  // guerra, cordas graves martelando e o coro de vozes graves crescendo; metade B: as trompas com o tema. No fim de cada
-  // metade, um rufar de tímpanos puxa a volta. Melodia própria (no clima das trilhas nórdicas, sem copiar nenhuma)
-  var BAT = 60 / 96;
-  // acorde de cada compasso: o baixo (MIDI) e as notas do coro
-  var EPICO = [
-    [38, [50, 53, 57]], [38, [50, 53, 57]], [34, [50, 53, 58]], [36, [48, 52, 55]],   // Ré m · Ré m · Si♭ · Dó
-    [38, [50, 53, 57]], [38, [50, 53, 57]], [43, [50, 55, 58]], [45, [49, 52, 57]],   // Ré m · Ré m · Sol m · Lá
-    [38, [50, 53, 57]], [34, [50, 53, 58]], [41, [48, 53, 57]], [36, [48, 52, 55]],   // Ré m · Si♭ · Fá · Dó
-    [38, [50, 53, 57]], [34, [50, 53, 58]], [36, [48, 52, 55]], [45, [49, 52, 57]]    // Ré m · Si♭ · Dó · Lá
-  ];
-  // o tema das trompas (metade B, compassos 8 a 15): [tempo no compasso, nota MIDI, duração em tempos]
+  // 'menu': medieval e épica, na linha das trilhas de fantasia (sem copiar nenhuma melodia). O que elas têm em comum e que
+  // está aqui: modo menor antigo (Ré eólio) com quintas abertas; pedal grave de tônica que não para; a progressão épica
+  // i – ♭VI – ♭III – ♭VII (Rém – Si♭ – Fá – Dó) e a dominante maior (Lá) puxando a volta; o ♭II/♭VI dramático na ponte
+  // (Mi♭); coro masculino grave em notas longas e sílabas em bloco, com muita reverberação; tema heroico de saltos de
+  // quarta e quinta para cima, notas longas no agudo e descida por graus; ostinato agitado de cordas e tambores de guerra;
+  // construção em camadas, com pratos crescendo antes de cada parte.
+  // 92 batidas por minuto, 40 compassos de 4 tempos (~104 s):
+  // abertura 4 · marcha 8 · tema 8 · motivo 4 · ponte 4 · clímax 8 · final 4.
+  // O MOTIVO é a assinatura do Netzach: Ré sobe uma quinta até o Lá, segura, desce por graus (Sol, Fá, Mi) e repousa no
+  // Ré. No meio da música ele aparece sozinho (a trompa sobre o pedal e o coro, sem tambores), depois com o coro junto, e
+  // volta no final, devagar, no coro. Para usar em outro lugar do jogo: NZ.som.motivo()
+  var BAT = 60 / 92;
+  var AC = { // o baixo (MIDI) e as notas do coro (vozes graves)
+    Dm: [38, [50, 57, 62, 65]], Bb: [34, [50, 58, 62, 65]], F: [41, [48, 53, 57, 60]], C: [36, [48, 55, 60, 64]],
+    Gm: [43, [50, 55, 58, 62]], A: [45, [49, 52, 57, 61]], Eb: [39, [51, 55, 58, 63]], D5: [38, [50, 57, 62]]
+  };
+  var P1 = ['Dm', 'Bb', 'F', 'C', 'Dm', 'Gm', 'Bb', 'A'];
+  var FORMA = [].concat(['D5', 'D5', 'D5', 'D5'], P1, P1, ['Dm', 'C', 'Dm', 'A'], ['Gm', 'Eb', 'Bb', 'A'], P1, ['Dm', 'C', 'D5', 'D5']);
+  var INI = { marcha: 4, tema: 12, motivo: 20, ponte: 24, climax: 28, final: 36 }; // onde começa cada parte
+  function parte(i) { return i < 4 ? 'abertura' : i < 12 ? 'marcha' : i < 20 ? 'tema' : i < 24 ? 'motivo' : i < 28 ? 'ponte' : i < 36 ? 'climax' : 'final'; }
+  // o motivo, dois compassos: [tempo, nota MIDI, duração em tempos]
+  var MOTIVO = [[[0, 62, 1], [1, 69, 2], [3, 67, 0.5], [3.5, 65, 0.5]], [[0, 64, 1.5], [1.5, 62, 2.5]]];
+  // o tema das trompas: [tempo, nota MIDI, duração em tempos], um compasso por linha (sobre P1)
   var TEMA = [
-    [[0, 62, 2], [2, 65, 1], [3, 69, 1]], [[0, 70, 3], [3, 69, 1]], [[0, 69, 2], [2, 67, 1], [3, 65, 1]], [[0, 64, 3], [3, 60, 1]],
-    [[0, 62, 2], [2, 65, 1], [3, 69, 1]], [[0, 74, 2], [2, 72, 1], [3, 70, 1]], [[0, 72, 2], [2, 70, 1], [3, 67, 1]], [[0, 69, 4]]
+    [[0, 69, 2], [2, 74, 2]], [[0, 77, 3], [3, 76, 1]], [[0, 72, 2], [2, 69, 1], [3, 72, 1]], [[0, 67, 4]],
+    [[0, 69, 2], [2, 74, 1], [3, 76, 1]], [[0, 77, 3], [3, 74, 1]], [[0, 74, 2], [2, 77, 2]], [[0, 76, 2], [2, 73, 2]]
   ];
+  var TEMA_FIM = [[[0, 77, 2], [2, 79, 2]], [[0, 81, 4]]]; // no clímax, os dois últimos compassos sobem até o Lá agudo
   var ruidoBuf = null;
   function ruidoCurto() {
     if (ruidoBuf) { return ruidoBuf; }
-    var n = Math.floor(ctx.sampleRate * 0.5); ruidoBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    var n = Math.floor(ctx.sampleRate * 2); ruidoBuf = ctx.createBuffer(1, n, ctx.sampleRate);
     var d = ruidoBuf.getChannelData(0); for (var i = 0; i < n; i++) { d[i] = Math.random() * 2 - 1; }
     return ruidoBuf;
   }
-  function tambor(bus, t, vol, grave) { // tambor de guerra: o couro (seno que cai de tom) e a pancada (ruído abafado)
-    var o = ctx.createOscillator(), g = ctx.createGain(), f0 = grave ? 62 : 96;
-    o.type = 'sine'; o.frequency.setValueAtTime(f0 * 1.6, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.09); o.frequency.exponentialRampToValueAtTime(f0 * 0.8, t + 0.6);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + (grave ? 0.75 : 0.4));
-    o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.8);
-    var s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain();
-    s.buffer = ruidoCurto(); lp.type = 'lowpass'; lp.frequency.value = grave ? 420 : 900;
-    ng.gain.setValueAtTime(vol * 0.7, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    s.connect(lp); lp.connect(ng); ng.connect(bus); s.start(t, Math.random() * 0.3, 0.15);
+  // taiko (o tambor de guerra das trilhas épicas, não bateria de pop): o couro grande vibra grave e longo, e a pancada é
+  // abafada (sem o estalo de bumbo). grande = o taiko de chão (~46 Hz, ressoa 1,8 s); senão, o médio (~70 Hz) do "do-ko"
+  function tambor(bus, t, vol, grande) {
+    var f0 = grande ? 46 : 70, dura = grande ? 1.8 : 0.95;
+    [[1, 1], [1.52, 0.35]].forEach(function (h) { // a fundamental e o modo de cima da pele, que dá o corpo de tambor
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(f0 * h[0] * 1.22, t); o.frequency.exponentialRampToValueAtTime(f0 * h[0], t + 0.06); o.frequency.exponentialRampToValueAtTime(f0 * h[0] * 0.9, t + dura);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * h[1], t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dura * (h[0] > 1 ? 0.5 : 1));
+      o.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dura + 0.05);
+    });
+    var s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain(); // a pancada da baqueta, bem abafada
+    s.buffer = ruidoCurto(); lp.type = 'lowpass'; lp.frequency.value = grande ? 220 : 380;
+    ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(vol * 0.45, t + 0.008); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    s.connect(lp); lp.connect(ng); ng.connect(bus); ng.connect(reverb); s.start(t, Math.random(), 0.2);
   }
-  function aro(bus, t, vol) { // a caixa de pele, seca, nos tempos 2 e 4
-    var s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
-    s.buffer = ruidoCurto(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.9;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-    s.connect(bp); bp.connect(g); g.connect(bus); s.start(t, Math.random() * 0.3, 0.16);
+  function timpano(bus, t, vol) { // tímpano afinado em Ré
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(hz(38) * 1.02, t); o.frequency.exponentialRampToValueAtTime(hz(38), t + 0.15);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + 1);
   }
-  function corda(bus, m, t, dur, vol) { // cordas graves em colcheias: serra abafada, ataque curto
+  function rufar(bus, t, dur, de, ate) { // rufar de tímpano crescendo, em fusas
+    var n = Math.floor(dur / (BAT / 4));
+    for (var k = 0; k < n; k++) { timpano(bus, t + k * BAT / 4, de + (ate - de) * k / n); }
+  }
+  function prato(bus, t, vol, sobe) { // prato: batido (cai) ou crescendo (sobe até t + sobe)
+    var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(), d = sobe || 2.6;
+    s.buffer = ruidoCurto(); hp.type = 'highpass'; hp.frequency.value = 3200;
+    if (sobe) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + d); g.gain.linearRampToValueAtTime(0.0001, t + d + 0.05); }
+    else { g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); }
+    s.connect(hp); hp.connect(g); g.connect(bus); g.connect(reverb); s.start(t, Math.random() * 0.5, d + 0.1);
+  }
+  function corda(bus, m, t, dur, vol) { // cordas graves em spiccato: serra abafada, ataque curto
     var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     o.type = 'sawtooth'; o.frequency.value = hz(m);
-    f.type = 'lowpass'; f.frequency.setValueAtTime(1300, t); f.frequency.exponentialRampToValueAtTime(500, t + dur); f.Q.value = 1;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(vol * 0.35, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    f.type = 'lowpass'; f.frequency.setValueAtTime(1500, t); f.frequency.exponentialRampToValueAtTime(450, t + dur); f.Q.value = 1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
   }
-  // coro de vozes graves cantando "ah": um pulso rico passado por três formantes da vogal, com vibrato e entrada lenta
-  var VOGAL = [[730, 6, 1], [1090, 8, 0.5], [2440, 10, 0.18]];
-  function voz(bus, m, t, dur, vol, lfo) {
-    (TOQUE ? [0] : [-9, 9]).forEach(function (cents) {
-      var o = ctx.createOscillator(), soma = ctx.createGain(), g = ctx.createGain();
+  // o fundo que ressoa: metais graves sustentados (serra bem abafada) e um seno uma oitava abaixo, sentido mais que ouvido
+  function metal(bus, m, t, dur, vol) {
+    var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), s = ctx.createOscillator(), sg = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.value = hz(m); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 0.6;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.5); g.gain.setValueAtTime(vol, t + dur - 0.1); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.5);
+    o.connect(f); f.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.6);
+    s.type = 'sine'; s.frequency.value = hz(m - 12);
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.linearRampToValueAtTime(vol * 2.2, t + 0.4); sg.gain.setValueAtTime(vol * 2.2, t + dur - 0.1); sg.gain.linearRampToValueAtTime(0.0001, t + dur + 0.4);
+    s.connect(sg); sg.connect(bus); s.start(t); s.stop(t + dur + 0.5);
+  }
+  // coro de vozes graves: um pulso rico pelos três formantes da vogal, com vibrato, entrada lenta e cauda longa na catedral
+  var VOGAIS = { a: [[730, 6, 1], [1090, 8, 0.5], [2440, 10, 0.18]], o: [[500, 6, 1], [850, 8, 0.45], [2500, 10, 0.12]] };
+  function voz(bus, m, t, dur, vol, lfo, vogal, ataque) {
+    (TOQUE ? [0] : [-10, 10]).forEach(function (cents) {
+      var o = ctx.createOscillator(), soma = ctx.createGain(), g = ctx.createGain(), a = Math.min(dur * 0.6, ataque || 0.35);
       o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = cents; lfo.connect(o.detune);
-      VOGAL.forEach(function (F) {
+      VOGAIS[vogal || 'a'].forEach(function (F) {
         var bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = F[0]; bp.Q.value = F[1]; fg.gain.value = F[2];
         o.connect(bp); bp.connect(fg); fg.connect(soma);
       });
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.45); g.gain.setValueAtTime(vol, t + dur - 0.15); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.6);
-      soma.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.7);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + a); g.gain.setValueAtTime(vol, t + dur - 0.12); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.9);
+      soma.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 1);
     });
   }
-  function trompa(bus, m, t, dur, vol) { // metal: serra com o filtro abrindo devagar, oitava abaixo por baixo
-    [[0, 1], [-12, 0.45]].forEach(function (o8) {
+  function trompa(bus, m, t, dur, vol, oitava) { // metal: serra com o filtro abrindo; a oitava de baixo por baixo, e a de cima se pedir
+    [[0, 1], [-12, 0.5]].concat(oitava ? [[12, 0.35]] : []).forEach(function (o8) {
       var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
       o.type = 'sawtooth'; o.frequency.value = hz(m + o8[0]);
-      f.type = 'lowpass'; f.Q.value = 0.8; f.frequency.setValueAtTime(400, t); f.frequency.linearRampToValueAtTime(1900, t + 0.18); f.frequency.linearRampToValueAtTime(1300, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * o8[1], t + 0.09); g.gain.setValueAtTime(vol * o8[1] * 0.85, t + dur - 0.08); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.25);
-      o.connect(f); f.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.3);
+      f.type = 'lowpass'; f.Q.value = 0.8; f.frequency.setValueAtTime(450, t); f.frequency.linearRampToValueAtTime(2300, t + 0.2); f.frequency.linearRampToValueAtTime(1500, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * o8[1], t + 0.1); g.gain.setValueAtTime(vol * o8[1] * 0.9, t + dur - 0.08); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.35);
+      o.connect(f); f.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 0.4);
     });
   }
+  // o conjunto de taikos da marcha, em semicolcheias: [posição de 0 a 15, força, grande]. Sem caixa nos tempos 2 e 4 (que
+  // é coisa de pop): as pancadas grandes caem em lugares irregulares e o médio faz o "do-ko" entre elas
+  var OSTINATO = [[0, 1, true], [6, 0.55, false], [7, 0.6, false], [8, 0.85, true], [11, 0.5, false], [12, 0.75, true], [14, 0.5, false], [15, 0.6, false]];
   function compassoMenu(M, i, t) {
-    var c = EPICO[i], B = i >= 8, fimMetade = i % 8 === 7, k;
-    // tambores de guerra: DUM . . DUM | DUM . DUM . (em colcheias); na metade B, mais forte
-    [[0, 1, true], [1.5, 0.7, true], [2, 0.85, true], [3, 0.6, false]].forEach(function (d) { tambor(M.bus, t + d[0] * BAT, (B ? 0.5 : 0.4) * d[1], d[2]); });
-    aro(M.bus, t + BAT, B ? 0.12 : 0.08); aro(M.bus, t + 3 * BAT, B ? 0.12 : 0.08);
-    if (fimMetade) { for (k = 0; k < 8; k++) { tambor(M.bus, t + 2 * BAT + k * BAT / 4, 0.12 + k * 0.05, k % 2 === 0); } } // o rufar
-    // cordas graves: oito colcheias, a fundamental e a oitava
-    for (k = 0; k < 8; k++) { corda(M.bus, c[0] + (k % 2 ? 12 : 0) + (k === 6 ? 7 : 0), t + k * BAT / 2, BAT / 2 * 0.9, B ? 0.075 : 0.06); }
-    // coro: a metade A começa só com a fundamental e a quinta e vai encorpando; a B canta o acorde inteiro
-    var notas = !B && i < 2 ? [c[1][0], c[1][2]] : c[1], vc = B ? 0.05 : 0.03 + i * 0.003;
-    notas.forEach(function (m) { voz(M.bus, m, t, 4 * BAT, vc, M.lfo); });
-    if (B) { TEMA[i - 8].forEach(function (n) { trompa(M.bus, n[1], t + n[0] * BAT, n[2] * BAT * 0.95, 0.07); }); }
+    var P = parte(i), c = AC[FORMA[i]], bar = 4 * BAT, s16 = BAT / 4, k, n;
+    var cheio = P === 'marcha' || P === 'tema' || P === 'climax', forte = P === 'climax' ? 1.25 : P === 'tema' ? 1.1 : 1;
+    // fundo: o pedal de Ré na abertura, no motivo e no final; nas outras partes, o baixo do acorde
+    metal(M.bus, P === 'abertura' || P === 'final' || P === 'motivo' ? 38 : c[0], t, bar, P === 'climax' ? 0.075 : 0.06);
+    if (cheio) { metal(M.bus, c[0] + 7, t, bar, 0.035); } // a quinta por cima: o acorde aberto dos metais
+    // tambores
+    if (cheio) {
+      OSTINATO.forEach(function (d) { tambor(M.bus, t + d[0] * s16, 0.5 * d[1] * forte, d[2]); });
+      if (P === 'climax') { timpano(M.bus, t, 0.3); timpano(M.bus, t + 2 * BAT, 0.22); } // os tímpanos em Ré nos tempos fortes
+    } else if (P === 'ponte') {
+      tambor(M.bus, t, 0.5, true); tambor(M.bus, t + 2 * BAT, 0.4, true);
+      if (i === INI.climax - 1) { rufar(M.bus, t + 0.5 * BAT, 3.5 * BAT, 0.05, 0.4); prato(M.bus, t, 0.12, bar); }
+    } else if (P === 'motivo') { // sem tambores: só um tímpano macio no primeiro tempo
+      timpano(M.bus, t, 0.12);
+    } else { // abertura e final: golpes grandes e o rufar crescendo
+      tambor(M.bus, t, 0.6, true);
+      if (i === 2 || i === INI.final + 2) { rufar(M.bus, t, bar * 2, 0.04, 0.35); }
+      if (i === 3) { prato(M.bus, t, 0.12, bar); }
+    }
+    if (i === INI.marcha || i === INI.tema || i === INI.ponte || i === INI.climax || i === INI.final) { prato(M.bus, t, 0.16); } // o prato que abre cada parte
+    if (i === INI.tema - 1) { prato(M.bus, t, 0.1, bar); }
+    // cordas: semicolcheias (colcheias no celular), a fundamental com a oitava e a quinta
+    if (cheio || P === 'ponte') {
+      var passo = TOQUE || P === 'ponte' ? 2 : 1, figura = [0, 0, 7, 12];
+      for (k = 0; k < 16; k += passo) { corda(M.bus, c[0] + 12 + figura[k % 4], t + k * s16, s16 * passo * 0.85, P === 'climax' ? 0.065 : 0.05); }
+    }
+    // coro: notas longas na abertura e no final (quintas abertas, em "oh"); sílabas em bloco na marcha e na ponte; acordes
+    // sustentados sob o tema; no clímax, também o tema em uníssono
+    if (P === 'abertura' && i === 0) { [38, 45, 50, 57].forEach(function (m) { voz(M.bus, m, t, 4 * bar, 0.045, M.lfo, 'o', 2 * bar); }); }
+    if (P === 'final' && i === INI.final) { c[1].forEach(function (m) { voz(M.bus, m, t, 4 * bar, 0.055, M.lfo, 'o', bar * 0.5); }); }
+    if (P === 'motivo') { c[1].forEach(function (m) { voz(M.bus, m, t, bar, i < INI.motivo + 2 ? 0.03 : 0.04, M.lfo, 'o', 0.8); }); }
+    if (P === 'marcha' || P === 'ponte') {
+      [[0, 2, 'a'], [2, 1, 'o'], [3, 1, 'a']].forEach(function (sl) {
+        c[1].forEach(function (m) { voz(M.bus, m, t + sl[0] * BAT, sl[1] * BAT * 0.92, P === 'ponte' ? 0.05 : 0.04, M.lfo, sl[2], 0.06); });
+      });
+    }
+    if (P === 'tema' || P === 'climax') { c[1].forEach(function (m) { voz(M.bus, m, t, bar, P === 'climax' ? 0.05 : 0.035, M.lfo, 'a', 0.5); }); }
+    // o motivo: sozinho na trompa; na repetição, o coro canta junto uma oitava abaixo; no final, o coro devagar
+    if (P === 'motivo') {
+      n = i - INI.motivo;
+      MOTIVO[n % 2].forEach(function (x) {
+        trompa(M.bus, x[1], t + x[0] * BAT, x[2] * BAT * 0.96, n < 2 ? 0.06 : 0.075, false);
+        if (n >= 2) { voz(M.bus, x[1] - 12, t + x[0] * BAT, x[2] * BAT * 0.96, 0.055, M.lfo, 'o', 0.1); }
+      });
+    }
+    if (P === 'final' && i < INI.final + 2) {
+      MOTIVO[i - INI.final].forEach(function (x) { voz(M.bus, x[1] - 12, t + x[0] * BAT, x[2] * BAT * 1.1, 0.05, M.lfo, 'o', 0.3); });
+    }
+    // o tema
+    if (P === 'tema' || P === 'climax') {
+      n = i - (P === 'tema' ? INI.tema : INI.climax);
+      var frase = P === 'climax' && n >= 6 ? TEMA_FIM[n - 6] : TEMA[n];
+      frase.forEach(function (x) {
+        trompa(M.bus, x[1], t + x[0] * BAT, x[2] * BAT * 0.96, P === 'climax' ? 0.08 : 0.07, P === 'climax');
+        if (P === 'climax') { voz(M.bus, x[1] - 12, t + x[0] * BAT, x[2] * BAT * 0.96, 0.05, M.lfo, 'a', 0.08); }
+      });
+    }
   }
 
+  // o motivo do Netzach sozinho (um momento marcante do jogo): a trompa sobre um acorde do coro e o pedal grave, ~5 s.
+  // Toca no volume da música, por cima do que estiver tocando
+  function motivo() {
+    if (!pronto()) { return; }
+    var t = ctx.currentTime + 0.1, bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), bar = 4 * BAT;
+    bus.gain.value = 1.2 * USER.musica; bus.connect(mestre);
+    lfo.frequency.value = 0.23; lg.gain.value = 7; lfo.connect(lg); lfo.start(t); lfo.stop(t + 2 * bar + 2);
+    metal(bus, 38, t, 2 * bar, 0.05);
+    [[50, 57, 62], [48, 55, 64]].forEach(function (ac, k) { ac.forEach(function (m) { voz(bus, m, t + k * bar, bar, 0.035, lg, 'o', 0.6); }); });
+    timpano(bus, t, 0.15);
+    MOTIVO.forEach(function (c, k) { c.forEach(function (x) { trompa(bus, x[1], t + k * bar + x[0] * BAT, x[2] * BAT * 0.96, 0.07, false); }); });
+    setTimeout(function () { try { bus.disconnect(); } catch (e) { /* já foi */ } }, (2 * bar + 3) * 1000);
+  }
   var TRILHAS = {
-    menu: { comp: 4 * BAT, n: EPICO.length, compasso: compassoMenu, vol: 1, abafa: 5200, oscila: 0.9 },
+    menu: { comp: 4 * BAT, n: FORMA.length, compasso: compassoMenu, vol: 1.3, abafa: 9000, oscila: 7 },
     campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9 }
   };
   var querMusica = null, musica = null; // musica: { nome, bus, lfo, osc, ate, i, timer }
@@ -327,7 +428,7 @@
       if (querMusica) { tocaMusica(); } else if (ctx) { paraMusica(seg || 2.5); }
     },
     trilha: function () { return musica ? musica.nome : null; }, // para testes
-    criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo,
+    criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo, motivo: motivo,
     volume: function (k, v) {
       if (!(k in USER)) { return 0; }
       if (v === undefined) { return USER[k]; }
