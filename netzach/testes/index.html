@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Netzach · testes</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 16px; background: #f6f1e4; color: #2a1c10; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  #resumo { font-weight: bold; margin: 8px 0 14px; }
+  #resumo.ok { color: #1d6b2a; } #resumo.falha { color: #a3261b; }
+  h2 { font-size: 16px; margin: 16px 0 4px; }
+  ul { margin: 0; padding-left: 20px; }
+  li.ok::marker { content: '✓  '; color: #1d6b2a; }
+  li.falha { color: #a3261b; } li.falha::marker { content: '✗  '; }
+  li small { display: block; color: #6b5640; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<!-- Netzach · testes automáticos (testes/testes.js): conferem os dados (game.json, vila.json, atlas, campanha) e a simulação
+     (js/sim.js) sem abrir o jogo. Abra pelo servidor de teste: http://localhost:8080/netzach/testes/ -->
+<h1>Netzach · testes</h1>
+<p id="resumo">Rodando…</p>
+<div id="saida"></div>
+<script src="../js/sim.js"></script>
+<script src="../js/view.js"></script>
+<script src="testes.js"></script>
+</body>
+</html>

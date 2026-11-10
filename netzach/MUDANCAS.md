@@ -5,5 +5,9 @@ Na publicação (só quando o usuário pede), a notícia do site (`noticias.js`,
 a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, ferramentas) vão no fim, em "Por dentro".
 
 ## Para o jogador
+- Os saves não recomeçam mais do zero quando sai uma versão nova: o progresso passa de uma versão para a outra.
 
 ## Por dentro
+- Testes automáticos dos dados e da simulação (`testes/`).
+- Registro dos erros que acontecem no jogo dos jogadores (`js/erros.js`; falta criar a tabela no Supabase).
+- Ramo `dev`, script de versão e de publicação.

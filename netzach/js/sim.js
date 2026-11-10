@@ -359,7 +359,7 @@
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
     var st = {
-      v: 1, mapa: 4, seed: seed | 0, t: 0,
+      v: 1, fmt: NZ.FORMATO_SAVE, mapa: 4, seed: seed | 0, t: 0,
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), stance: 'ofensiva',
@@ -1463,8 +1463,23 @@
     });
     return pick;
   };
+  // ---------- formato do save ----------
+  // FORMATO_SAVE é o número do formato atual (fica em st.fmt). Mudou o jeito de guardar algo (renomeou um campo, trocou
+  // uma lista por um mapa...)? Aumente FORMATO_SAVE e escreva a conversão em MIGRACOES: MIGRACOES[n] leva um save do
+  // formato n para o n + 1, e os saves velhos passam por todas, em ordem, ao abrir. Assim ninguém perde o progresso.
+  // Campo novo com valor padrão não precisa de formato novo: basta o padrão em NZ.migrate (abaixo) ou em NZ.settle.
+  // (O recomeço do zero por SAVE_VER, em js/ui.js, só vale com game.json → settings.resetSaveOnNewVersion, para emergência.)
+  var FORMATO_SAVE = 1;
+  var MIGRACOES = {
+    // exemplo: 1: function (st) { st.player.bolsa = st.player.inv; delete st.player.inv; }
+  };
+  NZ.FORMATO_SAVE = FORMATO_SAVE;
   // saves antigos ganham os campos novos
   NZ.migrate = function (st) {
+    var f = st.fmt || 1;
+    if (f > FORMATO_SAVE) { throw new Error('Save de uma versão mais nova do jogo (formato ' + f + ').'); }
+    for (; f < FORMATO_SAVE; f++) { MIGRACOES[f](st); }
+    st.fmt = FORMATO_SAVE;
     st.quests = st.quests || {}; st.qkills = st.qkills || {}; st.flags = st.flags || {};
     st.daily = st.daily || { day: '', q: {} };
     st.farm = st.farm || {};

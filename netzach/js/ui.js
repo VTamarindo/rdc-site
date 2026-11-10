@@ -395,6 +395,8 @@
   function play(n, name, modo) {
     var saved = name ? null : load(n);
     if (!name && !saved) { showTitle(); return; }
+    // save gravado por uma versão mais nova do jogo (o outro aparelho, pela nuvem): abrir aqui estragaria o progresso
+    if (saved && (saved.state.fmt || 1) > NZ.FORMATO_SAVE) { toast('Este save é de uma versão mais nova do jogo: recarregue a página para atualizar.', 5); return; }
     var env = ler(n);
     slot = n; slotDono = dono(); slotCloud = env && env.cloud !== undefined ? env.cloud : null; ultimo = null; nuvemT = 0;
     away = null; acc = 0; prev = null; dailyNext = 0; keys = {}; pad = {}; lineTxt = null;

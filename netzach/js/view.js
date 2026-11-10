@@ -1907,5 +1907,6 @@
     });
   };
 
+  View.SUBSTITUTA = SUBSTITUTA; // os testes (testes/) conferem se toda figura tem desenho ou substituta
   NZ.View = View;
 })(window.NZ = window.NZ || {});

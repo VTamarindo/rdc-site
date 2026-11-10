@@ -142,4 +142,20 @@ Assim você trabalha "um em cada" e o jogo continua leve.
 - Arte: **à mão, no Aseprite.** O `gerar_arte.py` fica só para as figuras ainda não redesenhadas.
 - Direções: **4** (frente, costas e lado; o outro lado é espelhado).
 - Publicação: **ramo `dev`** para o dia a dia; o `dev` entra na `main` (e no site) **só quando o usuário pedir**, não todo dia.
-- Tamanho do mapa inteiro: **em aberto.** O bloco (Fase 2) é técnico e não precisa ser escolhido.
+- Tamanho do mapa inteiro: **2 × 2 km** (uns 10 minutos andando de ponta a ponta). O bloco (Fase 2) é técnico.
+- O plano inteiro foi aprovado, para seguir na ordem sugerida.
+
+## Andamento
+
+- **10/11 · Fase 0 feita:** ramo `dev`, `MUDANCAS.md`, `tools/versao.ps1` e `tools/publicar.ps1` (testado com `-Testar`).
+- **10/11 · Proteções feitas:**
+  - testes automáticos em `testes/` (27 testes de dados e simulação; todos passam);
+  - registro de erros dos jogadores (`js/erros.js`, testado: o pedido sai certo). **Falta criar a tabela** `erros` no
+    Supabase (`supabase/erros.sql`): o modo automático não deixou mexer no banco do site sem autorização. Até lá o jogo
+    não quebra, os erros só não são guardados;
+  - save com migração (`FORMATO_SAVE` e `MIGRACOES` em `js/sim.js`); o recomeço do zero a cada versão foi desligado
+    (`resetSaveOnNewVersion: false`); save de versão mais nova é recusado em vez de estragado.
+- **Ainda das boas práticas, para depois:** verificador de código (ESLint precisa do Node, que este computador não tem),
+  dividir os arquivos grandes (melhor junto com as Fases 1 e 2, que mexem neles), contador de desempenho.
+- **Próximo:** Fase 1 (arte no Aseprite). O Aseprite 1.3.18 está em `D:\SteamLibrary\steamapps\common\Aseprite` e roda pela
+  linha de comando (`Aseprite.exe -b`), então o montador do atlas pode exportar os arquivos `.aseprite` sozinho.

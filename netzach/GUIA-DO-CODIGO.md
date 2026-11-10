@@ -4,13 +4,17 @@ Onde está cada coisa, para mexer sem precisar de ajuda. O jogo é JavaScript pu
 recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
-1. **Toda publicação troca a versão**, senão quem já jogou fica com arquivos velhos (o Cloudflare guarda js e css por 4 h):
-   - `js/ui.js`, linha 6: `var VERSION = '20261109-9'` → por exemplo `'20261109-10'`;
-   - `index.html`: todos os `?v=` (são 9) → o mesmo número novo. Use "Substituir tudo" no editor;
-   - se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js` (procure por `?a=`).
-2. **Não mexa em `SAVE_VER`** (mesma linha da `VERSION`): mudar apaga os saves de todo mundo.
-3. Os arquivos do site são públicos: nunca coloque senha ou chave secreta no código. A única exceção é a chave **publishable** (ou "anon") do Supabase em `js/conta.js`, que é feita para ficar à vista; a `secret`/`service_role` nunca.
-4. Publicar: commit e **Push origin** no GitHub Desktop; espere uns 2 minutos e confira a versão no Menu do jogo.
+1. **O dia a dia vai no ramo `dev`**; a `main` é o que está no site. Commit e push no `dev` não mudam o site.
+2. **Publicar** (só quando o dono do jogo pedir): rode os testes (abaixo), monte a notícia em `noticias.js` (na raiz) a partir
+   de `MUDANCAS.md`, zere o `MUDANCAS.md`, commite no `dev` e rode
+   `powershell -ExecutionPolicy Bypass -File netzach\tools\publicar.ps1` na pasta do site (com `-Testar` ele só mostra o que iria).
+   Ele troca a versão, junta o `dev` na `main` e envia. Espere uns 2 minutos e confira a versão no Menu do jogo.
+3. **Toda publicação troca a versão** (o `publicar.ps1` já faz, com `tools/versao.ps1`), senão quem já jogou fica com arquivos
+   velhos (o Cloudflare guarda js e css por 4 h). Se mexeu na arte (`art/`), troque também o `?a=` em `js/view.js`.
+4. **Save:** mudou o jeito de guardar algo no save? Aumente `FORMATO_SAVE` em `js/sim.js` e escreva a conversão em
+   `MIGRACOES` (está explicado lá); ninguém perde o progresso. **Não mexa em `SAVE_VER`** (`js/ui.js`): com
+   `settings.resetSaveOnNewVersion` ligado, mudar apaga os saves de todo mundo (fica só para emergência; hoje está desligado).
+5. Os arquivos do site são públicos: nunca coloque senha ou chave secreta no código. A única exceção é a chave **publishable** (ou "anon") do Supabase em `js/conta.js` e `js/erros.js`, que é feita para ficar à vista; a `secret`/`service_role` nunca.
 
 ## Testar no seu computador
 Abra o PowerShell na pasta do site e rode:
@@ -21,6 +25,13 @@ Depois abra `http://localhost:8080/netzach/`. Para parar, feche a janela do Powe
 No console do navegador (F12), `NZ.debug.state()` mostra o estado do jogo (ex.: `NZ.debug.state().player.inv.moeda = 500`
 para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes escondido: clique 5 vezes seguidas na palavra
 "Netzach" no topo do Menu. O mesmo atalho no "Netzach" do menu inicial mostra o botão "Modo livre" em Novo jogo (o menu inicial só oferece a campanha).
+
+**Testes automáticos:** com o servidor ligado, abra `http://localhost:8080/netzach/testes/`. Em segundos eles conferem os dados
+(todo item, missão, conversa, figura e cena citados existem) e a simulação (jogo novo, save que abre igual, save antigo que
+converte, 20 minutos jogando sozinho, compra, venda, missão, nível, poção). Verde = pode publicar. Teste novo: `testes/testes.js`.
+
+**Erros dos jogadores:** `js/erros.js` manda cada erro de código que acontece no jogo de alguém para a tabela `erros` do
+Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. A tabela é criada por `supabase/erros.sql`.
 
 ## Os arquivos
 | Arquivo | O que tem |
@@ -40,8 +51,12 @@ para testar lojas) e `NZ.debug.view()` a cena. O Menu tem um modo de testes esco
 | `js/ceu.js` | Céu: cores de cada hora, sol, lua, estrelas, nuvens e montanhas. |
 | `sw.js`, `manifest.webmanifest`, `icons/` | App instalável no celular e abertura sem internet. |
 | `art/` | Imagens prontas: `sprites.png` (figuras), `walls.png` (texturas), `atlas.json` (onde cada figura está). |
-| `tools/` | Ferramentas: `gerar_arte.py` (desenha a arte), `verificar_trilhas.py` (confere os caminhos dos moradores), `gerar_icones.py` (ícones do app), `servidor.ps1` (servidor de teste). |
+| `tools/` | Ferramentas: `gerar_arte.py` (desenha a arte), `verificar_trilhas.py` (confere os caminhos dos moradores), `gerar_icones.py` (ícones do app), `servidor.ps1` (servidor de teste), `versao.ps1` (troca a versão em todos os lugares), `publicar.ps1` (junta o `dev` na `main`). |
+| `js/erros.js` | Registro de erros dos jogadores (ver "Testar no seu computador"). Carrega antes de todos. |
+| `testes/` | Testes automáticos dos dados e da simulação (abra pelo servidor de teste). |
 | `PENDENCIAS.md` | O que falta fazer. |
+| `PLANO.md` | O plano para frente: mundo grande, arte animada, eventos, regiões, raid e boas práticas. |
+| `MUDANCAS.md` | O que mudou desde a última publicação; vira a notícia do site. |
 | `LORE.md` | A história da vila: quem é quem, lugares, ganchos para missões e o que ainda está para decidir. |
 
 ## "Quero mudar…" → onde mexer

@@ -45,7 +45,7 @@
     "interactRange": 4.5,
     "saveKey": "zg-vila-proto-v1",
     "pixelScale": 0.5,
-    "resetSaveOnNewVersion": true
+    "resetSaveOnNewVersion": false
   },
   "player": {
     "hpBase": 30,
