@@ -6,5 +6,6 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 
 ## Para o jogador
 - "Retornar ao hub" agora fica na tela inicial do jogo (saiu do menu de pausa): para voltar ao site, primeiro se volta ao menu inicial.
+- O subtítulo do jogo agora é "em estágio inicial de desenvolvimento" (antes, "protótipo da vila").
 
 ## Por dentro
