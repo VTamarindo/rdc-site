@@ -301,7 +301,7 @@
         entra: function (c, voltou) {
           dica(null); missao(null); fazNaCarroca(false);
           if (!voltou) { descarrega(); }
-          poeCarroca(true); olha(ator('faz').o.pos[0], ator('faz').o.pos[2]);
+          poeCarroca(true); var fz = ator('faz').o.pos; if (voltou) { olha(fz[0], fz[2]); } else { vira(fz[0], fz[2], CF.puxaoSeg); } // vira para o fazendeiro como no puxão
           falas(c.falas, botoes(c));
         }
       },
@@ -334,7 +334,7 @@
           if (S().passo !== 'carroca') { return; }
           descarrega(); aplica(c.efeitos); S().passo = 'fim'; missao(null);
           feito(CF.feito, resumoEfeitos(c.efeitos)); api.save();
-          olha(ator('faz').o.pos[0], ator('faz').o.pos[2]);
+          vira(ator('faz').o.pos[0], ator('faz').o.pos[2], CF.puxaoSeg); // vira para o fazendeiro como no puxão
           falas(c.falas, fimCapitulo);
         }
       }
