@@ -114,7 +114,7 @@
   // i – ♭VI – ♭III – ♭VII (Rém – Si♭ – Fá – Dó) e a dominante maior (Lá) puxando a volta; o ♭II/♭VI dramático na ponte
   // (Mi♭); coro masculino grave em notas longas e sílabas em bloco, com muita reverberação; tema heroico de saltos de
   // quarta e quinta para cima, notas longas no agudo e descida por graus; ostinato agitado de cordas e tambores de guerra;
-  // construção em camadas, com pratos crescendo antes de cada parte.
+  // construção em camadas, com o rufar dos tímpanos crescendo antes das partes fortes.
   // 92 batidas por minuto, 40 compassos de 4 tempos (~104 s):
   // abertura 4 · marcha 8 · tema 8 · motivo 4 · ponte 4 · clímax 8 · final 4.
   // O MOTIVO é a assinatura do Netzach: Ré sobe uma quinta até o Lá, segura, desce por graus (Sol, Fá, Mi) e repousa no
@@ -169,13 +169,6 @@
     var n = Math.floor(dur / (BAT / 4));
     for (var k = 0; k < n; k++) { timpano(bus, t + k * BAT / 4, de + (ate - de) * k / n); }
   }
-  function prato(bus, t, vol, sobe) { // prato: batido (cai) ou crescendo (sobe até t + sobe)
-    var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(), d = sobe || 2.6;
-    s.buffer = ruidoCurto(); hp.type = 'highpass'; hp.frequency.value = 3200;
-    if (sobe) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + d); g.gain.linearRampToValueAtTime(0.0001, t + d + 0.05); }
-    else { g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); }
-    s.connect(hp); hp.connect(g); g.connect(bus); g.connect(reverb); s.start(t, Math.random() * 0.5, d + 0.1);
-  }
   function corda(bus, m, t, dur, vol) { // cordas graves em spiccato: serra abafada, ataque curto
     var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     o.type = 'sawtooth'; o.frequency.value = hz(m);
@@ -193,20 +186,36 @@
     sg.gain.setValueAtTime(0.0001, t); sg.gain.linearRampToValueAtTime(vol * 2.2, t + 0.4); sg.gain.setValueAtTime(vol * 2.2, t + dur - 0.1); sg.gain.linearRampToValueAtTime(0.0001, t + dur + 0.4);
     s.connect(sg); sg.connect(bus); s.start(t); s.stop(t + dur + 0.5);
   }
-  // coro de vozes graves: um pulso rico pelos três formantes da vogal, com vibrato, entrada lenta e cauda longa na catedral
-  var VOGAIS = { a: [[730, 6, 1], [1090, 8, 0.5], [2440, 10, 0.18]], o: [[500, 6, 1], [850, 8, 0.45], [2500, 10, 0.12]] };
+  // coro: um pulso rico (serra) por quatro formantes largos da vogal, mais um pouco do som cru pelos médios (a presença
+  // que corta a mistura), com vibrato de voz de verdade (CORO.vib, um pouco diferente em cada cantor) e a nota crescendo
+  // enquanto dura, como um lamento que aperta: o "meio desesperado". CORO.vol acerta o volume do coro inteiro
+  var CORO = { vol: 2.1, vib: 5.2, fundo: 17, presenca: 0.16, cresce: 1.25 };
+  var VOGAIS = {
+    a: [[730, 3, 1], [1090, 3.5, 0.85], [2440, 4.5, 0.45], [3300, 5, 0.22]],
+    o: [[500, 3, 1], [860, 3.5, 0.75], [2500, 4.5, 0.32], [3300, 5, 0.16]]
+  };
   function voz(bus, m, t, dur, vol, lfo, vogal, ataque) {
-    (TOQUE ? [0] : [-10, 10]).forEach(function (cents) {
+    vol *= CORO.vol;
+    (TOQUE ? [0] : [-11, 11]).forEach(function (cents) {
       var o = ctx.createOscillator(), soma = ctx.createGain(), g = ctx.createGain(), a = Math.min(dur * 0.6, ataque || 0.35);
+      var vib = ctx.createOscillator(), vg = ctx.createGain();
       o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = cents; lfo.connect(o.detune);
+      vib.frequency.value = CORO.vib * (0.93 + Math.random() * 0.14); vg.gain.value = CORO.fundo; vib.connect(vg); vg.connect(o.detune);
       VOGAIS[vogal || 'a'].forEach(function (F) {
         var bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = F[0]; bp.Q.value = F[1]; fg.gain.value = F[2];
         o.connect(bp); bp.connect(fg); fg.connect(soma);
       });
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + a); g.gain.setValueAtTime(vol, t + dur - 0.12); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.9);
-      soma.connect(g); g.connect(bus); g.connect(reverb); o.start(t); o.stop(t + dur + 1);
+      var pr = ctx.createBiquadFilter(), pg = ctx.createGain(); // a presença: o som cru, só dos médios (1 a 3 kHz)
+      pr.type = 'bandpass'; pr.frequency.value = 1700; pr.Q.value = 0.7; pg.gain.value = CORO.presenca;
+      o.connect(pr); pr.connect(pg); pg.connect(soma);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + a);
+      g.gain.linearRampToValueAtTime(vol * CORO.cresce, t + Math.max(a + 0.05, dur - 0.12)); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.9);
+      soma.connect(g); g.connect(bus); g.connect(reverb);
+      o.start(t); o.stop(t + dur + 1); vib.start(t); vib.stop(t + dur + 1);
     });
   }
+  // as vozes de um acorde: os baixos e barítonos (c[1]) e, nas partes fortes, tenores uma oitava acima nas duas notas de cima
+  function coro(c, alto) { return alto && !TOQUE ? c[1].concat(c[1].slice(-2).map(function (m) { return m + 12; })) : c[1]; }
   function trompa(bus, m, t, dur, vol, oitava) { // metal: serra com o filtro abrindo; a oitava de baixo por baixo, e a de cima se pedir
     [[0, 1], [-12, 0.5]].concat(oitava ? [[12, 0.35]] : []).forEach(function (o8) {
       var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
@@ -231,16 +240,13 @@
       if (P === 'climax') { timpano(M.bus, t, 0.3); timpano(M.bus, t + 2 * BAT, 0.22); } // os tímpanos em Ré nos tempos fortes
     } else if (P === 'ponte') {
       tambor(M.bus, t, 0.5, true); tambor(M.bus, t + 2 * BAT, 0.4, true);
-      if (i === INI.climax - 1) { rufar(M.bus, t + 0.5 * BAT, 3.5 * BAT, 0.05, 0.4); prato(M.bus, t, 0.12, bar); }
+      if (i === INI.climax - 1) { rufar(M.bus, t + 0.5 * BAT, 3.5 * BAT, 0.05, 0.4); }
     } else if (P === 'motivo') { // sem tambores: só um tímpano macio no primeiro tempo
       timpano(M.bus, t, 0.12);
     } else { // abertura e final: golpes grandes e o rufar crescendo
       tambor(M.bus, t, 0.6, true);
       if (i === 2 || i === INI.final + 2) { rufar(M.bus, t, bar * 2, 0.04, 0.35); }
-      if (i === 3) { prato(M.bus, t, 0.12, bar); }
     }
-    if (i === INI.marcha || i === INI.tema || i === INI.ponte || i === INI.climax || i === INI.final) { prato(M.bus, t, 0.16); } // o prato que abre cada parte
-    if (i === INI.tema - 1) { prato(M.bus, t, 0.1, bar); }
     // cordas: semicolcheias (colcheias no celular), a fundamental com a oitava e a quinta
     if (cheio || P === 'ponte') {
       var passo = TOQUE || P === 'ponte' ? 2 : 1, figura = [0, 0, 7, 12];
@@ -249,14 +255,14 @@
     // coro: notas longas na abertura e no final (quintas abertas, em "oh"); sílabas em bloco na marcha e na ponte; acordes
     // sustentados sob o tema; no clímax, também o tema em uníssono
     if (P === 'abertura' && i === 0) { [38, 45, 50, 57].forEach(function (m) { voz(M.bus, m, t, 4 * bar, 0.045, M.lfo, 'o', 2 * bar); }); }
-    if (P === 'final' && i === INI.final) { c[1].forEach(function (m) { voz(M.bus, m, t, 4 * bar, 0.055, M.lfo, 'o', bar * 0.5); }); }
-    if (P === 'motivo') { c[1].forEach(function (m) { voz(M.bus, m, t, bar, i < INI.motivo + 2 ? 0.03 : 0.04, M.lfo, 'o', 0.8); }); }
+    if (P === 'final' && i === INI.final) { coro(c, true).forEach(function (m) { voz(M.bus, m, t, 4 * bar, 0.05, M.lfo, 'o', bar * 0.5); }); }
+    if (P === 'motivo') { coro(c, i >= INI.motivo + 2).forEach(function (m) { voz(M.bus, m, t, bar, i < INI.motivo + 2 ? 0.03 : 0.04, M.lfo, 'o', 0.8); }); }
     if (P === 'marcha' || P === 'ponte') {
       [[0, 2, 'a'], [2, 1, 'o'], [3, 1, 'a']].forEach(function (sl) {
         c[1].forEach(function (m) { voz(M.bus, m, t + sl[0] * BAT, sl[1] * BAT * 0.92, P === 'ponte' ? 0.05 : 0.04, M.lfo, sl[2], 0.06); });
       });
     }
-    if (P === 'tema' || P === 'climax') { c[1].forEach(function (m) { voz(M.bus, m, t, bar, P === 'climax' ? 0.05 : 0.035, M.lfo, 'a', 0.5); }); }
+    if (P === 'tema' || P === 'climax') { coro(c, true).forEach(function (m) { voz(M.bus, m, t, bar, P === 'climax' ? 0.045 : 0.032, M.lfo, 'a', 0.5); }); }
     // o motivo: sozinho na trompa; na repetição, o coro canta junto uma oitava abaixo; no final, o coro devagar
     if (P === 'motivo') {
       n = i - INI.motivo;
