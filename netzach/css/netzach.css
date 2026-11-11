@@ -1,4 +1,4 @@
-/* Netzach · pergaminho medieval (texturas geradas: gradientes e ruído SVG embutido, sem arquivos externos) */
+/* Netzach · pergaminho medieval (texturas geradas: gradientes e o grão do papel, css/grao.png) */
 :root {
   --ink: #3b2414;
   --ink2: #5a3a20;
@@ -10,7 +10,10 @@
   --paper: #e9d6a6;
   --light: #f3e6c8;
   --serif: "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, serif;
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .33 0 0 0 0 .2 0 0 0 0 .07 .55 0 0 0 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* o grão do papel: antes era um filtro SVG de ruído (feTurbulence) que o navegador recalculava a cada repintura de cada
+     botão e janela, pesado demais sem placa de vídeo. Agora é o mesmo ruído gravado uma vez em PNG (360 px, para telas 2x),
+     por tools/gerar_grao.mjs; a imagem fica igual. */
+  --grain: url("grao.png") 0 0 / 180px 180px;
   --blotch: radial-gradient(ellipse 38% 28% at 18% 26%, rgba(150, 100, 40, .17), transparent 70%),
     radial-gradient(ellipse 30% 22% at 78% 18%, rgba(150, 100, 40, .13), transparent 70%),
     radial-gradient(ellipse 42% 30% at 64% 78%, rgba(150, 100, 40, .15), transparent 70%),
