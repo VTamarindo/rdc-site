@@ -35,20 +35,62 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
   escondido**, e o dragão destrói a vila.
 - **[decidido]** Os dois reis só são citados: eles pertencem a Echad e não aparecem neste jogo.
 - **[decidido]** **Netzach é um demiurgo.** Ele pega esse episódio e prende o protagonista num **loop do tempo**: os
-  eventos do jogo Netzach são esse loop. O **ciclo é eterno** e não tem saída.
+  eventos do jogo Netzach são esse loop. O **ciclo é eterno para quem não aceita**: a única saída é a aceitação
+  honrosa (ver "O fim honroso").
 - **[decidido]** Fim do ciclo: depois que a vila é destruída, o jogador enfrenta o Netzach e vence, mas morre (o plot
   twist) e volta ao momento inicial.
 - **[decidido]** Quando o dragão chega, o protagonista **não está na vila**: só descobre a destruição quando volta.
+  Exceção: no fim honroso ele fica com os seus até o fim (ver "O fim honroso").
 - **[decidido]** **Só o protagonista lembra** dos ciclos. **[ideia do autor, em aberto]** Um personagem que encarna o
   tempo e fala coisas misteriosas.
 - **[decidido]** Nada do que aconteceu era profecia nem destino: o drama se sustenta porque **tudo poderia ter sido
   evitado**. Os sinais (como a "estrela de cauda" do Wat) são só o que são.
+  **[decidido]** "Destino" é a palavra do Netzach, não a verdade do jogo: por isso aparece de propósito na logline.
 - **[decidido]** A cada ciclo, o mundo **muda um pouco**.
 - **[decidido]** Os chefes são **eventos fixos**: acontecem em todo ciclo (o troll, por exemplo, morre sempre).
 - **[decidido]** Falta inventar os eventos intermediários: o que gera angústia e tensão, os mistérios, as sociedades
   antigas com ruínas escondidas e as masmorras gigantes no subsolo. O esqueleto de cada ciclo ainda está com o autor.
 - **A fazer:** listar o que passa pela cabeça do jogador para salvar a vila (e por que não adianta). Exemplo já
   anotado: queimar o comboio não resolve, porque o dragão queima a vila do mesmo jeito.
+
+### A logline de trabalho
+- **[decidido]** "Preso em um ciclo infinito, [o protagonista] luta contra o triste destino das pessoas que ama enquanto
+  é atormentado por um demiurgo sádico, que o faz se perguntar se ele mesmo não é a causa do seu sofrimento."
+  "Destino" e a ambiguidade de "seu sofrimento" (o dele ou o das pessoas que ama) são intencionais. Versão de trabalho:
+  pode mudar.
+
+### O tema e a tese do Netzach
+- **[decidido]** A história é **metanarrativa**. A forma de jogo-serviço (farmar, repetir o ciclo, ficar mais forte)
+  é usada de propósito para falar da ganância de continuar jogando: o sofrimento é imposto por ele mesmo.
+- **[decidido]** A **tese do Netzach**: diante do desespero, o homem se desespera. Não há legado nem amadurecimento, só
+  enrijecimento do coração e insistência no erro. Continuar tentando escapar prova a tese.
+- **[decidido]** O Netzach é **sádico** e um vilão: quer provar o ponto maligno de que as pessoas não mudam e sempre vão
+  continuar tentando.
+- **[decidido]** A **verdade do jogo**: as coisas acontecem; o que muda é como você lida com elas. O único que precisa
+  mudar é o protagonista. A derrota honrosa é aceitar o fardo e carregá-lo com profundo respeito aos que se foram.
+- **[decidido]** **Anticinismo:** não é dark fantasy. Os personagens são amáveis e a vila é agradável; o risco está
+  sempre presente (medo, suspeita, dúvida) **desde o ciclo 1**, para o jogador querer lutar, farmar e evoluir.
+- **[decidido]** Há personagens cínicos, que sustentam a tese do Netzach, e personagens esperançosos, que ajudam o
+  protagonista a chegar à verdade. Quem é quem ainda está com o autor.
+- **[decidido]** A escolha é do jogador e **nunca vira diálogo expositivo**.
+- **[decidido]** Referência temática: o **Eclesiastes** ("tudo é vaidade") sustenta a verdade do protagonista, não a do
+  Netzach: a vaidade é o que o impede de aceitar o que aconteceu e o faz achar que consegue mudar.
+
+### O fim honroso
+- **[decidido]** Só se abre **a partir do ciclo 2**, quando o jogador já sabe o que vem. Se, mesmo sabendo do risco, ele
+  preferir uma **vida comum** (trabalhar no campo, aproveitar os últimos momentos com quem ama) em vez de caçar, farmar
+  e evoluir, cumpre uma lista de coisas do dia a dia e destrava uma conversa final com o Netzach.
+- **[decidido]** Na conversa, o protagonista diz que entendeu e aceitou: se essa é a vida e o sofrimento que vai ter,
+  vai vivê-los com honra e cuidar da sua família nos últimos momentos. O Netzach perde a graça: vê que o menino é mais
+  honrado do que ele, e desiste.
+- **[decidido]** **O dragão vem do mesmo jeito**, e as pessoas morrem: a aceitação não salva a vila, porque o que tinha
+  de ser aceito precisa acontecer.
+- **[decidido]** A última cena **ecoa a primeira**: começa no trigo, termina no trigo (a colheita de que ele vivia
+  fugindo), mas o tempo avançou. É a ironia que dá o plot twist do ciclo.
+- **[sugestão]** A lista da vida comum sai do calendário que a vila já tem: noite de São João, a colheita, os
+  casamentos depois dela, a missa, o pão da Agnes, trabalhar ao lado do Wulfric. São os moradores que convidam, para o
+  jogador achar o caminho sem ninguém explicar. A lista pode pedir também ausências (não sair para caçar no último dia).
+- Ver "Pontos para decidir": o que o jogador vê depois do fim.
 
 ### O protagonista
 - **[decidido]** Não é um forasteiro: é um **órfão da guerra**, da vila. As pessoas que conhece são tudo o que tem; por
@@ -57,6 +99,29 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
   "A guerra e a fome"). Ser forasteiro não pesa na história; ser da vila, sim.
 - **[decidido]** Não faz sentido ele atacar os moradores: a opção de atacar os NPCs da vila saiu do jogo (versão
   `20261109-10`).
+- **[decidido]** Vive **fugindo do trabalho**: nunca está por perto, e por isso não sabe das novidades da vila. Desde
+  que os pais morreram na guerra, virou meio aventureiro: caça coelhos, fez um arco rústico e treinou com graveto e
+  pedaço de pau. É isso que explica ele saber lutar e caçar.
+- **[decidido]** Tem uma **toca dentro de uma árvore**: o quarto dele, o lugar de salvar e o baú do equipamento.
+- **[decidido]** Já passou por muitos ciclos. A primeira fala dele no jogo, por enquanto: "Quando isso vai acabar?".
+  O jogador sabe menos que ele, e isso é o mistério.
+- **[decidido]** Não conta do loop a ninguém: já tentou, e ninguém acredita.
+- **[decidido]** **Toda ação dele na campanha é uma tentativa disfarçada** de salvar a vila ou de se livrar do Netzach;
+  o jogador só entende quando o ciclo recomeça. A tentativa mais óbvia, fugir da vila, ele já fez antes e não repete. A
+  jogabilidade de investigação (mistérios, lugares distantes, conhecimento) é o próprio argumento do roteiro.
+- **[decidido]** O **arco é positivo**: sai da mentira ("posso e devo evitar a perda") para a verdade (aceitar com honra
+  e honrar os que se foram com respeito e fidelidade).
+- **[sugestão]** As tentativas antigas aparecem no cenário, sem diálogo: riscos de contagem e anotações na toca ("a
+  estrada do sul não leva a lugar nenhum").
+
+### A abertura
+- **[decidido]** O jogo começa num **campo de trigo**: ele está deitado, o trigo balança, ele acorda com o som de
+  criança rindo e vê uma figura misteriosa. A missão é segui-la. Pouco depois, alguém o puxa pelo ombro: "Ei, você está
+  sempre fugindo do trabalho. Volte e colha o trigo." A figura some.
+- **[decidido]** Missão: colher **5 fardos** de trigo (cada fardo é uma unidade de terreno colhida), que depois se
+  estende para mais 15 (20 no total). Tudo leva de 2 a 3 minutos.
+- **[sugestão]** Quem o puxa pelo ombro: o Wulfric ("se quer conversar, ande comigo") ou o Mestre Ralf, que conta os
+  fardos no rolo e daria o motivo para a missão crescer ("contei de novo, falta").
 
 ### A guerra e a fome
 - **[decidido]** Os homens da vila foram mandados para a guerra dos dois reis e morreram. Sem gente para trabalhar o
@@ -76,6 +141,10 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
   chegou nele na campanha) e ruínas para investigar.
 - **[decidido]** Há uma **zona fixa** onde o jogador tem a sua casa e guarda o seu equipamento; ela não é afetada
   pela reciclagem do mundo a cada ciclo.
+- **[decidido]** A forma de jogo-serviço é proposital: é o que a história critica (ver "O tema e a tese do Netzach").
+- **[decidido]** O jogo cresce com o tempo por **expansões** (mecânicas, masmorras e raças novas), e o jogador pode jogar
+  o ciclo de novo em cada uma. Uma delas é a **Árvore da Vida**, em estilo roguelike: subir andares, farmar itens e
+  ganhar nível.
 
 ## Lugares
 
@@ -240,6 +309,12 @@ próximos updates sem contradizer o que já existe. As falas de verdade ficam em
   dois chegaram de fora já adultos). Ou o avô é o pai da mãe do Wat, nascida na vila.
 
 ## Pontos para decidir
+
+- **O que o jogador vê depois do fim honroso:** créditos, um epílogo, o mundo seguindo? O que acontece com o save?
+- **A toca na árvore e a zona fixa:** a toca fica na vila, que é destruída e reciclada a cada ciclo. Ela é a zona fixa,
+  ou a zona fixa é outro lugar?
+- **A figura misteriosa do trigo:** quem é? Pode ser o personagem que encarna o tempo (ideia do autor, em aberto).
+- **Quem são os cínicos e os esperançosos** do elenco.
 
 - **O "forasteiro" das falas:** 7 falas chamam o jogador de forasteiro (o Brand e o Sir Aymer desconfiam dele, a Maud
   quer novidades dele). Isso contradiz o protagonista ser um órfão da vila; as falas precisam mudar.
