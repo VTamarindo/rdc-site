@@ -331,6 +331,21 @@
         sim.advance(st, (G.saque.dura || 300) + 5);
         confere(!st.saque.length, 'o monte não sumiu');
       });
+      teste('soltar: o item sai da bolsa, vira um monte logo à frente do jogador e volta para a bolsa', function () {
+        var st = novo(), p = st.player; p.inv.madeira = 5;
+        sim.solta(st, 'madeira', 2);
+        confere(p.inv.madeira === 3, 'na bolsa: ' + p.inv.madeira);
+        confere(st.saque.length === 1 && st.saque[0].itens.madeira === 2, 'monte: ' + JSON.stringify(st.saque));
+        var d = Math.hypot(st.saque[0].x - p.x, st.saque[0].z - p.z);
+        confere(d > 0.5 && d <= G.settings.interactRange, 'o monte não ficou logo à frente: ' + d);
+        sim.solta(st, 'madeira'); // o resto, no mesmo lugar: junta no mesmo monte
+        confere(st.saque.length === 1 && st.saque[0].itens.madeira === 5 && !(p.inv.madeira > 0), 'não juntou: ' + JSON.stringify(st.saque));
+        sim.pegaSaque(st, st.saque[0].id, 'madeira', 4);
+        confere(p.inv.madeira === 4 && st.saque[0].itens.madeira === 1, 'pegar de volta: ' + p.inv.madeira);
+        confere(/não tem/.test(sim.solta(st, 'pele_lobo', 1)), 'soltou o que não tinha');
+        sim.advance(st, (G.saque.dura || 300) + 5);
+        confere(!st.saque.length, 'o monte solto não sumiu');
+      });
       teste('saque: a macro pega sozinha só o que estiver marcado', function () {
         var st = novo(), p = st.player; p.mode = 'macro'; p.macro.on = true; st.saqueDeixa = { carne: true };
         for (var i = 0; i < 6; i++) { var m = abate(st, 'lobo'); m.alive = true; m.hp = G.monsters.lobo.hp; }

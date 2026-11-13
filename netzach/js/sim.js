@@ -484,6 +484,30 @@
     this.emit(st, { type: 'saque' });
     return s;
   };
+  // o jogador solta n de um item da bolsa (n vazio = tudo): vira um monte no chão, um pouco à frente dele (aos pés não se
+  // veria, com a câmera em primeira pessoa; a 2,4 m entra no campo de visão e fica ao alcance para pegar, game.json → settings.interactRange), que se pega de volta como
+  // qualquer saque e some depois do mesmo saque.dura. Soltar de novo no mesmo lugar junta no mesmo monte (e o tempo dele
+  // recomeça). O monte que recomeça vai para o fim da lista, que fica em ordem de sumir (ver o fim do tick)
+  Sim.prototype.solta = function (st, item, n) {
+    var G = this.w.game, C = G.saque || {}, p = st.player, def = G.items[item], tem = p.inv[item] || 0;
+    if (!def || !(tem > 0)) { return 'Você não tem isso.'; }
+    var k = Math.min(tem, n === undefined || n === null ? tem : Math.max(1, Math.floor(n)));
+    p.inv[item] = tem - k;
+    st.saque = st.saque || [];
+    var y = p.yaw || 0, ax = p.x + Math.sin(y) * 2.4, az = p.z + Math.cos(y) * 2.4;
+    var s = st.saque.filter(function (x) { return x.solto && dist(x.x, x.z, ax, az) < 1; })[0];
+    if (s) { st.saque = st.saque.filter(function (x) { return x !== s; }); } else {
+      st.saqueN = (st.saqueN || 0) + 1;
+      s = { id: 'sq' + st.saqueN, x: ax, z: az, itens: {}, solto: true };
+    }
+    s.itens[item] = (s.itens[item] || 0) + k; s.ate = st.t + (C.dura || 300);
+    st.saque.push(s);
+    while (st.saque.length > (C.max || 30)) { st.saque.shift(); }
+    this.emit(st, { type: 'saque' });
+    var msg = 'Soltou ' + (k === 1 ? def.name : k + ' ' + (def.plural || def.name)).toLowerCase() + ' no chão.';
+    this.log(st, msg);
+    return msg;
+  };
   Sim.prototype.saqueDe = function (st, id) { return (st.saque || []).filter(function (s) { return s.id === id; })[0] || null; };
   Sim.prototype.macroSaque = function (st, s) {
     var deixa = st.saqueDeixa || {};
