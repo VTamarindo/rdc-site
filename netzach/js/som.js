@@ -28,27 +28,35 @@
   function prepara() {
     if (ctx) { return true; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) { return false; }
-    try { ctx = new AC(TOQUE ? { latencyHint: 'playback' } : undefined); } catch (e) { ctx = new AC(); }
+    // buffer maior que o padrão ("interactive", o menor possível): com processador fraco, o buffer pequeno esvaziava e o som
+    // picotava. No celular, o maior ("playback"); no computador, o do meio, que ainda deixa os cliques dos menus na hora
+    try { ctx = new AC({ latencyHint: TOQUE ? 'playback' : 'balanced' }); } catch (e) { ctx = new AC(); }
     // limitador no fim: os acordes somados passavam de 1 e estouravam (o chiado); ele segura o pico sem mudar o resto
     var lim = ctx.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 4; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.25;
     lim.connect(ctx.destination);
     mestre = ctx.createGain(); mestre.gain.value = ligadoJa ? VOL.mestre : 0; mestre.connect(lim);
     medidor = ctx.createAnalyser(); medidor.fftSize = 2048; mestre.connect(medidor); // só para testes (estado())
-    // reverberação: resposta de ruído que se apaga em 3 s, um pouco diferente em cada ouvido (o "sonho"). No celular ela
-    // pesava demais junto com o jogo 3D (o som picotava): lá fica só o eco, que é leve
-    if (TOQUE) { reverb = ctx.createGain(); reverb.gain.value = 0; } else {
-      reverb = ctx.createConvolver();
-      var n = Math.floor(ctx.sampleRate * 3), b = ctx.createBuffer(2, n, ctx.sampleRate);
-      for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); } }
-      reverb.buffer = b;
-    }
-    var rv = ctx.createGain(); rv.gain.value = 0.55; reverb.connect(rv); rv.connect(mestre);
-    // eco: 3/8 de segundo, voltando três ou quatro vezes, cada vez mais abafado
-    eco = ctx.createDelay(2); eco.delayTime.value = 0.375;
-    var fb = ctx.createGain(); fb.gain.value = 0.38; var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
-    eco.connect(lp); lp.connect(fb); fb.connect(eco); lp.connect(reverb); lp.connect(mestre);
+    var fx = efeitos(ctx, mestre); reverb = fx.reverb; eco = fx.eco;
     sfx = ctx.createGain(); sfx.gain.value = VOL.sfx * USER.efeitos; sfx.connect(mestre);
     return true;
+  }
+  // a reverberação e o eco, montados no contexto c e saindo em destino: o do jogo (ao vivo) ou o da gravação das trilhas
+  function efeitos(c, destino) {
+    // reverberação: resposta de ruído que se apaga em 3 s, um pouco diferente em cada ouvido (o "sonho"). No celular ela
+    // pesava demais junto com o jogo 3D (o som picotava): lá fica só o eco, que é leve
+    var rev;
+    if (TOQUE) { rev = c.createGain(); rev.gain.value = 0; } else {
+      rev = c.createConvolver();
+      var n = Math.floor(c.sampleRate * 3), b = c.createBuffer(2, n, c.sampleRate);
+      for (var k = 0; k < 2; k++) { var d = b.getChannelData(k); for (var i = 0; i < n; i++) { d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); } }
+      rev.buffer = b;
+    }
+    var rv = c.createGain(); rv.gain.value = 0.55; rev.connect(rv); rv.connect(destino);
+    // eco: 3/8 de segundo, voltando três ou quatro vezes, cada vez mais abafado
+    var ec = c.createDelay(2); ec.delayTime.value = 0.375;
+    var fb = c.createGain(); fb.gain.value = 0.38; var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+    ec.connect(lp); lp.connect(fb); fb.connect(ec); lp.connect(rev); lp.connect(destino);
+    return { reverb: rev, eco: ec };
   }
   function pronto() { return prepara() && ctx.state === 'running'; }
   // o primeiro gesto destrava o som (regra dos navegadores) e começa a música, se ela estava esperando. No celular só
@@ -298,31 +306,127 @@
     MOTIVO.forEach(function (c, k) { c.forEach(function (x) { trompa(bus, x[1], t + k * bar + x[0] * BAT, x[2] * BAT * 0.96, 0.07, false); }); });
     setTimeout(function () { try { bus.disconnect(); } catch (e) { /* já foi */ } }, (2 * bar + 3) * 1000);
   }
+  // cauda: segundos de som que sobram depois da última nota (a reverberação de 3 s; no campo, também o eco da caixinha)
   var TRILHAS = {
-    menu: { comp: 4 * BAT, n: FORMA.length, compasso: compassoMenu, vol: 1.3, abafa: 9000, oscila: 7 },
-    campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9 }
+    menu: { comp: 4 * BAT, n: FORMA.length, compasso: compassoMenu, vol: 1.3, abafa: 9000, oscila: 7, cauda: 3.2 },
+    campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9, cauda: 6.2 }
   };
-  var querMusica = null, musica = null; // musica: { nome, bus, lfo, osc, ate, i, timer }
+
+  // ---------- trilhas gravadas ----------
+  // Tocar a trilha ao vivo custava caro: cada nota do coro são vários osciladores e filtros, e tudo passa pela reverberação.
+  // Em computador sem placa de vídeo, o processador não dava conta e o som chiava e picotava. Agora cada trilha é gravada
+  // (OfflineAudioContext, fora do tempo real, sem o jogador ouvir) em pedaços de BLOCO compassos, com as mesmas notas,
+  // efeitos e reverberação; depois só se tocam as gravações em sequência, o que não custa quase nada. Os pedaços começam a
+  // tocar assim que o primeiro fica pronto. Sem OfflineAudioContext (navegador muito antigo), toca ao vivo, como antes.
+  // Os primeiros pedaços são curtos (2, 2, 4 compassos e depois BLOCO), para a música começar logo depois do clique.
+  var BLOCO = 8, ADIANTE = 0.05; // ADIANTE: folga no começo de cada pedaço (a caixinha pode cair um pouco antes do compasso)
+  var GRAVADAS = {}, fila = [], gravando = false;
+  function gravaTrilhas() { return !!window.OfflineAudioContext; }
+  // monta no contexto c as notas do pedaço k da trilha nome (os instrumentos usam ctx, reverb e eco: trocados enquanto
+  // monta) e devolve quando a última nota termina, em segundos
+  function pedacos(n) { // [primeiro compasso, depois do último] de cada pedaço
+    var r = [], i = 0, tam = 2;
+    while (i < n) { r.push([i, Math.min(n, i + tam)]); i += tam; if (r.length > 1) { tam = Math.min(BLOCO, tam * 2); } }
+    return r;
+  }
+  function montaPedaco(c, nome, i0, i1) {
+    var T = TRILHAS[nome], fim = 0, antes = [ctx, reverb, eco];
+    var oc = c.createOscillator.bind(c), bs = c.createBufferSource.bind(c);
+    c.createOscillator = function () { var o = oc(), st = o.stop.bind(o); o.stop = function (t) { fim = Math.max(fim, t || 0); return st(t); }; return o; };
+    c.createBufferSource = function () { var s = bs(), sa = s.start.bind(s); s.start = function (t, de, dur) { fim = Math.max(fim, (t || 0) + (dur || 0)); return sa(t, de, dur); }; return s; };
+    try {
+      ctx = c; var fx = efeitos(c, c.destination); reverb = fx.reverb; eco = fx.eco;
+      var bus = c.createGain(), lp = c.createBiquadFilter(), lfo = oc(), lg = c.createGain();
+      bus.gain.value = T.vol; lp.type = 'lowpass'; lp.frequency.value = T.abafa; // a do campo, abafada como lembrança; a do menu, mais aberta
+      bus.connect(lp); lp.connect(c.destination); lp.connect(reverb);
+      // a afinação oscila de leve (vibrato do coro, "fita velha" do campo), continuando de um pedaço para o outro: a onda
+      // começa na fase em que a do pedaço anterior parou
+      var fase = 2 * Math.PI * 0.23 * i0 * T.comp;
+      lfo.setPeriodicWave(c.createPeriodicWave(new Float32Array([0, Math.sin(fase)]), new Float32Array([0, Math.cos(fase)]), { disableNormalization: true }));
+      lfo.frequency.value = 0.23; lg.gain.value = T.oscila; lfo.connect(lg); lfo.start(0);
+      var M = { bus: bus, lfo: lg };
+      for (var i = i0; i < i1; i++) { T.compasso(M, i, ADIANTE + (i - i0) * T.comp); }
+      fim = Math.max(fim, ADIANTE + (i1 - i0) * T.comp); lfo.stop(fim);
+      return fim;
+    } finally { ctx = antes[0]; reverb = antes[1]; eco = antes[2]; }
+  }
+  function gravaPedaco(nome, pd) {
+    var sr = ctx.sampleRate, T = TRILHAS[nome];
+    // primeiro só mede quanto dura (montar é rápido; o caro é gravar), depois monta de novo num contexto do tamanho certo
+    var fim = montaPedaco(new OfflineAudioContext(2, sr, sr), nome, pd[0], pd[1]) + T.cauda + 0.1;
+    var c = new OfflineAudioContext(2, Math.ceil(fim * sr), sr);
+    montaPedaco(c, nome, pd[0], pd[1]);
+    return new Promise(function (ok, erro) {
+      c.oncomplete = function (e) { ok(e.renderedBuffer); };
+      var p = c.startRendering(); if (p && p.then) { p.then(ok, erro); }
+    });
+  }
+  function grava(nome, primeiro) {
+    var T = TRILHAS[nome], G = GRAVADAS[nome];
+    if (!G) {
+      var pd = pedacos(T.n);
+      G = GRAVADAS[nome] = { n: pd.length, pd: pd, partes: [], dur: [], falhou: false };
+      for (var k = 0; k < G.n; k++) { G.dur[k] = (pd[k][1] - pd[k][0]) * T.comp; fila.push([nome, k]); }
+    }
+    if (primeiro) { fila.sort(function (a, b) { return (a[0] === nome ? 0 : 1) - (b[0] === nome ? 0 : 1) || a[1] - b[1]; }); } // a pedida passa na frente
+    proximo();
+    return G;
+  }
+  function proximo() {
+    if (gravando || !fila.length) { return; }
+    var t = fila.shift(), G = GRAVADAS[t[0]]; gravando = true;
+    gravaPedaco(t[0], G.pd[t[1]]).then(function (b) { G.partes[t[1]] = b; }, function () { G.falhou = true; })
+      .then(function () { gravando = false; setTimeout(proximo, 0); });
+  }
+
+  var querMusica = null, musica = null; // musica: { nome, ganho, base, ... } (ganho: o volume que o jogador acerta)
   function tocaMusica() {
     if (!querMusica || (musica && musica.nome === querMusica) || !pronto()) { return; }
     if (musica) { paraMusica(1.6); }
+    if (!gravaTrilhas()) { tocaAoVivo(); return; }
+    var nome = querMusica, G = grava(nome, true), saida = ctx.createGain();
+    saida.gain.value = 0.0001; saida.connect(mestre);
+    var M = musica = { nome: nome, ganho: saida.gain, base: 1, saida: saida, fontes: [], ate: 0, k: 0, comecou: false };
+    function adiante() { // põe na fila de tocar os pedaços dos próximos 4 s, assim que estiverem gravados
+      if (musica !== M) { return; }
+      if (G.falhou && !M.comecou) { clearInterval(M.timer); musica = null; saida.disconnect(); tocaAoVivo(); return; }
+      var now = ctx.currentTime;
+      while (G.partes[M.k]) {
+        if (M.ate < now + 0.1) { M.ate = now + 0.15; } // o primeiro, ou um pedaço que atrasou para gravar: entra agora
+        if (M.ate > now + 4) { break; }
+        var s = ctx.createBufferSource(); s.buffer = G.partes[M.k]; s.connect(saida);
+        s.start(Math.max(now, M.ate - ADIANTE)); M.fontes.push(s);
+        s.onended = (function (f) { return function () { var j = M.fontes.indexOf(f); if (j >= 0) { M.fontes.splice(j, 1); } }; })(s);
+        if (!M.comecou) { // a entrada suave, quando o primeiro pedaço toca
+          M.comecou = true; saida.gain.setValueAtTime(0.0001, M.ate); saida.gain.linearRampToValueAtTime(Math.max(0.0001, USER.musica), M.ate + 2.5);
+        }
+        M.ate += G.dur[M.k]; M.k = (M.k + 1) % G.n;
+      }
+    }
+    M.parar = function () { M.fontes.forEach(function (s) { try { s.stop(); } catch (e) { /* já parou */ } }); saida.disconnect(); };
+    adiante(); M.timer = setInterval(adiante, 250);
+    for (var outra in TRILHAS) { grava(outra); } // as outras gravam depois, para já estarem prontas quando forem pedidas
+  }
+  // a trilha tocada ao vivo, nota por nota (só sem OfflineAudioContext, ou se a gravação falhar)
+  function tocaAoVivo() {
     var T = TRILHAS[querMusica], bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = T.abafa; // a do campo, abafada como lembrança; a do menu, mais aberta
+    lp.type = 'lowpass'; lp.frequency.value = T.abafa;
     bus.connect(lp); lp.connect(mestre); lp.connect(reverb);
     bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, T.vol * USER.musica), ctx.currentTime + 2.5);
-    lfo.frequency.value = 0.23; lg.gain.value = T.oscila; lfo.connect(lg); lfo.start(); // a afinação oscila de leve (vibrato do coro, "fita velha" do campo)
-    var M = musica = { nome: querMusica, T: T, bus: bus, lfo: lg, osc: lfo, ate: ctx.currentTime + 0.15, i: 0 };
+    lfo.frequency.value = 0.23; lg.gain.value = T.oscila; lfo.connect(lg); lfo.start();
+    var M = musica = { nome: querMusica, ganho: bus.gain, base: T.vol, bus: bus, lfo: lg, ate: ctx.currentTime + 0.15, i: 0 };
     function adiante() { // marca os compassos dos próximos 4 s, um por um
       if (musica !== M) { return; }
       while (M.ate < ctx.currentTime + 4) { T.compasso(M, M.i, M.ate); M.ate += T.comp; M.i = (M.i + 1) % T.n; }
     }
+    M.parar = function () { bus.disconnect(); lfo.stop(); };
     adiante(); M.timer = setInterval(adiante, 500);
   }
   function paraMusica(seg) {
     var M = musica; musica = null; if (!M) { return; }
     clearInterval(M.timer);
-    var t = ctx.currentTime; M.bus.gain.cancelScheduledValues(t); M.bus.gain.setValueAtTime(M.bus.gain.value, t); M.bus.gain.linearRampToValueAtTime(0.0001, t + (seg || 2));
-    setTimeout(function () { try { M.bus.disconnect(); M.osc.stop(); } catch (e) { /* já parou */ } }, (seg || 2) * 1000 + 200);
+    var t = ctx.currentTime; M.ganho.cancelScheduledValues(t); M.ganho.setValueAtTime(M.ganho.value, t); M.ganho.linearRampToValueAtTime(0.0001, t + (seg || 2));
+    setTimeout(function () { try { M.parar(); } catch (e) { /* já parou */ } }, (seg || 2) * 1000 + 200);
   }
 
   // ---------- crianças rindo ao longe ----------
@@ -431,21 +535,24 @@
   NZ.som = {
     musica: function (nome, seg) { // 'menu', 'campo' (true = 'menu'), ou false para apagar devagar (seg segundos)
       querMusica = nome === true ? 'menu' : (nome && TRILHAS[nome] ? nome : null);
+      // a gravação não precisa de clique: começa já, para a música estar pronta quando o som destravar
+      if (querMusica && gravaTrilhas() && prepara()) { grava(querMusica, true); }
       if (querMusica) { tocaMusica(); } else if (ctx) { paraMusica(seg || 2.5); }
     },
     trilha: function () { return musica ? musica.nome : null; }, // para testes
+    gravacao: function (nome) { var G = GRAVADAS[nome]; return G ? { partes: G.partes.slice(), dur: G.dur.slice(), adiante: ADIANTE } : null; }, // para testes
     criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo, motivo: motivo,
     volume: function (k, v) {
       if (!(k in USER)) { return 0; }
       if (v === undefined) { return USER[k]; }
       USER[k] = Math.max(0, Math.min(1, +v || 0)); try { localStorage.setItem(KEY_VOL, JSON.stringify(USER)); } catch (e) { /* vale até fechar */ }
       if (ctx) {
-        var t = ctx.currentTime, g = k === 'musica' ? (musica && musica.bus.gain) : sfx.gain, alvo = k === 'musica' ? (musica ? musica.T.vol : 1) * USER.musica : VOL.sfx * USER.efeitos;
+        var t = ctx.currentTime, g = k === 'musica' ? (musica && musica.ganho) : sfx.gain, alvo = k === 'musica' ? (musica ? musica.base : 1) * USER.musica : VOL.sfx * USER.efeitos;
         if (g) { g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(Math.max(0.0001, alvo), t + 0.15); }
       }
       return USER[k];
     },
-    estado: function () { var pico = 0; if (medidor) { var a = new Float32Array(medidor.fftSize); medidor.getFloatTimeDomainData(a); for (var i = 0; i < a.length; i++) { pico = Math.max(pico, Math.abs(a[i])); } } return { audio: ctx ? ctx.state : 'sem', musica: !!musica, ligado: ligadoJa, pico: Math.round(pico * 1000) / 1000 }; }, // para testes
+    estado: function () { var pico = 0; if (medidor) { var a = new Float32Array(medidor.fftSize); medidor.getFloatTimeDomainData(a); for (var i = 0; i < a.length; i++) { pico = Math.max(pico, Math.abs(a[i])); } } var gr = {}; for (var nome in GRAVADAS) { gr[nome] = GRAVADAS[nome].partes.filter(Boolean).length + '/' + GRAVADAS[nome].n; } return { audio: ctx ? ctx.state : 'sem', musica: !!musica, ligado: ligadoJa, pico: Math.round(pico * 1000) / 1000, gravadas: gr }; }, // para testes
     ligado: function (v) {
       if (v === undefined) { return ligadoJa; }
       ligadoJa = !!v; try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) { /* vale até fechar */ }

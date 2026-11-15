@@ -80,7 +80,6 @@
     });
     $('loading').hidden = true; $('ver').textContent = VERSION;
     if (isTouch) { document.body.classList.add('touch'); $('pad').hidden = false; $('menu-ctrl').hidden = false; ctrlSet(ctrlLoad()); }
-    if (/romancedecavalaria|localhost|127\.0\.0\.1/.test(location.hostname)) { $('back-site').hidden = false; }
     bindInput(); bindTitle(); bindConta(); ctrl = NZ.controle(ctrlApi()); resize(); window.addEventListener('resize', resize);
     setInterval(clockSync, 600000); // o relógio interno pode parar com o computador suspenso
     if (isTouch) { ['touchend', 'click'].forEach(function (ev) { window.addEventListener(ev, celularCheio, true); }); }
@@ -448,7 +447,7 @@
   // ---------- tela inicial ----------
   var titleOn = false, titleDel = 0, titleNew = 0, titleCfg = false;
   // a conta, o aviso da nuvem e o botão de configurações só aparecem na primeira parte da tela inicial (a lista de saves)
-  function titleRodape(naLista) { $('t-conta').hidden = !naLista; $('t-cfg-abre').hidden = !naLista; if (!naLista) { $('t-nuvem').hidden = true; } else { nuvemTexto(); } }
+  function titleRodape(naLista) { $('t-conta').hidden = !naLista; $('t-cfg-abre').hidden = !naLista; $('t-hub').hidden = !naLista; if (!naLista) { $('t-nuvem').hidden = true; } else { nuvemTexto(); } }
   function slotInfo(n) {
     var s = load(n); if (!s) { return { n: n }; }
     var c = s.state.modo === 'campanha' && s.state.camp;
@@ -511,7 +510,7 @@
     contaUi = Conta.painel($('t-conta'), {
       semConta: 'Sem conta: os saves ficam só neste navegador. Entre para levá-los a qualquer aparelho.',
       comConta: 'Conta',
-      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
+      aoAbrir: function (aberto) { if (titleOn) { $('t-list').hidden = aberto; $('t-cfg-abre').hidden = aberto; $('t-hub').hidden = aberto; $('t-nuvem').hidden = aberto || !$('t-nuvem').textContent; } }
     });
     Conta.aoMudar(function () {
       if (!dono()) { vez.minha = false; } else if (dono() !== vez.uid && !aba.fechada) { vezPede(function () { /* entrou na conta: este aparelho fica com a vez */ }); }
@@ -544,6 +543,9 @@
     });
     // configurações (js/som.js): som ligado ou desligado e o volume da música e dos efeitos; valem para este navegador, fora do save
     $('t-cfg-abre').addEventListener('click', titleConfig);
+    // Retornar ao hub: a página inicial do site (a pasta acima do jogo; vale no site, na prévia e no servidor de teste).
+    // Só existe na tela inicial: com o jogo aberto, primeiro se volta ao menu inicial (e o jogo grava ao sair)
+    $('t-hub').addEventListener('click', function () { location.href = new URL('../', location.href).href; });
     if (NZ.som) {
       $('cfg-som').addEventListener('click', function () { NZ.som.ligado(!NZ.som.ligado()); cfgMostra(); });
       ['musica', 'efeitos'].forEach(function (k) { $('cfg-' + k).addEventListener('input', function () { NZ.som.volume(k, this.value / 100); cfgMostra(); }); });
@@ -1454,7 +1456,7 @@
     var ex = ['Poções: ' + (p.inv.pocao || 0)], tools = calc.keys(G.items).filter(function (x) { return G.items[x].tool && p.inv[x] > 0; });
     if (tools.length) { ex.push('Ferramentas: ' + tools.map(function (x) { return G.items[x].name.toLowerCase(); }).join(', ')); }
     calc.keys(G.items).forEach(function (x) { if (G.items[x].stack && p.inv[x] > 0) { ex.push('Na aljava: ' + p.inv[x] + ' ' + itemName(x, p.inv[x]).toLowerCase()); } });
-    $('bg-extra').textContent = ex.join(' · ') + '. Toque ou clique num item para ver e equipar.'.replace('Toque ou clique', isTouch ? 'Toque' : 'Clique');
+    $('bg-extra').textContent = ex.join(' · ') + '. Toque ou clique num item para ver, equipar ou soltar.'.replace('Toque ou clique', isTouch ? 'Toque' : 'Clique');
   }
   function renderAttr() {
     var p = st.player, spent = attrSpent(), left = p.pts - spent, ppl = G.player.pointsPerLevel;
@@ -1543,8 +1545,31 @@
       var cur = p.equip[slot];
       html += '<button type="button" class="main" data-eq>Equipar' + (cur ? ' no lugar de ' + esc(G.items[cur].name.toLowerCase()) : '') + '</button>';
     }
-    var P = openPop(it.name, html), b = P.pop.querySelector('[data-eq]');
+    // soltar no chão: com mais de um, a mesma barra de quantidade da compra
+    var tem = p.inv[k] || 0, min = Math.round(((G.saque && G.saque.dura) || 300) / 60);
+    html += '<h3>Soltar no chão</h3>';
+    if (tem > 1) {
+      html += '<div class="sell-qty"><input type="range" min="1" max="' + tem + '" step="1" value="' + tem + '" aria-label="Quantos soltar">' +
+        '<input type="text" class="num" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Quantos soltar" value="' + tem + '"><small>de ' + tem + '</small></div>';
+    }
+    html += '<p class="hint">Fica no chão, à sua frente, por ' + min + ' minuto' + (min === 1 ? '' : 's') + '; dá para pegar de volta.' +
+      (res ? ' ' + res + ' ' + (res === 1 ? 'é' : 'são') + ' para missão.' : '') + '</p><button type="button" data-drop></button>';
+    var P = openPop(it.name, html), b = P.pop.querySelector('[data-eq]'), q = function (sel) { return P.pop.querySelector(sel); };
     if (b) { b.onclick = function () { gearDone(sim.equip(st, k, slot)); }; }
+    var nd = tem, range = q('[type=range]'), box = q('.num'), drop = q('[data-drop]');
+    function paintDrop() {
+      drop.textContent = 'Soltar ' + nd + ' ' + itemName(k, nd).toLowerCase();
+      if (range) { range.value = nd; range.style.setProperty('--p', (tem > 1 ? (nd - 1) / (tem - 1) * 100 : 100) + '%'); if (box.value !== String(nd) && document.activeElement !== box) { box.value = nd; } }
+    }
+    function setDrop(v) { nd = Math.max(1, Math.min(tem, v || 1)); paintDrop(); }
+    if (range) {
+      range.oninput = function () { setDrop(+range.value); };
+      box.oninput = function () { var d = box.value.replace(/\D/g, ''); if (d) { setDrop(parseInt(d, 10)); } };
+      box.onblur = function () { box.value = nd; };
+      box.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); drop.focus(); } };
+    }
+    drop.onclick = function () { gearDone(sim.solta(st, k, nd)); };
+    paintDrop();
   }
   // loja: comprar um item (feixe de flechas com quantidade) e, se for de vestir, já equipar
   function lotOf(s, k) { return (s.lots && s.lots[k]) || 1; }
