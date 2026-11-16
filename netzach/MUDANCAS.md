@@ -14,6 +14,7 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
   logo à frente, que se pega de volta como o saque dos bichos e some depois de 5 minutos.
 
 ## Por dentro
+- Mapa de região de 4 km com relevo, para teste (`?mapa=regiao`): vem do editor de mapas do roteirizador por `tools/importar_mapa.py`, com chão em blocos, água, muralha, peças e saves à parte.
 - Som: as trilhas são gravadas em pedaços com OfflineAudioContext e tocadas como gravação; o áudio do computador usa o buffer "balanced".
 - CSS: o ruído SVG (feTurbulence) do pergaminho virou `css/grao.png` (`tools/gerar_grao.mjs`).
 - Sim.solta: o monte solto (st.saque, com solto: true) fica 2,4 m à frente; soltar de novo no mesmo lugar junta no mesmo monte. Teste novo.

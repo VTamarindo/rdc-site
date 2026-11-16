@@ -198,13 +198,15 @@
     'uniform float dentro;uniform vec3 amb;uniform vec4 l1;uniform vec3 c1;uniform vec4 l2;uniform vec3 c2;' +
     // chão de um terreno (mch != 0): a máscara (msk, um canal por terreno) diz quanto dele há ali; o degradê vira pontilhado,
     // um ponto por pixel da textura do chão (64 px a cada 3 m), como os pontinhos do rascunho
-    'uniform sampler2D msk;uniform vec4 mch;uniform vec4 mxf;' +
+    'uniform sampler2D msk;uniform vec4 mch;uniform vec4 mxf;uniform float pin;' +
     'vec3 lp(vec4 L,vec3 C,vec3 nn){vec3 d=L.xyz-vw;float r=max(length(d),0.01);float a=clamp(1.0-r/L.w,0.0,1.0);return C*a*a*(0.4+0.6*max(dot(nn,d/r),0.0));}' +
     'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;' +
     'if(dot(mch,mch)>0.0){float m=dot(texture2D(msk,vw.xz*mxf.xy+mxf.zw),mch);vec2 q=mod(floor(vw.xz*21.333),256.0);' +
     'if(m<=fract(sin(dot(q,vec2(12.9898,78.233)))*43758.5453))discard;}' +
     'vec3 nn=normalize(vn);' +
     'vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vec3 b=col*t.rgb;' +
+    // pin = 1: chão do relevo; a cor é a da pintura do mapa (na unidade da máscara) e a textura só dá o grão
+    'if(pin>0.5){b*=texture2D(msk,vw.xz*mxf.xy+mxf.zw).rgb*1.2;}' +
     'if(dentro>0.5){l=amb*(0.82+0.18*nn.y)+lp(l1,c1,nn)+lp(l2,c2,nn);}' +
     'vec3 c=mix(b*l,b*tint,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
 
@@ -216,7 +218,7 @@
     var pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
     var u = this.u = {};
-    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2', 'msk', 'mch', 'mxf'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
+    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2', 'msk', 'mch', 'mxf', 'pin'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
     this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
     gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
     gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
@@ -309,6 +311,7 @@
     gl.uniformMatrix4fv(u.M, false, new Float32Array(n.world)); gl.uniformMatrix3fv(u.N, false, new Float32Array(normalMat(n.world)));
     gl.uniform3fv(u.col, n.color); gl.uniform3fv(u.emi, n.emissive);
     var vf = n.agua ? 2 : n.vento ? 1 : 0; if (vf !== this.vfAgora) { gl.uniform1f(u.vf, vf); this.vfAgora = vf; }
+    var pn = n.pinta ? 1 : 0; if (pn !== this.pinAgora) { gl.uniform1f(u.pin, pn); this.pinAgora = pn; }
     var mc = n.mask || SEM_MASCARA; if (mc !== this.mchAgora) { gl.uniform4fv(u.mch, mc); this.mchAgora = mc; }
     gl.uniform1f(u.alpha, n.alpha); gl.uniform1f(u.unlit, n.unlit ? 1 : 0);
     // peça de interior: as luzes da sala e, nas sem sombra (chamas, figuras), o brilho próprio no lugar da tinta do céu
@@ -567,7 +570,7 @@
   var COR_ROCHA = 0xd2ccc0; // uma cor só: com cores diferentes cada pedra viraria outro lote (outra chamada de desenho)
   // pedra solta do pedregal: um bloco grande e irregular com pedras menores encostadas
   function pedra(p, i) {
-    var s = p[2], g = new Node().at(p[0], 0, p[1]), k = Math.floor(sorte(i + 0.3) * 6);
+    var s = p[2], g = new Node().at(p[0], ALT(p[0], p[1]), p[1]), k = Math.floor(sorte(i + 0.3) * 6);
     g.rotY = sorte(i + 0.1) * 6.28;
     g.add(rocha(k, s * 0.62, s * (0.5 + sorte(i + 0.2) * 0.25), s * 0.5, 0, 0, 0, COR_ROCHA));
     g.add(rocha(k + 1, s * 0.34, s * 0.3, s * 0.3, s * 0.52, s * 0.18, 1.3, COR_ROCHA));
@@ -601,7 +604,7 @@
   }
   // moita sem figura própria (até a arte ter 'arbusto'): três bolos de folhagem achatados
   function moita(p, i) {
-    var s = p[2], g = new Node().at(p[0], 0, p[1]);
+    var s = p[2], g = new Node().at(p[0], ALT(p[0], p[1]), p[1]);
     [[0, 0, 0.62, 0.7], [0.42, 0.18, 0.44, 0.5], [-0.36, -0.2, 0.46, 0.55]].forEach(function (b, k) {
       g.add(cyl(b[2] * 0.7, b[2], b[3], 6, 'grama', 1, sorte(i + k) * 3, 0x6a8a3e).at(b[0], b[3] / 2, b[1]));
     });
@@ -1201,7 +1204,7 @@
     var self = this, O = this.saqueO || (this.saqueO = {}), vivo = {};
     ((st && st.saque) || []).forEach(function (s) {
       vivo[s.id] = 1; if (O[s.id]) { return; }
-      var g = self.sprite('saque', SAQUE_H).at(s.x, 0, s.z);
+      var g = self.sprite('saque', SAQUE_H).at(s.x, self.chao(s.x, s.z), s.z);
       g.userData.ref = { type: 'saque', id: s.id };
       self.root.add(g); self.pick.push(g); O[s.id] = g;
     });
@@ -1346,11 +1349,171 @@
     return g;
   }
   function rios(self, R, L, V) {
+    self.pontesY = [];
     (V.rios || []).forEach(function (Ri) {
+      if (self.w.rel) { return; } // no relevo a água é o plano no nível dela e o leito está cavado no chão
       R.add(new Node(faixa(Ri.pts, Ri.w + 2.6), 0xd8c8a8, { tex: 'terra' }).at(0, 0.03, 0));   // margem de terra úmida
       var ag = new Node(faixa(Ri.pts, Ri.w), 0xffffff, { tex: 'agua' }).at(0, 0.04, 0); ag.agua = true; R.add(ag);
     });
-    (V.travessias || []).forEach(function (t, i) { L.funde(t.tipo === 'ponte' ? ponte(t) : vau(t, i)); });
+    (V.travessias || []).forEach(function (t, i) {
+      var o = t.tipo === 'ponte' ? ponte(t) : vau(t, i);
+      if (self.w.rel && t.tipo === 'ponte') { // o tabuleiro fica na altura da margem mais alta, sobre a água
+        var a = t.ang * Math.PI / 180, ex = -Math.sin(a) * t.len / 2, ez = Math.cos(a) * t.len / 2;
+        var y = Math.max(ALT(t.x + ex, t.z + ez), ALT(t.x - ex, t.z - ez), self.w.rel.nivel + 0.5);
+        o.pos[1] = y; self.pontesY.push({ t: t, y: y + 0.2 });
+      }
+      L.funde(o);
+    });
+  }
+
+  // ---------- relevo (data/regiao.json, mapa do editor) ----------
+  // ALT(x, z): altura do chão. Sem relevo (a vila de 240 m) é sempre 0; com relevo a vila continua no 0 (o chão dela é plano)
+  var ALT = function () { return 0; };
+  var BLOCO = 16; // quadrados da grade por lado de cada bloco do chão (16 x 4 m = 64 m)
+  // cor de cada pintura do editor, na ordem dele (src/lib/terreno.ts → PINTURAS)
+  var PINTURA_COR = [[150, 168, 102], [92, 116, 74], [150, 142, 128], [170, 150, 116], [146, 122, 92], [214, 196, 152], [236, 238, 244],
+    [214, 192, 120], [160, 140, 108], [108, 112, 82], [110, 148, 122], [172, 152, 116]];
+  // a pintura vira uma textura de 2048 px para o mapa inteiro (2 m por pixel), com a divisa entre chãos irregular e grão
+  function texTerreno(R) {
+    var S = 2048, c = document.createElement('canvas'); c.width = c.height = S;
+    var g = c.getContext('2d'), im = g.createImageData(S, S), d = im.data, n = R.n, P = R.pintura, k = (n - 1) / S;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var fx = (x + 0.5) * k + (sorte(x * 0.731 + y * 1.913) - 0.5) * 0.9, fz = (y + 0.5) * k + (sorte(x * 1.37 + y * 0.517 + 3) - 0.5) * 0.9;
+        var i = Math.max(0, Math.min(n - 2, Math.floor(fx))), j = Math.max(0, Math.min(n - 2, Math.floor(fz)));
+        var cor = PINTURA_COR[P[j * n + i]] || PINTURA_COR[0];
+        var v = 0.9 + 0.12 * ruido(x / 11, y / 11) + 0.1 * (sorte(x * 3.17 + y * 7.41) - 0.5), o = (y * S + x) * 4;
+        d[o] = cor[0] * v; d[o + 1] = cor[1] * v; d[o + 2] = cor[2] * v; d[o + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  // grão do chão do relevo: cinza claro com manchas e pontinhos, 64 px a cada 3 m (o mesmo tamanho de pixel das outras texturas)
+  function texGrao() {
+    var S = 64, c = document.createElement('canvas'); c.width = c.height = S;
+    var g = c.getContext('2d'), im = g.createImageData(S, S), d = im.data;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        var v = 0.86 + 0.08 * (sorte(Math.floor(x / 4) * 3.1 + Math.floor(y / 4) * 7.7) - 0.5) + 0.12 * (sorte(x * 1.31 + y * 5.17) - 0.5);
+        if (sorte(x * 7.9 + y * 3.3 + 1) > 0.93) { v -= 0.14; } // pontinhos escuros (talos, pedrinhas)
+        var o = (y * S + x) * 4; d[o] = d[o + 1] = d[o + 2] = Math.round(255 * Math.min(1, v)); d[o + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0);
+    return c;
+  }
+  // um bloco do chão: os quadrados da grade como triângulos, com a normal suave de cada ponto (luz dos morros)
+  function blocoChao(R, bi, bj) {
+    var n = R.n, P = R.passo, h = R.h, out = [];
+    var i0 = bi * BLOCO, j0 = bj * BLOCO, i1 = Math.min(i0 + BLOCO, n - 1), j1 = Math.min(j0 + BLOCO, n - 1);
+    function H(i, j) { i = Math.max(0, Math.min(n - 1, i)); j = Math.max(0, Math.min(n - 1, j)); return h[j * n + i]; }
+    function V(i, j) {
+      var nx = H(i - 1, j) - H(i + 1, j), nz = H(i, j - 1) - H(i, j + 1), ny = 2 * P, l = Math.hypot(nx, ny, nz);
+      out.push(R.x0 + i * P, H(i, j), R.z0 + j * P, nx / l, ny / l, nz / l, (R.x0 + i * P) / 3, (R.z0 + j * P) / 3);
+    }
+    for (var j = j0; j < j1; j++) {
+      for (var i = i0; i < i1; i++) { V(i, j + 1); V(i + 1, j + 1); V(i + 1, j); V(i, j + 1); V(i + 1, j); V(i, j); }
+    }
+    return { data: new Float32Array(out), count: out.length / 8 };
+  }
+  // monta os blocos que a vista alcança (os mais perto primeiro, poucos por quadro) e solta os que ficaram longe
+  View.prototype.chaoQuadro = function (eye) {
+    var R = this.w.rel, T = this.chaoT; if (!R || !T) { return; }
+    var lado = BLOCO * R.passo, raio = this.env.fog[1] + lado, nb = Math.ceil((R.n - 1) / BLOCO), gl = this.r.gl;
+    var ci = (eye[0] - R.x0) / lado, cj = (eye[2] - R.z0) / lado, rb = Math.ceil(raio / lado), falta = [];
+    for (var bj = Math.max(0, Math.floor(cj - rb)); bj <= Math.min(nb - 1, Math.floor(cj + rb)); bj++) {
+      for (var bi = Math.max(0, Math.floor(ci - rb)); bi <= Math.min(nb - 1, Math.floor(ci + rb)); bi++) {
+        var d = Math.hypot((bi + 0.5 - ci) * lado, (bj + 0.5 - cj) * lado);
+        if (d <= raio && !T.blocos[bi + ',' + bj]) { falta.push([d, bi, bj]); }
+      }
+    }
+    falta.sort(function (a, b) { return a[0] - b[0]; });
+    var max = T.primeiro ? falta.length : 6; T.primeiro = false;
+    for (var q = 0; q < Math.min(max, falta.length); q++) {
+      var f = falta[q], nd = new Node(blocoChao(R, f[1], f[2]), 0xffffff, { tex: '_grao' });
+      nd.pinta = true; nd.userData.b = [f[1], f[2]]; T.no.add(nd); T.blocos[f[1] + ',' + f[2]] = nd;
+    }
+    T.no.children = T.no.children.filter(function (nd) {
+      var b = nd.userData.b;
+      if (Math.hypot((b[0] + 0.5 - ci) * lado, (b[1] + 0.5 - cj) * lado) <= raio + 2 * lado) { return true; }
+      if (nd.geo.buf) { gl.deleteBuffer(nd.geo.buf); }
+      delete T.blocos[b[0] + ',' + b[1]];
+      return false;
+    });
+  };
+  // onde o pé pisa: o chão, ou o tabuleiro da ponte quando se está em cima dela
+  View.prototype.chao = function (x, z) {
+    var y = ALT(x, z), P = this.pontesY || [];
+    for (var i = 0; i < P.length; i++) { if (NZ.naTravessia([P[i].t], x, z)) { y = Math.max(y, P[i].y + 0.2); } }
+    return y;
+  };
+
+  // peças do editor de mapas (dados.pecas): torres, ruínas, cavernas, placas, acampamentos... desenho simples, por enquanto
+  function tenda(w, d, h, cor) {
+    var g = new Node(); g.add(new Node(cached('tenda' + [w, d, h], function () { return gableGeo(w, h, d, 1); }), cor, { tex: 'tabuas' })); return g;
+  }
+  function pecaMapa(p, k) {
+    var g = new Node(), s = p.escala || 1, t = p.tipo;
+    function B(w, h, d, tex, x, y, z, cor) { g.add(box(w, h, d, tex, 1, x, y, z, cor)); }
+    if (t === 'torre') { B(6, 14, 6, 'pedra', 0, 7, 0); B(6.6, 1, 6.6, 'pedra', 0, 14.2, 0, 0xb0aaa0); }
+    else if (t === 'torre_redonda') { g.add(cyl(3, 3.4, 9, 12, 'pedra', 1.5, 0, 0xc0b8a8).at(0, 4.5, 0)); }
+    else if (t === 'atalaia') {
+      [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]].forEach(function (q) { B(0.3, 8, 0.3, 'tabuas', q[0], 4, q[1]); });
+      B(4, 0.3, 4, 'tabuas', 0, 7, 0); g.add(tenda(4.4, 4.4, 1.8, 0x9a8a6a).at(0, 9, 0));
+    }
+    else if (t === 'ruina_muro') { B(6, 1.6 + sorte(k) * 1.6, 0.8, 'pedra', 0, 1, 0, 0xb8b0a0); B(3, 0.8, 0.8, 'pedra', 4.6, 0.4, 0.4, 0xb8b0a0); }
+    else if (t === 'ruina_colunas') { B(0.9, 2.2 + sorte(k) * 2.5, 0.9, 'pedra', 0, 1.6, 0, 0xc8c0b0); }
+    else if (t === 'ruina_arco') { B(1.2, 5, 1.2, 'pedra', -2, 2.5, 0, 0xc0b8a8); B(1.2, 5, 1.2, 'pedra', 2, 2.5, 0, 0xc0b8a8); B(5.4, 1, 1.4, 'pedra', 0, 5.2, 0, 0xc0b8a8); }
+    else if (t === 'ruina_alicerce') { B(8, 0.6, 0.6, 'pedra', 0, 0.3, -3); B(8, 0.6, 0.6, 'pedra', 0, 0.3, 3); B(0.6, 0.6, 6, 'pedra', -4, 0.3, 0); }
+    else if (t === 'caverna') {
+      g.add(rocha(k, 7, 5, 6, 0, 0, 0, COR_ROCHA)); g.add(rocha(k + 1, 4, 3, 4, 4, -2, 1, COR_ROCHA));
+      B(3, 2.6, 0.4, null, 0, 1.3, 3.05, 0x0c0a08); // a boca escura, virada para a frente da peça
+    }
+    else if (t === 'poco') { g.add(cyl(1.1, 1.2, 0.9, 12, 'pedra', 1, 0, 0xb0aaa0).at(0, 0.45, 0)); g.add(cyl(0.9, 0.9, 0.05, 12, 'agua', 1).at(0, 0.8, 0)); }
+    else if (t === 'carroca') { B(1.8, 0.6, 3.2, 'tabuas', 0, 0.9, 0); [-1, 1].forEach(function (sx) { g.add(cyl(0.6, 0.6, 0.12, 10, 'tabuas', 1).at(sx * 1, 0.6, 0)); }); }
+    else if (t === 'barris') { [[0, 0], [0.8, 0.3], [-0.6, 0.5]].forEach(function (q) { g.add(cyl(0.35, 0.35, 0.9, 8, 'tabuas', 1).at(q[0], 0.45, q[1])); }); }
+    else if (t === 'cerca' || t === 'bandido_paliçada' || t === 'goblin_estacas') { for (var x = -3; x <= 3; x += 1) { B(0.16, 1.3, 0.16, 'tabuas', x, 0.65, 0); } B(6.2, 0.1, 0.08, 'tabuas', 0, 1, 0); }
+    else if (t === 'feno') { g.add(cyl(0.9, 0.9, 1.2, 10, 'palha', 1).at(0, 0.6, 0)); }
+    else if (t === 'placa') { B(0.14, 2.4, 0.14, 'tabuas', 0, 1.2, 0); B(1.4, 0.5, 0.08, 'tabuas', 0, 2.1, 0.1); }
+    else if (t === 'banca') { B(2.4, 0.9, 1, 'tabuas', 0, 0.45, 0); g.add(tenda(2.8, 1.6, 0.6, 0xc06048).at(0, 2, 0)); }
+    else if (t === 'bandido_tenda' || t === 'bandido_tenda_chefe' || t === 'goblin_cabana' || t === 'goblin_cabana_chefe' || t === 'elfo_casa' || t === 'elfo_casa_alta') {
+      var gr = /chefe|alta/.test(t) ? 1.5 : 1; g.add(tenda(3.2 * gr, 4 * gr, 2.4 * gr, t.indexOf('elfo') === 0 ? 0x7aa080 : 0x9a5a48));
+    }
+    else if (t === 'bandido_fogueira' || t === 'goblin_fogueira') {
+      g.add(cyl(0.9, 1, 0.2, 10, 'pedra', 1, 0, 0x8a8478).at(0, 0.1, 0));
+      var fogo = new Node(cached('chama', function () { return cylGeo(0, 0.45, 1, 6, 0, 1); }), 0xffa040, { unlit: true }).at(0, 0.7, 0); g.add(fogo);
+    }
+    else if (t === 'bandido_vigia') { [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (q) { B(0.2, 5, 0.2, 'tabuas', q[0], 2.5, q[1]); }); B(2.6, 0.2, 2.6, 'tabuas', 0, 4.6, 0); }
+    else if (t === 'bandido_saque') { B(1, 0.8, 0.8, 'tabuas', 0, 0.4, 0); B(0.8, 0.6, 0.7, 'tabuas', 1, 0.3, 0.4); }
+    else if (t === 'elfo_cogumelos' || t === 'elfo_circulo' || t === 'goblin_totem' || t === 'elfo_lanterna' || t === 'lampiao') {
+      for (var c = 0; c < 6; c++) {
+        var a = c / 6 * Math.PI * 2;
+        g.add(cyl(0.05, 0.05, 0.4, 5, null, 1, 0, 0xe8e0d0).at(Math.cos(a) * 2.2, 0.2, Math.sin(a) * 2.2));
+        var cha = new Node(cached('cog', function () { return cylGeo(0, 0.35, 0.25, 7, 0, 1); }), 0x9ff0c0, { unlit: true }).at(Math.cos(a) * 2.2, 0.5, Math.sin(a) * 2.2); g.add(cha);
+      }
+    }
+    else { B(1, 1, 1, 'tabuas', 0, 0.5, 0); }
+    g.scale = [s, s, s];
+    return g;
+  }
+  // muralha (dados.muralhas): pedaços de até 10 m que seguem o chão, enterrados um pouco, com torres e o vão dos portões
+  function muralhaMapa(L, m) {
+    var h = m.h || 6, w = m.w || 2, tex = /dique/.test(m.id) ? 'terra' : 'pedra', cor = /dique/.test(m.id) ? 0xb8a888 : 0xa8a4a0, pts = m.pts, andado = 0;
+    var portoes = m.portoes || [];
+    function noPortao(x, z) { return portoes.some(function (p) { return Math.hypot(x - p.x, z - p.z) < p.w / 2 + 1; }); }
+    for (var i = 0; i + 1 < pts.length; i++) {
+      var a = pts[i], b = pts[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(len / 10)), ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      for (var k = 0; k < n; k++) {
+        var x0 = a[0] + (b[0] - a[0]) * k / n, z0 = a[1] + (b[1] - a[1]) * k / n, x1 = a[0] + (b[0] - a[0]) * (k + 1) / n, z1 = a[1] + (b[1] - a[1]) * (k + 1) / n;
+        var cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        if (noPortao(cx, cz)) { continue; }
+        var y0 = Math.min(ALT(x0, z0), ALT(x1, z1)) - 2, y1 = Math.max(ALT(x0, z0), ALT(x1, z1)) + h;
+        var p = box(len / n + 0.3, y1 - y0, w, tex, 2, cx, (y0 + y1) / 2, cz, cor); p.rotY = -ang; L.funde(p);
+        andado += len / n;
+        if (m.torres && andado >= 180) { andado = 0; L.funde(box(w * 1.6, y1 - y0 + 6, w * 1.6, 'pedra', 2, cx, (y0 + y1 + 6) / 2, cz, 0x9c9894)); }
+      }
+    }
   }
 
   // máscara dos terrenos para o sombreador: canal R = floresta, G = pedregal, B = campina, a 2 m por pixel num quadrado
@@ -1395,9 +1558,22 @@
     return [{ x0: r.x0, x1: pl.x - c, z0: r.z0, z1: r.z1 }, { x0: pl.x + c, x1: r.x1, z0: r.z0, z1: r.z1 }].filter(function (q) { return q.x1 > q.x0; });
   }
   View.prototype.buildStatic = function () {
-    var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2;
-    R.add(new Node(planeGeo(S, S, 3), CHAO.vila[1], { tex: CHAO.vila[0] }));
-    if (V.regions && V.regions.some(function (r) { return r.poly; })) {
+    var w = this.w, V = w.vila, R = this.root, self = this, L = new Lote(), cerca = new Node(), S = (V.bounds + 170) * 2, RL = w.rel;
+    ALT = RL ? function (x, z) { return w.alt(x, z); } : function () { return 0; };
+    if (RL) {
+      // relevo: o chão em blocos montados perto de quem olha (chaoQuadro), pintado pela pintura do editor, e a água parada
+      // num plano só, no nível da água: onde o chão fica abaixo dele aparece o rio, o lago e o charco
+      self.r.addTexture('_grao', texGrao(), true);
+      var lad = (RL.n - 1) * RL.passo;
+      self.r.mascara(texTerreno(RL), RL.x0, RL.z0, lad);
+      self.chaoT = { no: R.add(new Node()), blocos: {}, primeiro: true };
+      var ag = new Node(planeGeo(lad, lad, 4), 0xffffff, { tex: 'agua' }).at(RL.x0 + lad / 2, RL.nivel, RL.z0 + lad / 2);
+      ag.agua = true; R.add(ag);
+      self.env.fog = [160, 640];
+    } else {
+      R.add(new Node(planeGeo(S, S, 3), CHAO.vila[1], { tex: CHAO.vila[0] }));
+    }
+    if (!RL && V.regions && V.regions.some(function (r) { return r.poly; })) {
       this.r.mascara(mascaraTerrenos(V), -MASCARA.lado / 2, -MASCARA.lado / 2, MASCARA.lado);
       CAMADAS.forEach(function (k, i) {
         var c = CHAO[k[0]], o = new Node(planeGeo(S, S, 3), c[1], { tex: c[0] }).at(0, 0.004 + i * 0.002, 0);
@@ -1445,12 +1621,15 @@
     L.funde(cerca);
     // pedregal: pedras soltas e moitas; com a figura 'arbusto', a moita vira dois planos em cruz no lote
     (V.boulders || []).forEach(function (p, i) { L.funde(pedra(p, i)); });
+    // peças e muralhas do editor de mapas (só no mapa de região)
+    (V.pecas || []).forEach(function (p, i) { var o = pecaMapa(p, i).at(p.x, ALT(p.x, p.z), p.z); o.rotY = (p.rot || 0) * Math.PI / 180; L.funde(o); });
+    (V.muralhas || []).forEach(function (m) { muralhaMapa(L, m); });
     var fig = self.art.sprites.arbusto && self.dim('arbusto'), mv = fig && L.get('s:arbusto', CLARO, true).v;
     (V.bushes || []).forEach(function (p, i) {
       if (!fig) { L.funde(moita(p, i)); return; }
-      var h = 1.1 * p[2]; L.pe(mv, p[0], p[1], h * fig.w / fig.h, 0, h, sorte(i) * 3, sorte(i + 0.5) > 0.5);
+      var h = 1.1 * p[2], y0 = ALT(p[0], p[1]); L.pe(mv, p[0], p[1], h * fig.w / fig.h, y0, y0 + h, sorte(i) * 3, sorte(i + 0.5) > 0.5);
     });
-    var LB = new Lote(120); limite(self, LB, V); LB.poe(R); // a mata do limite em pedaços maiores: menos chamadas de desenho
+    if (!RL) { var LB = new Lote(120); limite(self, LB, V); LB.poe(R); } // a mata do limite em pedaços maiores: menos chamadas de desenho (no mapa de região, as bordas são do próprio mapa)
 
     // plantações
     // cada retalho de colheita (sim.js, World.addCrops) tem o seu lote, dentro de um nó que some quando é colhido:
@@ -1489,7 +1668,9 @@
       if (I && f === moradia) { I = null; }
       JAN = I ? [] : null;
       var o = f(b, I), jan = JAN; JAN = null;
-      o.at(b.x, 0, b.z); o.rotY = b.rot * Math.PI / 180; L.funde(o);
+      // no relevo a construção assenta no canto mais baixo da pegada (a vila é plana: 0)
+      var by = Math.min(ALT(b.x - b.w / 2, b.z - b.d / 2), ALT(b.x + b.w / 2, b.z - b.d / 2), ALT(b.x - b.w / 2, b.z + b.d / 2), ALT(b.x + b.w / 2, b.z + b.d / 2));
+      o.at(b.x, by, b.z); o.rotY = b.rot * Math.PI / 180; L.funde(o);
       if (I) { self.salas[b.id] = self.montaSala(b, I, jan); }
     });
     L.poe(R);
@@ -1536,7 +1717,7 @@
       if (n.rect) { return; } // plantação: montada em buildStatic
       var tree = n.kind === 'arvore', jit = ((n.x * 7 + n.z * 3) % 5 + 5) % 5 * 0.07;
       var esp = tree ? especie(self.art, n.x, n.z) : '';
-      var o = self.sprite(tree ? 'arvore' + esp : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, 0, n.z);
+      var o = self.sprite(tree ? 'arvore' + esp : 'veio', tree ? SIZE.arvore * (n.s || 0.9 + jit) : SIZE.veio).at(n.x, ALT(n.x, n.z), n.z);
       o.userData.ref = { type: 'node', id: n.id }; o.userData.kind = n.kind; o.userData.esp = esp;
       self.root.add(o); self.pick.push(o); self.objs[n.id] = o;
     });
@@ -1874,7 +2055,7 @@
       var pv = prev && prev[mb.id], x = mb.x, z = mb.z;
       if (pv) { x = pv.x + (mb.x - pv.x) * alpha; z = pv.z + (mb.z - pv.z) * alpha; }
       var moving = pv && (Math.abs(mb.x - pv.x) + Math.abs(mb.z - pv.z) > 0.01);
-      o.at(x, moving ? Math.abs(Math.sin(t / 110)) * (PULO[mb.kind] || 0) : 0, z);
+      o.at(x, self.chao(x, z) + (moving ? Math.abs(Math.sin(t / 110)) * (PULO[mb.kind] || 0) : 0), z);
       if (self.art.anims && self.art.anims[o.userData.img]) { self.anima(o, mb.face, moving, dt); } // desenhado no Aseprite
       else if (DE_LADO[mb.kind]) { var fc = Math.sin(mb.face) * rx + Math.cos(mb.face) * rz; if (Math.abs(fc) > 0.05) { o.scale[0] = fc > 0 ? -1 : 1; } }
       var f = self.flash[mb.id] || 0;
@@ -1884,7 +2065,7 @@
     // a marca só aparece com a macro trabalhando ou como padrão; ao só caminhar ela some, e a área fica guardada
     var a = (p.mode === 'macro' && p.macro.on) || p.mapNav === 'macro' ? p.macro.area : null;
     this.areaRing.visible = !!a;
-    if (a) { this.areaRing.at(a.x, 0.07, a.z); this.areaRing.scale = [a.r, 1, a.r]; }
+    if (a) { this.areaRing.at(a.x, ALT(a.x, a.z) + 0.07, a.z); this.areaRing.scale = [a.r, 1, a.r]; }
 
     var px = p.x, pz = p.z;
     if (opts.interp && prev && prev.player) { px = prev.player.x + (p.x - prev.player.x) * alpha; pz = prev.player.z + (p.z - prev.player.z) * alpha; }
@@ -1895,15 +2076,16 @@
     // campanha); 0 = em pé. A respiração mexe a vista um pouco, como quem está deitado no campo
     var dk = opts.deitado || 0, ar = dk ? Math.sin(t / 1900) * 0.012 * dk : 0;
     var pitch = this.pitch + (DEITADO.pitch + ar - this.pitch) * dk;
-    var eye = [px, 1.6 + by + sh + (DEITADO.y + ar * 2 - 1.6) * dk, pz], cy = Math.cos(pitch);
+    var eye = [px, this.chao(px, pz) + 1.6 + by + sh + (DEITADO.y + ar * 2 - 1.6) * dk, pz], cy = Math.cos(pitch);
     var tgt = [px + Math.sin(this.yaw) * cy, eye[1] + Math.sin(pitch), pz + Math.cos(this.yaw) * cy];
-    var vp = mul(perspective(this.fov, this.aspect, 0.05, 200), lookAt(eye, tgt));
+    var vp = mul(perspective(this.fov, this.aspect, 0.05, Math.max(200, this.env.fog[1] + 60)), lookAt(eye, tgt));
     this.cam = { eye: eye, vp: vp, yaw: this.yaw, pitch: pitch };
     // hora: a hora fixa do céu (campanha e tela inicial: o dia não corre com o relógio); clock: o relógio, que move as nuvens
     this.ceuQuadro(eye, tgt, opts.clock === undefined ? Date.now() : opts.clock, opts.hora);
     this.atoresQuadro(dt);
     this.ambient(opts.now === undefined ? Date.now() : opts.now, st, prev, alpha, dt);
     this.salaQuadro(eye);
+    this.chaoQuadro(eye);
     this.r.draw(this.root, this.cam, this.env);
     if (!opts.semArma && !dk) { this.r.overlay(this.swordNodes(st, dt, opts.moving)); } // a tela inicial mostra só a vila, sem a arma na mão
   };

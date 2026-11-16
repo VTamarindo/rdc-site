@@ -69,10 +69,27 @@
 
     // borda do mundo
     for (i = 0; i < N; i++) { this.grid[i] = 1; this.grid[(N - 1) * N + i] = 1; this.grid[i * N] = 1; this.grid[i * N + N - 1] = 1; }
-    // limite jogável (vila.json → limite): a borda natural do rascunho; toda célula com o centro fora dela bloqueia
+    // limite jogável (vila.json → limite): a borda natural do rascunho; toda célula com o centro fora dela bloqueia.
+    // Por linha: os cruzamentos da linha com o polígono dizem onde é dentro (o mapa de 4 km tem 16 milhões de células)
     if (vila.limite) {
-      for (var cz = 0; cz < N; cz++) { for (var cx = 0; cx < N; cx++) { if (!NZ.noPoligono(vila.limite, cx - B + 0.5, cz - B + 0.5)) { this.grid[cz * N + cx] = 1; } } }
+      var LP = vila.limite;
+      for (var cz = 0; cz < N; cz++) {
+        var zc = cz - B + 0.5, xs = [];
+        for (var a = 0, b = LP.length - 1; a < LP.length; b = a++) {
+          var za = LP[a][1], zb = LP[b][1];
+          if ((za > zc) !== (zb > zc)) { xs.push(LP[a][0] + (LP[b][0] - LP[a][0]) * (zc - za) / (zb - za)); }
+        }
+        xs.sort(function (p, q) { return p - q; });
+        var dentro = false, k = 0;
+        for (var cx = 0; cx < N; cx++) {
+          var xc = cx - B + 0.5;
+          while (k < xs.length && xs[k] <= xc) { dentro = !dentro; k++; }
+          if (!dentro) { this.grid[cz * N + cx] = 1; }
+        }
+      }
     }
+    // relevo (data/regiao.json → relevo): a altura do chão em cada ponto; o que fica abaixo da água parada bloqueia
+    if (vila.relevo) { this.lerRelevo(vila.relevo); }
     // rios (vila.json → rios): a água bloqueia; nas travessias (ponte ou vau) a passagem fica livre
     (vila.rios || []).forEach(function (R) {
       for (var k = 0; k + 1 < R.pts.length; k++) {
@@ -255,6 +272,32 @@
     for (var i = 0; i < R.length; i++) { if (R[i].poly && R[i].kind !== 'vila' && NZ.noPoligono(R[i].poly, x, z)) { k = R[i].kind; } }
     return k;
   };
+  // ---------- relevo ----------
+  // grade n x n de alturas (16 bits entre min e max) a cada 'passo' m a partir de (x0, z0), e a pintura do chão (1 byte por
+  // ponto, os índices do editor de mapas). Sem relevo (a vila de 240 m) o chão é plano: alt = 0
+  function base64(s) { var b = atob(s), r = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) { r[i] = b.charCodeAt(i); } return r; }
+  World.prototype.lerRelevo = function (R) {
+    var n = R.n, q = base64(R.alturas), dv = new DataView(q.buffer), h = new Float32Array(n * n), k;
+    for (k = 0; k < n * n; k++) { h[k] = R.min + dv.getUint16(k * 2, true) / 65535 * (R.max - R.min); }
+    this.rel = { n: n, passo: R.lado / (n - 1), x0: R.x0, z0: R.z0, h: h, pintura: base64(R.pintura), nivel: R.nivel };
+    // água parada: cada quadrado da grade com o meio abaixo do nível bloqueia (as pontes e vaus ficam livres)
+    var P = this.rel.passo, T = this.vila.travessias, self = this;
+    for (var j = 0; j + 1 < n; j++) {
+      for (var i = 0; i + 1 < n; i++) {
+        var m = (h[j * n + i] + h[j * n + i + 1] + h[(j + 1) * n + i] + h[(j + 1) * n + i + 1]) / 4;
+        if (m >= R.nivel - 0.15) { continue; }
+        var x0 = R.x0 + i * P, z0 = R.z0 + j * P;
+        if (NZ.naTravessia(T, x0 + P / 2, z0 + P / 2)) { continue; }
+        for (var dz = 0; dz < P; dz++) { for (var dx = 0; dx < P; dx++) { self.block(x0 + dx + 0.5, z0 + dz + 0.5); } }
+      }
+    }
+  };
+  World.prototype.alt = function (x, z) {
+    var R = this.rel; if (!R) { return 0; }
+    var fx = Math.min(R.n - 1.001, Math.max(0, (x - R.x0) / R.passo)), fz = Math.min(R.n - 1.001, Math.max(0, (z - R.z0) / R.passo));
+    var i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, n = R.n, h = R.h, k = j * n + i;
+    return (h[k] * (1 - u) + h[k + 1] * u) * (1 - v) + (h[k + n] * (1 - u) + h[k + n + 1] * u) * v;
+  };
   World.prototype.block = function (x, z) { var i = this.idx(x, z); if (i >= 0) { this.grid[i] = 1; } };
   World.prototype.blocked = function (x, z) { var i = this.idx(x, z); return i < 0 || this.grid[i] === 1; };
   World.prototype.addNode = function (kind, id, p) {
@@ -294,11 +337,22 @@
 
   // A* em grade, 8 direções, sem cortar quina
   World.prototype.path = function (sx, sz, tx, tz) {
-    var N = this.N, B = this.B, grid = this.grid;
+    var NG = this.N, B = this.B, G0 = this.grid;
     var goal = this.nearestFree(tx, tz); if (!goal) { return null; }
     var start = this.nearestFree(sx, sz); if (!start) { return null; }
-    var s = (Math.floor(start.z) + B) * N + Math.floor(start.x) + B;
-    var e = (Math.floor(goal.z) + B) * N + Math.floor(goal.x) + B;
+    // a busca roda numa janela em volta da origem e do destino (com folga para contornar), não na grade inteira:
+    // no mapa de 4 km a grade tem 16 milhões de células. Na vila de 240 m a janela é o mapa todo, como antes
+    var F = 160, MAXJ = 1400;
+    var ax = Math.max(0, Math.floor(Math.min(start.x, goal.x)) + B - F), bx = Math.min(NG - 1, Math.floor(Math.max(start.x, goal.x)) + B + F);
+    var az = Math.max(0, Math.floor(Math.min(start.z, goal.z)) + B - F), bz = Math.min(NG - 1, Math.floor(Math.max(start.z, goal.z)) + B + F);
+    if (bx - ax > MAXJ || bz - az > MAXJ) { return null; } // longe demais para uma busca só
+    var N = Math.max(bx - ax, bz - az) + 1, grid = new Uint8Array(N * N);
+    for (var gz0 = 0; gz0 < N; gz0++) {
+      var zz = az + gz0;
+      for (var gx0 = 0; gx0 < N; gx0++) { var xx2 = ax + gx0; grid[gz0 * N + gx0] = zz > bz || xx2 > bx ? 1 : G0[zz * NG + xx2]; }
+    }
+    var s = (Math.floor(start.z) + B - az) * N + Math.floor(start.x) + B - ax;
+    var e = (Math.floor(goal.z) + B - az) * N + Math.floor(goal.x) + B - ax;
     var gx = e % N, gz = (e / N) | 0;
     var g = new Float32Array(N * N).fill(1e9), from = new Int32Array(N * N).fill(-1), closed = new Uint8Array(N * N);
     var heap = [], hf = [];
@@ -342,7 +396,7 @@
     }
     if (!found) { return null; }
     var pts = [], k = e;
-    while (k !== -1) { pts.push({ x: (k % N) - B + 0.5, z: ((k / N) | 0) - B + 0.5 }); k = from[k]; }
+    while (k !== -1) { pts.push({ x: (k % N) + ax - B + 0.5, z: ((k / N) | 0) + az - B + 0.5 }); k = from[k]; }
     pts.reverse();
     pts[pts.length - 1] = { x: goal.x, z: goal.z };
     // suaviza: pula pontos com linha de visão livre

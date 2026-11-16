@@ -113,6 +113,20 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   **Construção com interior:** o canto dela (centro menos metade da largura, e centro menos metade do fundo) precisa cair em
   meio metro (…,5), senão a parede cai no meio de uma casa da grade e a porta não abre. Os testes avisam qual está errada.
 
+### Mapa de região (teste, com relevo)
+- **Abrir:** `http://localhost:8080/netzach/?mapa=regiao`. O jogo lê `data/regiao.json` em vez de `data/vila.json`. Os saves
+  desse modo ficam em espaços próprios (`...-regiao-...` no navegador) e **não vão para a nuvem**: o teste não mexe no progresso de verdade.
+- **De onde vem:** do editor de mapas do roteirizador. Exporte o mapa inteiro (o mesmo `.json` que o botão "Importar .json"
+  aceita) e rode, na pasta `netzach`: `python tools/importar_mapa.py <mapa.json>`. A ferramenta junta a vila do jogo (pessoas,
+  salas, campanha, plantações, pasto) com o mapa do editor em volta, deixa o chão da vila plano e na altura 0 e tira o que o
+  editor pôs em cima dela.
+- **No código:** `World.lerRelevo` e `World.alt(x, z)` em `js/sim.js` (a água parada bloqueia; o A* roda numa janela em volta da
+  origem e do destino); em `js/view.js`, `ALT`, `chaoQuadro` (o chão em blocos de 64 m montados perto de quem olha), `texTerreno`
+  (a pintura do editor vira a cor do chão, no sombreador com `pin`), `pecaMapa` (torres, ruínas, cavernas...) e `muralhaMapa`.
+  Névoa mais longe nesse modo (`env.fog`), para a Muralha aparecer.
+- **Ainda não:** o mapa grande (M) não pinta o chão do relevo; os bichos não sobem morro de propósito (andam no plano e são
+  desenhados na altura do chão); peças do editor têm desenho provisório.
+
 ### Campanha (modo história)
 - **Escrever cenas:** no roteirizador. Exporte para a pasta `netzach` (as cenas vão para `cenas/`, mais `projeto.json`), e rode
   `powershell -ExecutionPolicy Bypass -File netzach\tools\montar_campanha.ps1` na pasta do site: ele junta tudo em
