@@ -1040,7 +1040,7 @@ def regioes_de(mask, kind, nome_base, ficha=None, min_area=60000, tol=3.0):
         out.append((area, poly))
     out.sort(key=lambda t: -t[0])
     regs = []
-    for i, (area, poly) in enumerate(out[:8]):
+    for i, (area, poly) in enumerate(out[:1]):   # só a maior: as outras manchas poluem a vista do editor
         xs_, zs_ = [p[0] for p in poly], [p[1] for p in poly]
         r = {"id": f"{kind}_{i + 1}", "kind": kind, "name": nome_base if i == 0 else f"{nome_base} ({i + 1})", "poly": poly,
              "label": [round(sum(xs_) / len(xs_)), round(sum(zs_) / len(zs_))]}

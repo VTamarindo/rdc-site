@@ -57,7 +57,9 @@
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(u); } return r.json(); }); }
   // data/campanha.json: as cenas do roteirizador (tools/montar_campanha.ps1). Sem ele, só o modo livre
   var campanhaJSON = getJSON('data/campanha.json?v=' + VERSION).catch(function () { return null; });
-  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON('data/vila.json?v=' + VERSION), NZ.loadArt('art/', VERSION), campanhaJSON, clockSync()]).then(function (d) { start(d[0], d[1], d[2], d[3]); })
+  // ?mapa=regiao: o mapa de região (4 km, com relevo) que vem do editor por tools/importar_mapa.py, para teste
+  var MAPA = /[?&]mapa=regiao\b/.test(location.search) ? 'data/regiao.json' : 'data/vila.json';
+  Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON(MAPA + '?v=' + VERSION), NZ.loadArt('art/', VERSION), campanhaJSON, clockSync()]).then(function (d) { start(d[0], d[1], d[2], d[3]); })
     .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
   function start(game, vila, art, campanha) {
@@ -120,7 +122,9 @@
   var SLOTS = 3, slot = 0, vitrine = null, GAME = 'netzach';
   var slotDono = '', slotCloud = null, ultimo = null; // de quem é o save aberto, o que a nuvem tem dele, e o último save gravado ({ t, json })
   function dono() { var u = window.Conta && Conta.usuario(); return u ? u.id : ''; }
-  function slotKey(n, uid) { if (uid === undefined) { uid = dono(); } return G.settings.saveKey + (uid ? '-u' + uid : '') + '-' + n; }
+  // no mapa de região (teste) os saves ficam à parte e não vão para a nuvem: o teste não mexe no progresso de verdade
+  var MAPA_REGIAO = MAPA !== 'data/vila.json';
+  function slotKey(n, uid) { if (uid === undefined) { uid = dono(); } return G.settings.saveKey + (MAPA_REGIAO ? '-regiao' : '') + (uid ? '-u' + uid : '') + '-' + n; }
   function ler(n, uid) { try { return JSON.parse(localStorage.getItem(slotKey(n, uid))); } catch (e) { return null; } }
   function grava(n, uid, env) { try { localStorage.setItem(slotKey(n, uid), typeof env === 'string' ? env : JSON.stringify(env)); return true; } catch (e) { return false; } }
   function carimbo(env) { return env ? Math.round(env.savedAt || env.lastReal || 0) : 0; }
@@ -176,7 +180,7 @@
   // gravado por último, e o outro fica na cópia. Jogando, sobe() manda o save aberto a cada minuto, ao esconder a aba e ao sair;
   // se outro aparelho gravou esse espaço nesse meio tempo, o jogo abre a versão de lá (a daqui fica na cópia).
   var nuvemSt = '', sincronizando = null, subindo = false, NUVEM_SEG = 60, nuvemT = 0;
-  function nuvemPronta() { return !!(window.Conta && Conta.online() && dono()); }
+  function nuvemPronta() { return !MAPA_REGIAO && !!(window.Conta && Conta.online() && dono()); }
   // a nuvem guarda o save como texto: o JSON do save vai entre aspas dentro do corpo
   function corpo(t, json) { return '{"saved_at":' + t + ',"data":' + (json ? JSON.stringify(json) : 'null') + '}'; }
   // os saves feitos sem conta neste navegador passam para a conta ao entrar: num espaço livre dela, se houver
@@ -251,7 +255,7 @@
   var subida = null;
   function sobe(fechando) {
     if (subindo) { return subida; }
-    if (!st || !slot || !ultimo || !slotDono || slotDono !== dono() || !(window.Conta && Conta.online())) { return; }
+    if (MAPA_REGIAO || !st || !slot || !ultimo || !slotDono || slotDono !== dono() || !(window.Conta && Conta.online())) { return; }
     if (ultimo.t === slotCloud) { return; }
     var u = ultimo, n = slot, quem = slotDono;
     subindo = true; nuvemT = 0;
