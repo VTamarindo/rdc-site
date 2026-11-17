@@ -12,9 +12,13 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - O volume da música em 0 agora cala a música de verdade (antes sobrava o eco da reverberação).
 - Dá para soltar itens da bolsa no chão: na Bolsa, clique no item, escolha quantos e "Soltar". Eles caem num saquinho
   logo à frente, que se pega de volta como o saque dos bichos e some depois de 5 minutos.
+- As conversas provisórias dos moradores saíram: por enquanto eles só cumprimentam com a frase da loja ou um "Bom dia."
+  e ainda não têm assuntos. As falas de verdade virão aos poucos.
 
 ## Por dentro
 - Mapa de região de 4 km com relevo, para teste (`?mapa=regiao`): vem do editor de mapas do roteirizador por `tools/importar_mapa.py`, com chão em blocos, água, muralha, peças e saves à parte.
 - Som: as trilhas são gravadas em pedaços com OfflineAudioContext e tocadas como gravação; o áudio do computador usa o buffer "balanced".
 - CSS: o ruído SVG (feTurbulence) do pergaminho virou `css/grao.png` (`tools/gerar_grao.mjs`).
+- Saiu o sistema de briga com a vila (vila em armas, golpe nas pessoas, fuga, multa, morte e substitutos), sem uso desde
+  que a opção Atacar saiu; `aldeoes` e `papel` saíram do `game.json`. Em save antigo, quem tinha morrido volta.
 - Sim.solta: o monte solto (st.saque, com solto: true) fica 2,4 m à frente; soltar de novo no mesmo lugar junta no mesmo monte. Teste novo.

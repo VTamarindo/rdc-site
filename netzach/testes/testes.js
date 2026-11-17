@@ -305,7 +305,6 @@
         confere(an(true, 0.02) === 's:a0', 'volta ao 1º: ' + o.tex);
         confere(an(false, 0.016) === 's:p', 'parou: ' + o.tex);
         confere(an(true, 3600) === 's:a0' || o.tex === 's:a1', 'muito tempo de uma vez: ' + o.tex);
-        o.userData.deitado = true; confere(an(true, 0.1) === 's:x', 'desacordado: ' + o.tex);
       });
       // saque: o lobo sempre deixa a pele (chance 1), bom para testar
       function abate(st, kind) {

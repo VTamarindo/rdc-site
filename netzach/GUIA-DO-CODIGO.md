@@ -79,11 +79,11 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
   fuga dos veados.
 - **Recursos** (`nodes`): árvores e veios: tempo de coleta e o que dão.
 - **NPCs** (`npcs`): nome, fala, e o que vendem e compram (`services`: `shop` = loja, `sell` = compra do jogador).
-- **Pessoas** (`pessoas`): papel, saudações (`ola`) e assuntos (`temas`) de cada um dos 22 moradores e lojistas.
-- **Hostilidade** (`aldeoes`): **desligada desde a versão `20261109-10`**: o menu das pessoas não tem mais "Atacar" (o
-  protagonista é da vila; ver `LORE.md`), e um save gravado no meio de uma briga termina a briga ao carregar
-  (`NZ.settle`, em `js/sim.js`). O resto do sistema continua no código, sem uso. Antes: reputação perdida (por incidente e por inocente morto), multa, tempo para acalmar e a força de cada papel na luta.
-  **Morte** (`aldeoes` → `morte`): quanto tempo o corpo fica, quando chegam os substitutos de lojistas e guardas, e os nomes deles.
+- **Pessoas** (`pessoas`): nome de cada morador e, quando houver, saudações (`ola`) e assuntos (`temas`). As falas
+  provisórias saíram em 17/11; hoje ninguém tem fala própria.
+- Não há briga com a vila: o protagonista é da vila e não ataca os moradores (ver `LORE.md`). O sistema de briga, morte e
+  substitutos saiu do código em 17/11; um save antigo perde a briga, os feridos e os mortos ao carregar (`NZ.settle`,
+  em `js/sim.js`), e quem já tinha substituto fica com o nome dele (`st.nomes`).
 - **Macro** (`macro`): as regras automáticas. **Diárias** (`daily`): missões do quadro, horário de reinício e recompensas.
 - **Missões** (`quests`) e **conversas** (`dialogues`, `_textos`).
 
@@ -164,8 +164,7 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   limite em `game.json` → `saque`. Janela e botão Saque da macro em `js/ui.js` (`openSaque`, `renderSaqueCfg`); o
   saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).
 - **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
-- **Animais e guardas perseguindo:** `js/sim.js`, `mobTick` (bichos), `genteTick` (moradores em briga), `chase` e
-  `hitPlayer` (perseguir e bater, comum a todos), `foge` (moradores fugindo por um caminho) e `afasta` (ninguém em cima de outro).
+- **Animais perseguindo:** `js/sim.js`, `mobTick` (bichos), `chase` e `hitPlayer` (perseguir e bater).
 - **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.
 - **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`. Onde cada vaca e
   ovelha está em cada instante: `World.bichoEm` em `js/sim.js` (pelo relógio do jogo, o mesmo para o desenho e a macro, que

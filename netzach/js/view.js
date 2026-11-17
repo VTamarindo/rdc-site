@@ -134,13 +134,6 @@
     return { data: new Float32Array(d), count: 6, min: [-x, 0, -0.05], max: [x, h, 0.05], w: w, h: h };
   }
 
-  // a mesma figura deitada de lado no chão (desacordado): o quadro gira 90° no próprio plano, cabeça para +x;
-  // segue de frente para a câmera, então de qualquer ângulo parece alguém caído
-  function deitadoGeo(w, h) {
-    var x = h / 2, d = [-x, 0, 0, 0, 0, 1, 1, 1, x, 0, 0, 0, 0, 1, 1, 0, x, w, 0, 0, 0, 1, 0, 0,
-      -x, 0, 0, 0, 0, 1, 1, 1, x, w, 0, 0, 0, 1, 0, 0, -x, w, 0, 0, 0, 1, 0, 1];
-    return { data: new Float32Array(d), count: 6, min: [-x, 0, -0.05], max: [x, w, 0.05], w: h, h: w, deitado: true };
-  }
 
   // quadro de tela com o pivô (px, py) em fração do quadro, medido a partir do canto inferior esquerdo; v=0 no topo
   function screenGeo(px, py) {
@@ -1176,7 +1169,6 @@
   View.prototype.anima = function (o, rumo, anda, dt) {
     var u = o.userData, A = this.art.anims && this.art.anims[u.img];
     if (!A) { return; }
-    if (u.deitado) { o.tex = 's:' + u.img; o.scale[0] = 1; return; } // desacordado: a figura de sempre, deitada
     var lado = this.direcao(rumo), D = A[lado.dir] || A.frente;
     if (!A[lado.dir]) { lado.esp = false; }
     var L = (anda && D.andar) || D.parado || A.frente.parado;
@@ -1219,14 +1211,6 @@
   View.prototype.paraDeFrente = function (o, dt) {
     o.userData.ax = undefined; o.userData.rumo = undefined;
     this.anima(o, undefined, false, dt);
-  };
-  // deita (ko = true) ou levanta a figura; o quadro em pé fica guardado para a volta
-  View.prototype.deita = function (o, ko) {
-    if (!!o.userData.deitado === ko) { return; }
-    // o sentado atrás da mesa (y < 0) cai no chão de verdade, e volta para a cadeira ao levantar
-    if (ko) { o.userData.emPe = o.geo; o.userData.y0 = o.pos[1]; o.pos[1] = 0; var g = o.geo; o.geo = cached('d' + g.w.toFixed(3) + 'x' + g.h.toFixed(3), function () { return deitadoGeo(g.w, g.h); }); }
-    else { o.geo = o.userData.emPe || o.geo; o.pos[1] = o.userData.y0 || 0; }
-    o.userData.deitado = ko;
   };
   View.prototype.dim = function (name) { return this.art.dims[name] || { w: 1, h: 1 }; };
   // troca a imagem da figura (ex.: árvore -> toco) e ajusta o quadro ao tamanho/proporção da nova imagem
@@ -1827,53 +1811,29 @@
     o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
     if (f > 0) { self.flash[id] = f - dt; }
   }
-  // st: com a vila em armas, quem anda é desenhado onde a simulação diz (entre dois tiques, interpolado);
-  // desacordado fica deitado no chão até levantar. Fora disso, a trilha manda
+  // quem anda segue a trilha; quem tem posto fica nele
   View.prototype.ambient = function (ms, st, prev, alpha, dt) {
     var self = this, seg = ms / 1000, rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
-    var gente = (st && st.gente) || {}, mortos = (st && st.mortos) || {}, H = st && st.hostil, now = performance.now(), lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
+    var lado = !!(this.art.sprites.ovelha && this.art.sprites.ovelha_tosquiada);
     this.walkers.forEach(function (w) {
-      var d = w.d, g = gente[d.id];
+      var d = w.d;
       // o tempo segurado não conta para a trilha: ao soltar, ele segue do mesmo ponto
       if (w.last !== null && self.held === d.id) { w.off += seg - w.last; }
       w.last = seg;
-      var ko = !!(g && g.ko > 0);
-      w.o.visible = !(mortos[d.id] && !ko); // morto e o corpo já levado: não aparece mais
-      if (!w.o.visible) { return; }
-      self.deita(w.o, ko);
       piscar(self, w.o, d.id, dt || 0);
-      if (ko) { w.o.at(g.x !== undefined ? g.x : w.o.pos[0], 0, g.z !== undefined ? g.z : w.o.pos[2]); self.anima(w.o, undefined, false, dt); return; } // caído onde a briga o deixou
-      if (H && g && g.x !== undefined) {
-        var pv = prev && prev['p:' + d.id], x = g.x, z = g.z;
-        if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
-        var anda = pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
-        w.o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
-        self.animaPos(w.o, x, z, dt);
-        return;
-      }
       var s = (seg - w.off) * d.speed + d.phase * w.T.len, p = passoEm(w.T, s, d.side), ph = s * Math.PI / w.passo;
       var sway = Math.sin(ph) * 0.014;                         // o corpo pende para o lado do pé de apoio
       w.o.at(p[0] + rx * sway, Math.abs(Math.sin(ph)) * 0.035, p[1] + rz * sway);
       if (self.held === d.id) { self.paraDeFrente(w.o, dt); } else { self.animaPos(w.o, p[0], p[1], dt); } // parou para conversar: de frente
     });
     Object.keys(this.npcO).forEach(function (id) {
-      var o = self.npcO[id], g = gente[id];
+      var o = self.npcO[id];
       // volta a aparecer todo quadro: salaQuadro (depois daqui) esconde quem está numa sala fora de vista, e sem isto
       // quem sumiu uma vez nunca mais voltava
-      o.visible = !(mortos[id] && !(g && g.ko > 0)); // morto e o corpo já levado: o posto fica vazio
-      self.deita(o, !!(g && g.ko > 0));
-      // na briga (e voltando depois dela) quem tem posto anda: desenhado onde a simulação diz, como os moradores;
-      // fora da sala dele perde a luz da sala (e salaQuadro deixa de escondê-lo com ela)
+      o.visible = true;
       var P = o.userData.posto, S = o.userData.sala;
-      if (g && g.x !== undefined) {
-        var pv = prev && prev['p:' + id], x = g.x, z = g.z;
-        if (pv) { x = pv.x + (g.x - pv.x) * alpha; z = pv.z + (g.z - pv.z) * alpha; }
-        var anda = !(g.ko > 0) && pv && (Math.abs(g.x - pv.x) + Math.abs(g.z - pv.z) > 0.01);
-        o.at(x, anda ? Math.abs(Math.sin(now / 120)) * 0.05 : 0, z);
-        o.dentro = S && self.w.salaEm(x, z) === S.id ? S : null;
-        self.animaPos(o, x, z, dt);
-      } else if (P) {
-        o.at(P[0], g && g.ko > 0 ? 0 : P[1], P[2]); o.dentro = S || null;
+      if (P) {
+        o.at(P[0], P[1], P[2]); o.dentro = S || null;
         o.userData.ax = undefined; self.anima(o, undefined, false, dt); // no posto: de frente, parado
       }
       piscar(self, o, id, dt || 0);
@@ -2132,7 +2092,7 @@
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
     var lu = ((hx - o.pos[0]) * co - (hz - o.pos[2]) * s) * (o.scale[0] < 0 ? -1 : 1), lv = hy - o.pos[1];
-    var g = o.geo, a = g.deitado ? null : this.mascara(o.tex && o.tex.indexOf('s:') === 0 ? o.tex.slice(2) : o.userData.img) || this.art.alpha[o.userData.img];
+    var g = o.geo, a = this.mascara(o.tex && o.tex.indexOf('s:') === 0 ? o.tex.slice(2) : o.userData.img) || this.art.alpha[o.userData.img];
     if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
     var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
     var tol = Math.max(2, Math.round(H / g.h * 0.08)); // folga de ~8 cm em volta dos pixels desenhados

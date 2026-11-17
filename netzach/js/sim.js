@@ -150,13 +150,11 @@
     var PS = game.pessoas || {};
     vila.npcs.forEach(function (n) { if (!game.npcs[n.id]) { game.npcs[n.id] = { name: (PS[n.id] && PS[n.id].name) || n.name || n.id, idle: 'Bom dia.', services: [] }; } });
     this.npcs = vila.npcs.map(function (n) { self.block(n.x, n.z); return { id: n.id, x: n.x, z: n.z }; });
-    // gente: os NPCs parados e os moradores que andam, numa lista só, pelo id. Quem é e como luta vem de
-    // game.json → pessoas (papel), não de onde a pessoa fica: mudar alguém de trilha para posto fixo não muda nada aqui
-    var AL = game.aldeoes || { papeis: {} };
+    // gente: os NPCs parados e os moradores que andam, numa lista só, pelo id
     this.people = []; this.personById = {};
     function person(id, name, fixed, x, z) {
       if (self.personById[id]) { return; }
-      var d = PS[id] || {}, q = { id: id, name: name, fixed: fixed, x: x, z: z, papel: AL.papeis[d.papel] ? d.papel : AL.papelPadrao };
+      var q = { id: id, name: name, fixed: fixed, x: x, z: z };
       self.people.push(q); self.personById[id] = q;
     }
     vila.npcs.forEach(function (n) { person(n.id, game.npcs[n.id].name, true, n.x, n.z); });
@@ -426,9 +424,8 @@
       nodes: {}, mobs: [], farm: {},
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
-      gente: {}, hostil: null, // gente[id]: vida, desmaio e, com a vila em armas, a posição de quem anda; hostil: o incidente em curso
       saque: [], saqueDeixa: {}, // saque no chão e o que a macro deixa de pegar (ver deixaSaque)
-      mortos: {}, nomes: {}, // mortos[id]: { volta: st.t em que chega o substituto, 0 = ninguém vem }; nomes[id]: nome de quem substituiu
+      nomes: {}, // nomes[id]: nome de quem substituiu a pessoa (só em saves da época em que dava para atacar a vila)
       log: []
     };
     world.nodes.forEach(function (n) { st.nodes[n.id] = { alive: true, left: 0 }; });
@@ -479,9 +476,9 @@
       bag: G.settings.bagCapacity + Math.floor((b.bag || 0) + 1e-9)
     };
   }
-  // bicho (e, depois, aldeão hostil): o perfil vem direto de game.json
+  // bicho: o perfil vem direto de game.json
   function mobStats(def) {
-    var d = def.dmg || [0, 0]; // quem não luta (aldeão que foge) não tem golpe, mas apanha com o mesmo perfil
+    var d = def.dmg || [0, 0];
     return { min: d[0], max: d[1], interval: def.interval, reach: def.reach, crit: def.crit || 0, critMult: def.critMult || 1.5, def: def.def || 0 };
   }
   // fração da armadura: def / (def + armorK); nunca chega a 100%
@@ -629,98 +626,13 @@
     this.stopMacro(st, 'Você desmaiou e foi levado à praça.');
     this.log(st, 'Você desmaiou e acordou na praça.');
     this.emit(st, { type: 'faint' });
-    // desmaiar com a vila em armas é ser preso: multa e fim do incidente
-    if (st.hostil) {
-      var A = w.game.aldeoes, c = p.inv.moeda || 0, fine = Math.min(c, Math.max(A.multa.min, Math.round(c * A.multa.frac)));
-      p.inv.moeda = c - fine;
-      this.calm(st, A.textos.fimDesmaio.replace('{multa}', fine + ' moeda' + (fine === 1 ? '' : 's')));
-    }
   };
 
-  // ---------- gente da vila: conversa, briga e desmaio ----------
-  // st.gente[id] só existe para quem apanhou, desmaiou ou está em luta; sem entrada = vida cheia, na rotina
-  Sim.prototype.papel = function (id) {
-    var A = this.w.game.aldeoes, q = this.w.personById[id];
-    return A.papeis[q && q.papel] || A.papeis[A.papelPadrao];
-  };
-  Sim.prototype.gente = function (st, id) { return st.gente[id] || (st.gente[id] = { hp: this.papel(id).hp, ko: 0, atkCd: 0 }); };
-  // fora de ação: desmaiado (saves antigos) ou morto, com o corpo no chão ou já levado
-  Sim.prototype.isKo = function (st, id) { var g = st.gente[id]; return !!((g && g.ko > 0) || (st.mortos && st.mortos[id])); };
-  Sim.prototype.isMorto = function (st, id) { return !!(st.mortos && st.mortos[id]); };
-  // onde a pessoa está para a simulação: os parados no posto; quem anda, só com a vila em armas (fora disso, a trilha é do desenho)
+  // ---------- gente da vila ----------
+  // onde a pessoa está para a simulação: os parados no posto; quem anda segue a trilha do desenho (a simulação não sabe onde)
   Sim.prototype.personPos = function (st, id) {
-    var q = this.w.personById[id], g = st.gente[id];
-    if (!q) { return null; }
-    if (g && g.x !== undefined) { return g; } // na briga (ou voltando ao posto depois dela), onde estiver
-    return q.fixed ? q : null;
-  };
-  Sim.prototype.hostileTo = function (st, id) { return !!(st.hostil && this.w.personById[id] && this.papel(id).luta && !this.isKo(st, id)); };
-  // o primeiro golpe numa pessoa: a vila inteira entra em armas. pos = { id: [x, z] } de quem anda, tirada do desenho
-  // (a simulação não sabe onde a trilha leva cada um). A reputação cai uma vez por incidente: revidar os guardas não
-  // custa de novo. Devolve false se já havia briga
-  Sim.prototype.provoke = function (st, id, pos) {
-    var w = this.w, A = w.game.aldeoes, p = st.player, self = this;
-    if (st.hostil || !w.personById[id]) { return false; }
-    st.hostil = { by: id, fora: 0 };
-    p.rep += A.repPorIncidente;
-    w.people.forEach(function (q) {
-      if (self.isMorto(st, q.id)) { return; }
-      var g = self.gente(st, q.id); g.atkCd = 0.4 + rnd(st) * 0.8; g.repath = rnd(st); g.path = null; g.volta = false;
-      if (q.fixed) { // quem tem posto (lojistas, o escudeiro) também larga o balcão: sai da célula do posto para a livre mais perto
-        if (g.x === undefined) { var c0 = w.nearestFree(q.x, q.z) || { x: q.x, z: q.z }; g.x = c0.x; g.z = c0.z; g.face = 0; }
-        return;
-      }
-      var c = pos && pos[q.id], f = c && w.free(c[0], c[1], 0.15) ? { x: c[0], z: c[1] } : c ? w.nearestFree(c[0], c[1]) : null;
-      f = f || w.nearestFree(w.plaza.x, w.plaza.z + 2) || { x: w.plaza.x, z: w.plaza.z };
-      g.x = f.x; g.z = f.z; g.face = 0;
-    });
-    var was = p.mode === 'macro' && p.macro.on;
-    this.stopMacro(st); if (was) { p.macro.stop = A.textos.macro; }
-    var text = A.textos.inicio.replace('{alvo}', w.personById[id].name);
-    this.log(st, text);
-    this.emit(st, { type: 'alert', text: text }); this.emit(st, { type: 'hostil', on: true });
-    return true;
-  };
-  // fim do incidente: quem está de pé volta inteiro à rotina; quem desmaiou segue no chão até a hora dele
-  Sim.prototype.calm = function (st, text) {
-    var p = st.player, self = this;
-    st.hostil = null;
-    this.w.people.forEach(function (q) {
-      var g = st.gente[q.id]; if (!g) { return; }
-      if (st.mortos && st.mortos[q.id]) { g.path = null; return; } // o corpo fica onde caiu
-      if (g.ko > 0) { delete g.x; delete g.z; g.path = null; }
-      else if (q.fixed && g.x !== undefined) { g.volta = true; g.path = null; g.hp = self.papel(q.id).hp; } // volta andando ao posto
-      else { delete st.gente[q.id]; }
-    });
-    if (p.action && p.action.type === 'luta') { p.action = null; }
-    if (p.macro.stop === this.w.game.aldeoes.textos.macro) { p.macro.stop = ''; } // o aviso da macro já não vale
-    this.log(st, text);
-    this.emit(st, { type: 'alert', text: text }); this.emit(st, { type: 'hostil', on: false });
-  };
-  // golpe do jogador numa pessoa (o mesmo strike dos bichos); sem XP nem saque, para a vila não virar caça
-  Sim.prototype.swingPerson = function (st, id) {
-    var w = this.w, G = w.game, A = G.aldeoes, p = st.player, s = stats(w, p), def = this.papel(id), g = this.gente(st, id), pos = this.personPos(st, id);
-    var h = this.strike(st, s, mobStats(def), G.stances[p.stance].dmg);
-    this.useAmmo(st, s);
-    g.hp -= h.n; p.atkCd = s.interval; p.combatT = 0;
-    this.emit(st, { type: 'hit', who: 'gente', id: id, x: pos.x, z: pos.z, n: h.n, crit: h.crit, ranged: s.ranged });
-    if (g.hp <= 0) {
-      // a morte é definitiva: o corpo fica no chão corpoSeg e some; lojistas e guardas ganham um substituto depois (repoeTick)
-      var M = A.morte, sub = M.substitutos[id];
-      g.hp = 0; g.ko = M.corpoSeg; g.morto = true; g.path = null;
-      st.mortos = st.mortos || {}; st.mortos[id] = { volta: sub ? st.t + (def.combatente ? M.guardaSeg : M.lojistaSeg) : 0 };
-      this.log(st, A.textos.ko.replace('{alvo}', w.personById[id].name));
-      this.emit(st, { type: 'ko', id: id });
-      if (p.action && p.action.id === id) { p.action = null; }
-      // cada morte pesa, mesmo no meio da briga: o inocente (repPorInocente) e também o soldado, porque a briga
-      // com a vila sempre foi o jogador quem começou (repPorSoldado)
-      var perda = def.combatente ? A.repPorSoldado : A.repPorInocente;
-      if (perda) {
-        p.rep += perda;
-        var txt = A.textos[def.combatente ? 'soldado' : 'inocente'].replace('{alvo}', w.personById[id].name).replace('{rp}', String(-perda));
-        this.log(st, txt); this.emit(st, { type: 'alert', text: txt });
-      }
-    }
+    var q = this.w.personById[id];
+    return q && q.fixed ? q : null;
   };
   Sim.prototype.useAmmo = function (st, s) {
     var p = st.player; if (!s.ammo) { return; }
@@ -735,7 +647,7 @@
     if (dz && w.free(e.x, e.z + dz, r)) { e.z += dz; return true; }
     return false;
   };
-  // o golpe de quem persegue o jogador: bicho ou aldeão, o mesmo código
+  // o golpe do bicho que persegue o jogador
   Sim.prototype.hitPlayer = function (st, e, def) {
     var w = this.w, G = w.game, p = st.player;
     var h = this.strike(st, mobStats(def), stats(w, p), G.stances[p.stance].taken);
@@ -767,121 +679,6 @@
     }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
   };
-  // morador fugindo: escolhe um refúgio longe do jogador (e não atrás dele) e vai pelo caminho calculado, contornando
-  // casas e cercas; refaz a escolha a cada 1,5 s ou quando o jogador chega perto do refúgio. Sem caminho, foge em linha
-  Sim.prototype.foge = function (st, g, def, dt, raio) {
-    var w = this.w, p = st.player, d = dist(g.x, g.z, p.x, p.z), s = def.speed * dt;
-    g.rt = (g.rt || 0) - dt;
-    if (g.rt <= 0 || (g.ref && g.rt < 1.2 && dist(g.ref.x, g.ref.z, p.x, p.z) < raio * 0.5)) { // no máximo um caminho a cada 0,3 s
-      var ax = (g.x - p.x) / d, az = (g.z - p.z) / d, best = null, bs = -1e9;
-      for (var k = 0; k < 16; k++) {
-        var a = k / 16 * Math.PI * 2, ux = Math.sin(a), uz = Math.cos(a);
-        if (ux * -ax + uz * -az > 0.4) { continue; } // na direção do jogador, não
-        [7, 13].forEach(function (r) {
-          var cx = g.x + ux * r, cz = g.z + uz * r; if (!w.free(cx, cz, 0.3)) { return; }
-          var sc = dist(cx, cz, p.x, p.z) + (ux * ax + uz * az) * 2 + (w.los(g.x, g.z, cx, cz) ? 3 : 0);
-          if (sc > bs) { bs = sc; best = { x: cx, z: cz }; }
-        });
-      }
-      g.ref = best; g.rt = 1.5;
-      g.path = best ? (w.los(g.x, g.z, best.x, best.z) ? [best] : w.path(g.x, g.z, best.x, best.z)) : null;
-    }
-    while (g.path && g.path.length && dist(g.x, g.z, g.path[0].x, g.path[0].z) < 0.3) { g.path.shift(); }
-    if (g.path && g.path.length) {
-      var wp = g.path[0], dw = dist(g.x, g.z, wp.x, wp.z), st2 = Math.min(s, dw);
-      if (this.nudge(g, (wp.x - g.x) / dw * st2, (wp.z - g.z) / dw * st2, 0.15)) { g.face = Math.atan2(wp.x - g.x, wp.z - g.z); return; }
-      g.path = null; // preso no caminho: escolhe outro no próximo tique
-    }
-    var dx = (g.x - p.x) / d * s, dz = (g.z - p.z) / d * s;
-    if (!this.nudge(g, dx, dz, 0.15) && !this.nudge(g, -dz, dx, 0.15)) { this.nudge(g, dz, -dx, 0.15); }
-    g.face = Math.atan2(g.x - p.x, g.z - p.z);
-  };
-  // quem anda na briga não ocupa o lugar de outro nem o do jogador: a menos de 0,8 m, dá um passo para o lado
-  Sim.prototype.afasta = function (st, id, g) {
-    var w = this.w, p = st.player, self = this, eu = w.people.indexOf(w.personById[id]);
-    function longe(ox, oz, k0) {
-      var d = dist(g.x, g.z, ox, oz); if (d >= 0.8) { return; }
-      var k = (0.8 - d) * k0, a = eu * 2.4; // juntos no mesmo ponto: cada um sai para um lado
-      var ux = d > 0.01 ? (g.x - ox) / d : Math.cos(a), uz = d > 0.01 ? (g.z - oz) / d : Math.sin(a);
-      // e um pouco de lado (cada um para o seu), para cercar o jogador em vez de fazer fila atrás do primeiro
-      var lado = eu % 2 ? 1 : -1, tx = -uz * lado, tz = ux * lado;
-      self.nudge(g, (ux + tx) * k, (uz + tz) * k, 0.15);
-    }
-    for (var j = 0; j < w.people.length; j++) {
-      var o = w.people[j]; if (o.id === id) { continue; }
-      var h = st.gente[o.id]; if (!o.fixed && !h) { continue; } // morador fora da briga: está na trilha, não na simulação
-      longe(h && h.x !== undefined ? h.x : o.x, h && h.z !== undefined ? h.z : o.z, 0.8);
-    }
-    longe(p.x, p.z, 1);
-  };
-  Sim.prototype.genteTick = function (st, dt) {
-    var w = this.w, A = w.game.aldeoes, p = st.player, H = st.hostil, pl = w.plaza;
-    var inVila = dist(p.x, p.z, pl.x, pl.z) <= A.raio;
-    for (var i = 0; i < w.people.length; i++) {
-      var q = w.people[i], g = st.gente[q.id]; if (!g) { continue; }
-      var def = this.papel(q.id);
-      if (this.isMorto(st, q.id)) { // o corpo fica no chão um tempo e depois é levado
-        if (g.ko > 0) { g.ko -= dt; if (g.ko <= 0) { delete st.gente[q.id]; this.emit(st, { type: 'up', id: q.id }); } }
-        continue;
-      }
-      if (g.ko > 0) {
-        g.ko -= dt;
-        if (g.ko <= 0) {
-          this.log(st, A.textos.levanta.replace('{alvo}', q.name));
-          if (st.hostil) { g.ko = 0; g.hp = def.hp; } else { delete st.gente[q.id]; }
-          this.emit(st, { type: 'up', id: q.id });
-        }
-        continue;
-      }
-      if (!H) { if (g.volta) { this.voltaPosto(st, q, g, def, dt); } continue; }
-      g.atkCd -= dt;
-      if (def.luta) {
-        if (!inVila) { continue; } // na borda da vila os guardas desistem e esperam
-        // posto sem posição (save de antes de os lojistas andarem): bate só de onde está, como antes
-        if (q.fixed && g.x === undefined) { if (dist(q.x, q.z, p.x, p.z) <= def.reach + 0.6 && g.atkCd <= 0) { var e = { x: q.x, z: q.z }; this.hitPlayer(st, e, def); g.atkCd = e.atkCd; } }
-        else { this.chase(st, g, def, dt, true); this.afasta(st, q.id, g); }
-        if (st.hostil !== H) { return; } // o jogador desmaiou: o incidente acabou no meio da volta
-      } else if (g.x !== undefined) {
-        var d = dist(g.x, g.z, p.x, p.z);
-        if (d < A.fugaDist && d > 0.01) { this.foge(st, g, def, dt, A.fugaDist); this.afasta(st, q.id, g); }
-        else { g.ref = null; g.path = null; }
-      }
-    }
-    // a vila se acalma depois de calmaSeg seguidos com o jogador longe
-    if (!H) { return; }
-    if (inVila) { H.fora = 0; }
-    else { H.fora += dt; if (H.fora >= A.calmaSeg) { this.calm(st, A.textos.fimFuga); } }
-  };
-
-  // depois da briga, quem tem posto volta a ele andando, pelo caminho; chegando (ou sem caminho, ou preso mais de 40 s),
-  // a simulação o devolve ao posto e ele volta a atender
-  Sim.prototype.voltaPosto = function (st, q, g, def, dt) {
-    var w = this.w, alvo = w.nearestFree(q.x, q.z) || { x: q.x, z: q.z };
-    g.vt = (g.vt || 0) + dt;
-    if (!g.path) { g.path = w.los(g.x, g.z, alvo.x, alvo.z) ? [alvo] : w.path(g.x, g.z, alvo.x, alvo.z); }
-    while (g.path && g.path.length && dist(g.x, g.z, g.path[0].x, g.path[0].z) < 0.3) { g.path.shift(); }
-    if (!g.path || !g.path.length || g.vt > 40 || dist(g.x, g.z, alvo.x, alvo.z) < 0.4) { delete st.gente[q.id]; this.emit(st, { type: 'posto', id: q.id }); return; }
-    var wp = g.path[0], d = dist(g.x, g.z, wp.x, wp.z), s = Math.min(def.speed * 0.45 * dt, d); // sem pressa: a briga acabou
-    g.x += (wp.x - g.x) / d * s; g.z += (wp.z - g.z) / d * s; g.face = Math.atan2(wp.x - g.x, wp.z - g.z);
-  };
-  // substitutos: passado o tempo (e com a vila em paz), chega outra pessoa para a loja ou o posto de quem morreu.
-  // Os nomes vêm em ordem de aldeoes.morte.substitutos[id]; acabando a lista, o último ganha um número
-  Sim.prototype.repoeTick = function (st) {
-    if (!st.mortos || st.hostil) { return; }
-    var w = this.w, M = w.game.aldeoes.morte, self = this;
-    Object.keys(st.mortos).forEach(function (id) {
-      var m = st.mortos[id], q = w.personById[id], L = M.substitutos[id];
-      if (!q) { delete st.mortos[id]; return; }
-      if (!m.volta || st.t < m.volta || !L) { return; }
-      st.trocas = st.trocas || {}; var k = st.trocas[id] = (st.trocas[id] || 0) + 1;
-      var antigo = q.name, novo = L[Math.min(k, L.length) - 1] + (k > L.length ? ' ' + (k - L.length + 1) : '');
-      delete st.mortos[id]; delete st.gente[id];
-      st.nomes = st.nomes || {}; st.nomes[id] = novo; NZ.aplicaNomes(w, st);
-      var txt = M.textos.chegou.replace('{novo}', novo).replace('{antigo}', antigo);
-      self.log(st, txt); self.emit(st, { type: 'alert', text: txt }); self.emit(st, { type: 'up', id: id });
-    });
-  };
-
   Sim.prototype.stopMacro = function (st, reason) {
     var m = st.player.macro;
     if (st.player.mode === 'macro') { st.player.mode = 'manual'; }
@@ -895,7 +692,6 @@
       m.area = { x: c.x, z: c.z, r: this.w.game.settings.macroRadius };
     }
     if (!m.area) { return false; }
-    if (st.hostil) { m.stop = this.w.game.aldeoes.textos.macro; return false; } // a macro não trabalha (nem luta) no meio da briga
     p.mode = 'macro'; m.on = true; m.phase = 'run'; m.stop = ''; m.path = null; m.goal = null; p.action = null; p.goto = null;
     return true;
   };
@@ -1151,13 +947,6 @@
       var d = dist(p.x, p.z, m.x, m.z), s = stats(w, p);
       if (d > Math.max(14, s.reach + 4)) { p.action = null; return; }
       if (d <= s.reach && p.atkCd <= 0 && (!s.ranged || w.los(p.x, p.z, m.x, m.z))) { this.swing(st, m); }
-    } else if (a.type === 'luta') { // uma pessoa da vila, só com a vila em armas
-      var e = this.personPos(st, a.id);
-      if (!st.hostil || !e || this.isKo(st, a.id)) { p.action = null; return; }
-      if (this.offline) { return; } // a briga está congelada no tempo fora: ninguém bate em quem não se mexe
-      var de = dist(p.x, p.z, e.x, e.z), se = stats(w, p);
-      if (de > Math.max(20, se.reach + 4)) { p.action = null; return; }
-      if (de <= se.reach && p.atkCd <= 0 && (!se.ranged || w.los(p.x, p.z, e.x, e.z))) { this.swingPerson(st, a.id); }
     } else {
       p.action = null; // descanso/espera/viagem só existem dentro da macro
     }
@@ -1187,7 +976,7 @@
       if (dist(m.x, m.z, sp.x, sp.z) > def.leash || dist(m.x, m.z, p.x, p.z) > def.leash) {
         m.fight = false; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
       }
-      this.chase(st, m, def, dt, false); // o mesmo perseguir-e-bater dos aldeões em armas
+      this.chase(st, m, def, dt, false);
       return;
     }
     // passeio
@@ -1290,9 +1079,6 @@
     if (st.saque && st.saque.length && st.saque[0].ate <= st.t) { // o mais velho vem primeiro
       st.saque = st.saque.filter(function (s) { return s.ate > st.t; }); this.emit(st, { type: 'saque' });
     }
-    // tempo fora: a briga e os desmaios ficam congelados até o jogador voltar (ninguém é preso ou foge sem estar olhando)
-    if (!this.offline) { this.genteTick(st, dt); }
-    this.repoeTick(st);
 
     if (p.mode === 'macro' && p.macro.on) { this.macroTick(st, dt); }
     else { this.manualTick(st, dt); }
@@ -1301,9 +1087,9 @@
   // avança 'sec' segundos em silêncio (tempo fora). Devolve quantos segundos rodou.
   Sim.prototype.advance = function (st, sec) {
     var dt = this.w.game.settings.tickSec, n = Math.floor(sec / dt);
-    var was = this.quiet, off = this.offline; this.quiet = true; this.offline = true;
+    var was = this.quiet; this.quiet = true;
     for (var i = 0; i < n; i++) { this.tick(st); }
-    this.quiet = was; this.offline = off;
+    this.quiet = was;
     return n * dt;
   };
 
@@ -1330,11 +1116,6 @@
   Sim.prototype.service = function (st, npc, s, arg) {
     var w = this.w, G = w.game, p = st.player;
     if (!this.nearNpc(st, npc)) { return this.paredeEntre(st, npc) || 'Aproxime-se primeiro.'; }
-    // o quadro e o baú são objetos e seguem abertos; as pessoas não atendem no meio da briga nem desacordadas
-    var q = w.personById[npc];
-    if (q && this.isKo(st, npc)) { return G.aldeoes.textos.desacordado.replace('{alvo}', q.name); }
-    if (q && st.hostil) { return (G.pessoas[npc] && G.pessoas[npc].recusa) || G.aldeoes.textos.recusa; }
-    if (q && st.gente[npc] && st.gente[npc].volta) { return G.aldeoes.textos.voltando.replace('{alvo}', q.name); }
     if (s.type === 'heal') {
       var ven = !!p.poison; p.hp = maxHp(w, p); p.poison = null; return ven ? 'Vida restaurada e veneno curado.' : 'Vida restaurada.';
     }
@@ -1615,8 +1396,6 @@
     if (typeof st.player.name !== 'string') { st.player.name = ''; }
     if (st.player.goto === undefined) { st.player.goto = null; }
     if (st.player.mapNav !== 'macro') { st.player.mapNav = 'caminhada'; }
-    if (!st.gente || typeof st.gente !== 'object') { st.gente = {}; }
-    if (st.hostil === undefined) { st.hostil = null; }
     if (!Array.isArray(st.saque)) { st.saque = []; }
     if (!st.saqueDeixa || typeof st.saqueDeixa !== 'object') { st.saqueDeixa = {}; }
     return st;
@@ -1678,41 +1457,17 @@
       m.path = null; m.goal = null; p.goto = null;
       if (p.action && (p.action.type === 'gather' || p.action.type === 'attack')) { p.action = null; }
     }
-    // a briga com os moradores saiu do jogo: save gravado no meio de uma termina aqui, como em Sim.calm (os mortos
-    // ficam mortos, quem está desacordado segue no chão até a hora dele, o resto volta à rotina)
-    if (st.hostil) {
-      st.hostil = null;
-      if (p.action && p.action.type === 'luta') { p.action = null; }
-      if (G.aldeoes && m.stop === G.aldeoes.textos.macro) { m.stop = ''; }
-      Object.keys(st.gente).forEach(function (id) {
-        var g = st.gente[id];
-        if (st.mortos && st.mortos[id]) { g.path = null; }
-        else if (g.ko > 0) { delete g.x; delete g.z; g.path = null; }
-        else { delete st.gente[id]; }
-      });
-    }
-    // gente: quem saiu da planta sai do save; com a vila em armas, quem anda e ficou sem posição (passou de parado a
-    // morador, por exemplo) começa na praça; quem virou parado perde a posição de andante
-    Object.keys(st.gente).forEach(function (id) {
-      var q = world.personById[id], g = st.gente[id];
-      if (!q) { delete st.gente[id]; return; }
-      if (q.fixed && !st.hostil && !(st.mortos && st.mortos[id])) { delete st.gente[id]; return; } // fora da briga, no posto
-      if (q.fixed) { g.path = null; if (g.x === undefined && !(g.ko > 0)) { var c1 = world.nearestFree(q.x, q.z) || q; g.x = c1.x; g.z = c1.z; } }
-      else if (st.hostil && g.x === undefined && !(g.ko > 0)) { var c = world.nearestFree(world.plaza.x, world.plaza.z + 2); g.x = c.x; g.z = c.z; }
-    });
-    if (st.hostil) { world.people.forEach(function (q) {
-      if (q.fixed || st.gente[q.id] || (st.mortos && st.mortos[q.id])) { return; }
-      var c = world.nearestFree(world.plaza.x, world.plaza.z + 2), A = G.aldeoes;
-      st.gente[q.id] = { hp: (A.papeis[q.papel] || A.papeis[A.papelPadrao]).hp, ko: 0, atkCd: 1, x: c.x, z: c.z };
-    }); }
+    // a briga com os moradores saiu do jogo: saves antigos perdem a briga, os feridos e os mortos (quem morreu volta;
+    // o nome de quem já tinha substituto fica, em st.nomes)
+    delete st.gente; delete st.hostil; delete st.mortos; delete st.trocas;
+    if (p.action && p.action.type === 'luta') { p.action = null; }
     if (!world.free(p.x, p.z, 0.3)) {
       var f = world.nearestFree(p.x, p.z) || { x: world.plaza.x, z: world.plaza.z + 1 }, S = world.salaDe(f.x, f.z);
       // preso numa parede de construção com sala (a planta mudou): sai pela porta, em vez de aparecer lá dentro
       if (S && !world.salaEm(p.x, p.z)) { f = world.nearestFree(S.fora.x, S.fora.z) || f; }
       p.x = f.x; p.z = f.z; m.path = null; m.goal = null;
     }
-    st.mortos = st.mortos || {}; st.nomes = st.nomes || {};
-    Object.keys(st.mortos).forEach(function (id) { if (!world.personById[id]) { delete st.mortos[id]; } });
+    st.nomes = st.nomes || {};
     NZ.aplicaNomes(world, st);
     return st;
   };

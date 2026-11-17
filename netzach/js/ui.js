@@ -605,7 +605,6 @@
   function snapPrev() {
     var o = { player: { x: st.player.x, z: st.player.z } };
     st.mobs.forEach(function (m) { o[m.id] = { x: m.x, z: m.z }; });
-    for (var id in st.gente) { var g = st.gente[id]; if (g.x !== undefined) { o['p:' + id] = { x: g.x, z: g.z }; } } // moradores em luta
     return o;
   }
   // som do campo de trigo (js/som.js, campo): a distância até o trigo mais perto e de que lado ele está em relação à câmera,
@@ -703,12 +702,12 @@
         '<button type="button" data-cfg="' + esc(k) + '" aria-pressed="' + pega + '">' + (pega ? 'Pegar' : 'Deixar') + '</button></li>';
     }).join('');
   }
-  // a conversa fecha quando o jogador se afasta (ou quem fala cai desacordado)
+  // a conversa fecha quando o jogador se afasta
   function nearOpen() {
     var q = world.personById[npcOpen];
     if (!q) { return sim.nearNpc(st, npcOpen); }
     var pos = personPos(npcOpen);
-    return !sim.isKo(st, npcOpen) && !!pos && calc.dist(st.player.x, st.player.z, pos.x, pos.z) <= G.settings.interactRange + 1;
+    return !!pos && calc.dist(st.player.x, st.player.z, pos.x, pos.z) <= G.settings.interactRange + 1;
   }
   function angDiff(a, b) { var d = a - b; while (d > Math.PI) { d -= Math.PI * 2; } while (d < -Math.PI) { d += Math.PI * 2; } return d; }
 
@@ -739,12 +738,6 @@
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
         var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : ''); }
-      } else if (e.type === 'hit' && e.who === 'gente') {
-        view.hit(e.id); view.shake = 0.05;
-        floatAt(e.x, 1.5, e.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : '');
-      } else if (e.type === 'hostil') {
-        if (e.on && npcOpen && world.personById[npcOpen]) { hide(); } // a conversa não sobrevive à briga
-        lineTxt = null;
       } else if (e.type === 'hit' && e.who === 'player') {
         var h = $('hurt'); h.classList.add('on'); setTimeout(function () { h.classList.remove('on'); }, 60);
         floatScreen(0.5, 0.62, '-' + e.n + (e.crit ? '!' : ''), 'me'); view.shake = 0.12;
@@ -808,10 +801,6 @@
     // campanha antes do mundo aberto: sem dica de mapa; ela aparece uma vez, com a macro e a caminhada juntas, no fim do capítulo
     var hint = semMacro() ? '' : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
     var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
-    // vila em armas: a linha fica fixa, em vermelho, e conta o tempo que falta longe da vila
-    var H = st.hostil, AT = G.aldeoes.textos;
-    if (H) { busy = true; txt = H.fora > 0 ? AT.fora.replace('{s}', Math.ceil(G.aldeoes.calmaSeg - H.fora)) : AT.linha + (p.goto ? ' · andando até o ponto marcado' : ''); }
-    line.classList.toggle('hostil', !!H);
     // o que está acontecendo fica na tela; dica e aviso de parada somem depois de LINE_MS, e a dica só aparece uma vez
     if (txt !== lineTxt) { lineTxt = txt; line.textContent = txt; lineEnd = !txt || (txt === hint && hintSeen) ? 0 : now + LINE_MS; } // sem texto: a linha fica escondida
     if (!p.name && txt) { lineEnd = now + LINE_MS; } // a contagem só começa depois de criar o personagem
@@ -1724,8 +1713,6 @@
     var def = G.npcs[id];
     return !!(def && world.personById[id].fixed && def.services.some(function (s) { return /^(shop|sell|buy|heal)$/.test(s.type); }));
   }
-  // o que a pessoa diz com a vila em armas: quem luta ameaça, quem não luta tem medo
-  function angry(id) { var P = persona(id), A = G.aldeoes.textos; return sim.papel(id).luta ? P.hostil || A.hostil : P.medo || A.medo; }
   // tem missão ou conversa nova para dar ('!') ou missão pronta para entregar ('?')
   function pending(id) {
     var def = G.npcs[id], dlg = def && def.dialogue && G.dialogues[def.dialogue], q = def && sim.npcQuest(st, id);
@@ -1741,17 +1728,16 @@
   }
   function personMenu(id, said) {
     $('npc-acts').innerHTML = ''; sellShown = null; $('npc-res').textContent = '';
-    var mk = st.hostil ? '' : pending(id), opts = [];
-    opts.push({ text: 'Conversar' + (mk === '!' ? ' (!)' : mk === '?' ? ' (?)' : ''), fn: function () { if (st.hostil) { personMenu(id, angry(id)); } else { talk(id); } } });
+    var mk = pending(id), opts = [];
+    opts.push({ text: 'Conversar' + (mk === '!' ? ' (!)' : mk === '?' ? ' (?)' : ''), fn: function () { talk(id); } });
     if (hasTrade(id)) { opts.push({ text: 'Negociar', fn: function () { negotiate(id); } }); }
     opts.push({ text: 'Fechar', fn: hide });
-    setTalk(said || (st.hostil ? angry(id) : alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.')), opts);
+    setTalk(said || alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.'), opts);
   }
   function backTo(id) { return { text: 'Voltar', fn: function () { personMenu(id); } }; }
-  // Negociar: a loja e os serviços de sempre, abaixo da fala; com a vila em armas, ninguém vende nada
+  // Negociar: a loja e os serviços de sempre, abaixo da fala
   function negotiate(id) {
     var def = G.npcs[id];
-    if (st.hostil) { setTalk(persona(id).recusa || G.aldeoes.textos.recusa, [backTo(id)]); return; }
     setTalk(def.idle || alterna('ola:' + id, persona(id).ola), [backTo(id)]);
     renderNpcActs(id);
   }
@@ -1759,13 +1745,6 @@
   function topics(id, text) {
     var T = persona(id).temas || [];
     setTalk(text, T.map(function (t, i) { return { text: t.p, fn: function () { topics(id, alterna('tema:' + id + ':' + i, t.r)); } }; }).concat([backTo(id)]));
-  }
-  // marca a pessoa como alvo: o golpe sai sozinho quando ela estiver ao alcance (como com os bichos)
-  function target(id) {
-    var p = st.player, pos = personPos(id);
-    if (sim.takeControl(st)) { toast('Macro pausada.'); }
-    p.goto = null; p.action = { type: 'luta', id: id };
-    if (pos && calc.dist(p.x, p.z, pos.x, pos.z) > calc.stats(world, p).reach) { toast('Alvo: ' + personName(id) + '. Aproxime-se para atacar.'); }
   }
   // Conversar: primeiro a conversa marcada (Anselmo), depois a missão, e por fim os assuntos de cada um
   function talk(id, said) {
@@ -1956,7 +1935,6 @@
     var aqui = world.salaEm(st.player.x, st.player.z), naPorta = {};
     world.npcs.forEach(function (n) {
       var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
-      if (sim.isKo(st, n.id)) { mark(n.id, '', n.x, 2.25, n.z); return; } // morto não dá missão
       if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
       else if (q && q.state === 'available') { sym = '!'; }
       else if (q && q.state === 'ready') { sym = '?'; }
@@ -2269,8 +2247,6 @@
     if (ref.type === 'camp') { camp.interage(ref.id, d); return; }
     if (ref.type === 'npc' || ref.type === 'gente') {
       var nm = personName(ref.id);
-      if (sim.isKo(st, ref.id)) { toast(G.aldeoes.textos.desacordado.replace('{alvo}', nm)); return; }
-      if (sim.hostileTo(st, ref.id)) { target(ref.id); return; } // quem vem para cima não conversa: o clique é golpe
       var parede = sim.paredeEntre(st, ref.id); if (parede) { toast(parede); return; }
       if (d <= G.settings.interactRange + 0.5) { openPerson(ref.id); } else { toast('Aproxime-se de ' + nm + '.'); }
       return;
@@ -2311,10 +2287,10 @@
       if (d > 1.6 && (dx * fx + dz * fz) / d < 0.35) { return; }
       if (d < bd) { bd = d; best = ref; }
     }
-    // gente (parada ou andando), menos quem está desacordado
+    // gente (parada ou andando)
     function people(range) {
       world.people.forEach(function (q) {
-        var pos = personPos(q.id); if (!pos || sim.isKo(st, q.id)) { return; }
+        var pos = personPos(q.id); if (!pos) { return; }
         consider({ type: q.fixed ? 'npc' : 'gente', id: q.id }, pos.x, pos.z, range);
       });
     }
@@ -2524,7 +2500,6 @@
       var pt = mapPoint(e), wasMacro = macroOn();
       if (mapMenu) { mapMenu = false; mapUi(); return; } // clique fora do menu só fecha o menu
       mapHover = null;
-      if (mapNext() === 'macro' && st.hostil) { toast(G.aldeoes.textos.macro, 3); return; }
       if (mapNext() === 'macro') { sim.startMacro(st, pt); mapArmed = false; hide(); toast(wasMacro ? 'Área mudada. A macro segue trabalhando lá.' : 'Área marcada. O personagem vai trabalhar lá.'); return; }
       if (sim.goTo(st, pt.x, pt.z)) { mapArmed = false; hide(); toast(wasMacro ? 'Macro pausada. Indo até o ponto marcado.' : 'Indo até o ponto marcado.'); }
     });
@@ -2539,7 +2514,7 @@
       b.addEventListener('pointerleave', mapTipOff); b.addEventListener('blur', mapTipOff);
     });
     $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = 'macro'; mapUi(); });
-    $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } else if (st.hostil) { mapUi(); toast(G.aldeoes.textos.macro, 3); } });
+    $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } });
     $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
     $('mm-saque').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-saque-cfg'); renderSaqueCfg(); });
     $('saque-cfg').addEventListener('click', function (e) {
@@ -2654,10 +2629,9 @@
   function hoverAt(e) {
     var h = pickEvent(e), el = $('hover'), cv = $('view');
     if (!h) { el.hidden = true; cv.classList.remove('over'); return; }
-    var pos = refPos(h.ref), d = calc.dist(st.player.x, st.player.z, pos.x, pos.z), who = h.ref.type === 'npc' || h.ref.type === 'gente';
-    var g = who && st.hostil && st.gente[h.ref.id], life = h.ref.type === 'mob' ? sim.mobById(st, h.ref.id).hp : g ? g.hp : null;
+    var pos = refPos(h.ref), d = calc.dist(st.player.x, st.player.z, pos.x, pos.z);
+    var life = h.ref.type === 'mob' ? sim.mobById(st, h.ref.id).hp : null;
     el.textContent = refName(h.ref) + (life !== null ? ' · ' + Math.max(0, Math.ceil(life)) + ' de vida' : '') + ' · ' + d.toFixed(1) + ' m';
-    el.classList.toggle('hostil', who && sim.hostileTo(st, h.ref.id)); // quem vai lutar aparece em vermelho
     el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px'; el.hidden = false; cv.classList.add('over');
   }
 
