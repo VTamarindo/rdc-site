@@ -3,6 +3,7 @@
 Quem é quem na vila, o que cada um sabe e o que ainda está em aberto. Serve para escrever falas, missões e os
 próximos updates sem contradizer o que já existe. As falas de verdade ficam em `data/game.json` → `pessoas`.
 A fonte de verdade do projeto é o **GDD do autor** (*Netzach — GDD*, 17/11/2026); esta bíblia segue o GDD.
+O mapa da região está em `art/mapa-regiao/MAPA-4KM.md`.
 
 **Como ler as marcas:**
 - **[decidido]** veio do autor do jogo e vale como verdade.
@@ -28,7 +29,7 @@ A fonte de verdade do projeto é o **GDD do autor** (*Netzach — GDD*, 17/11/20
 - **[decidido]** O protagonista de Echad é homem e aparece no Netzach como **"o escolhido"**. O protagonista do Netzach é
   outro (ver "O protagonista").
 - **[decidido]** Tom solene e honroso de Tolkien (*Os Filhos de Húrin*, a "coragem nórdica"). Arquétipo da queda, não da
-  vingança (vingança já é a história de Echad). Quedas em camadas: a vila, Charco Antigo, Rocherco.
+  vingança (vingança já é a história de Echad). Quedas em camadas: a vila, Charcoantigo, Rocherco.
 - **[decidido]** O multiplayer fica fora da lore: é só mecânica, sem explicação na história.
 
 ## O mundo
@@ -54,10 +55,20 @@ A fonte de verdade do projeto é o **GDD do autor** (*Netzach — GDD*, 17/11/20
 
 | Reino | Nome em inglês | Terra | O que lhe falta | Rei |
 | --- | --- | --- | --- | --- |
-| Charco Antigo | Eldmer | Água e pântanos | As joias mágicas de Rocherco | Eldred |
-| Rocherco | Stangard | Pedra e deserto, costeiro, sem água potável | A água de Charco Antigo | (sem nome ainda) |
+| Charcoantigo | Eldmer | Água e pântanos | As joias mágicas de Rocherco | Eldred |
+| Rocherco | Stangard | Pedra e deserto, costeiro, sem água potável | A água de Charcoantigo | (sem nome ainda) |
 
 - **[decidido]** Os dois reis só são citados no Netzach: eles aparecem em Echad.
+
+### A região (mapa de 4 km)
+- **[decidido]** **Norte: a Muralha Férrea**, de ponta a ponta, com a **Fortaleza da Muralha** e o único portão,
+  fechado. O que fica além dela é outro deserto e não entra no jogo.
+- **[decidido]** **Oeste: o pé da cordilheira e Charcoantigo.** As águas descem da montanha (Rio Grande, Riacho da
+  Cordilheira, Riacho do Mosteiro) e correm para o sul, onde viram charco e meres. **Sul:** o charco fundo.
+- **[decidido]** **Leste: Rocherco.** Planalto seco, pedregal e areia. Nenhum rio chega lá: a água vem do mar,
+  dessalinizada pelo dragão, pelo **Aqueduto de Rocherco** até a **Cisterna**.
+- **[decidido]** A guerra fria vista no chão: o **Pedágio da Água**, de Charcoantigo, na ponte do Braço Leste; logo
+  depois, o **Pouso dos Aguadeiros** (boatos dos dois reinos e do dragão) e o **Posto de Rocherco**, onde o verde acaba.
 
 ### A história recente
 1. **[decidido]** Guerra sem vencedor entre os dois reinos, seguida de uma guerra fria.
@@ -65,11 +76,11 @@ A fonte de verdade do projeto é o **GDD do autor** (*Netzach — GDD*, 17/11/20
 3. **[decidido]** O rei Eldred usa a boa vontade do escolhido como fachada e retira os guardas da fronteira.
 4. **[decidido]** O rei de Rocherco aproveita a presença do escolhido, por oportunismo, e envia um comboio de **"ajuda"**
    com um **dragão escondido**.
-5. **[decidido]** O dragão destrói **Riacho Sagrado** (*Stowburn*), a principal vila agrícola de Charco Antigo, na fronteira.
+5. **[decidido]** O dragão destrói **Riachossagrado** (*Stowburn*), a principal vila agrícola de Charcoantigo, na fronteira.
 6. **[decidido]** O dragão é capturado. Era ele quem dessalinizava a água de Rocherco, que passa a morrer de sede.
 
 ### A guerra e a fome
-- **[decidido]** Os homens de Riacho Sagrado foram mandados para a guerra e morreram. Sem gente para trabalhar o campo,
+- **[decidido]** Os homens de Riachossagrado foram mandados para a guerra e morreram. Sem gente para trabalhar o campo,
   veio a fome.
 - **[decidido]** O rei Eldred, vendo que a guerra não se sustentava sem os mantimentos da vila, deixou a vila por conta
   própria e parou de exigir homens.
@@ -84,7 +95,7 @@ A fonte de verdade do projeto é o **GDD do autor** (*Netzach — GDD*, 17/11/20
 
 ## O loop
 
-- **[decidido]** O demiurgo Netzach prende o protagonista no ciclo da destruição de Riacho Sagrado. O sofrimento continua
+- **[decidido]** O demiurgo Netzach prende o protagonista no ciclo da destruição de Riachossagrado. O sofrimento continua
   enquanto o jogador jogar. **O protagonista não quebra o loop: ele o redime.**
 - **[decidido]** O final já está decidido: o protagonista vence o Netzach **no campo de trigo**, a vila cai mesmo assim,
   ele morre e o ciclo reinicia ali mesmo. É uma vitória que não salva nada.
@@ -197,36 +208,56 @@ A lista do que o protagonista tenta, e por que falha, ainda está por fazer; ela
 
 ## Lugares
 
-### Riacho Sagrado (a vila)
-- **[decidido]** No canto inferior esquerdo do mapa (4 × 4 km), na fronteira, com a transição de pântano para pedra
-  visível logo no início. Compacta: 10 a 12 construções com donos marcantes.
-- **[decidido]** Muralha no norte, com portão onde ela cruza o rio. Lavouras de trigo e hortas de cebola, nabo e
+### Riachossagrado (a vila)
+- **[decidido]** Na parte de baixo do mapa (4 × 4 km), no centro, na fronteira, com a transição de pântano para pedra
+  visível logo no início. Compacta: 10 a 12 construções com donos marcantes. (O mapa de 4 km ainda tem a vila no centro
+  e cerca de 70 casas: precisa ser ajustado.)
+- **[decidido]** Fica numa ilha seca e fértil entre os dois braços do Rio Grande. A **Fonte Sagrada**, ao norte da vila,
+  dá nome ao lugar e ao riacho que atravessa a vila e deságua no Braço Leste.
+- **[decidido]** Lavouras em campos abertos em rotação (trigo na maior parte, pousio e nabal) e hortas de cebola, nabo e
   alho-poró.
-- **A praça:** centro da vila, com o quadro de avisos e o baú das entregas diárias.
+- **A praça:** centro da vila, com o poço, as bancas, o quadro de avisos e o baú das entregas diárias.
 - **A casa do Mestre Aymer:** casa de pedra; antes dela, "isto aqui era só lama e porco" (Osric). Tem uma vala em volta,
   que os meninos pulam escondidos. **[a revisar]** Nas falas é a "Casa do Senhor".
-- **A igreja:** o telhado da nave pinga em cima do altar; o confessionário quebrou (missão do padre).
-- **A ferraria, a taverna, a padaria e a alfaiataria.** O forno da padaria é da terra do rei: todos assam nele e pagam
+  **[sugestão]** É a **Casa do Grão Alto** do mapa: no outeiro a nordeste, dentro de uma paliçada com vala, com o celeiro
+  do rei (o grão das tropas), o celeiro novo (a obra do quadro de avisos), estrebaria, pombal, a bandeira do pelicano e
+  a carroça dos cobradores.
+- **A igreja:** de pedra, com adro e a cruz dos que não voltaram da guerra. O telhado da nave pinga em cima do altar;
+  o confessionário quebrou (missão do padre).
+- **A Ferraria do Bolder, a Taverna do Gunter, a padaria e a Alfaiataria do Godwin.** O forno da padaria é da terra do rei: todos assam nele e pagam
   um pão de cada vinte.
 - **O pasto e o aprisco:** vacas e ovelhas ao norte. Há um buraco na cerca do aprisco que só o Tom conhece.
 - **A toca do protagonista:** numa árvore (quarto, salvamento e baú).
-- **O moinho e o moleiro:** **[nas falas]** existem, mas ainda não estão no mapa. O moleiro "rouba no peso", e a farinha
+- **[sugestão]** Do mapa: o Salão da vila e a Oficina do artesão (ficam ou saem, já que a vila é compacta?), cabras na
+  fronteira e o chiqueiro do Hob.
+- **O moinho e o moleiro:** **[decidido]** moinho d'água no riacho da vila. **[nas falas]** O moleiro "rouba no peso", e a farinha
   "vem com areia" (ou com mentira).
 
 ### Arredores
-- **A floresta (oeste e norte):** lobos, coelhos e a **toca do troll**. Os mais velhos dizem para não ir lá à noite.
+- **A floresta (oeste e noroeste, a mata):** lobos, coelhos e a **toca do troll**. Os mais velhos dizem para não ir lá à noite.
 - **O pedregal (nordeste e leste):** escorpiões, serpentes, veios de ferro. **[decidido]** O tesouro enterrado ("quem
   procura não volta") é a **entrada das ruínas**: quem entrou ficou preso no tempo, igual ao dia em que entrou.
 - **A campina (sul):** veados. Os soldados juram ter visto um **veado branco** (sem papel na trama).
 - **A estrada do sul:** dizem que há bandidos (sem papel na trama).
 - **[decidido]** Pelo mundo: pináculos com igrejas como marcos, santuários, salvamento ou viagem rápida.
 
+### Lugares de interesse do mapa de 4 km
+- **[decidido]** Fortaleza da Muralha (norte; o portão fechado tem um motivo ainda sem lore), Ruínas do Velho Burgo
+  (noroeste; masmorra de uma sociedade antiga), Toca do Troll (encosta oeste; sai no riacho), Clareira do Grambuche
+  (mata; musgo encantado, tocos roídos), Atalaia do Monte Pelado (mirante), Caverna da Cordilheira (atalho de volta),
+  Carvoaria (o carvoeiro que briga com o Bolder), Cabana do Caçador (pista da toca do troll), Mosteiro do Charco e
+  pôlder (monges que secam o pântano com diques e comportas), Ruínas Afogadas e Torre Afogada (charco), Acampamento de
+  Bandidos (estrada do sul), Pedras de Pé (o veado branco ao amanhecer), Cabana do Pescador (Mere Grande), Ruínas do
+  Tempo Parado (o tesouro do pedregal), Mina Velha de Joias (nordeste; joias de Rocherco), Gruta das Serpentes, Dunas
+  do Norte, Leito Seco, Poço Salobre e dois sítios abandonados de famílias que a guerra levou.
+- **[sugestão]** O Mosteiro do Charco é a porta de entrada da classe Monge no Netzach.
+
 ---
 
 ## Os personagens
 
 ### O protagonista
-- **[decidido]** Não é um forasteiro: é um **órfão da guerra**, nascido em Riacho Sagrado. As pessoas que conhece são
+- **[decidido]** Não é um forasteiro: é um **órfão da guerra**, nascido em Riachossagrado. As pessoas que conhece são
   tudo o que tem; por isso continua lutando para sempre para protegê-las.
 - **[decidido]** **Não ataca os moradores** (a opção saiu do jogo na versão `20261109-10`).
 - **[decidido]** Vive **fugindo do trabalho**, e por isso não sabe das novidades da vila. Desde que os pais morreram na
@@ -299,18 +330,18 @@ A lista do que o protagonista tenta, e por que falha, ainda está por fazer; ela
 - **[nas falas]** O guarda calado e preguiçoso: cochila encostado no escudo quando o sol esquenta. Prefere ser soldado
   a arar. As botas do ano ainda não vieram.
 
-### Padre (sem nome)
+### Padre Clemente
 - **[nas falas]** Cuida da paróquia pobre (dízimo magro, telhado pingando), vende poções e cura. Aconselha não andar
   na floresta à noite: "nem todo uivo é de cão".
 - **[nas falas]** Segundo a Mãe Hilda, foi ela quem ensinou os remédios a ele, e ele não conta. Na noite de São João,
   finge não ver as danças.
 - **[sugestão]** Foi ele quem batizou Maud e Wulfric e insistiu com a vila para recebê-los.
 
-### Ferreiro (sem nome)
+### Bolder, o ferreiro
 - **[nas falas]** Rabugento e prático. Faz ferraduras, pregos, foices, e uma espada quando pagam. Briga com o carvoeiro
-  pelo preço do carvão. Gosta dos boatos de lobo, porque vendem lanças.
+  (da Carvoaria, na beira da mata) pelo preço do carvão. Gosta dos boatos de lobo, porque vendem lanças.
 
-### Taberneiro (sem nome)
+### Gunter, o taberneiro
 - **[nas falas]** Recebe todo mundo, cobra adiantado, ouve as novidades dos mascates. Os soldados bebem fiado.
 - **[nas falas]** É casado; a mulher faz o ensopado e ele leva a fama.
 
@@ -408,10 +439,15 @@ A lista do que o protagonista tenta, e por que falha, ainda está por fazer; ela
 - O "ano em que o rei morreu" do Wat: Eldred é o rei atual, e houve outro antes?
 - Quando a vila foi remontada: "depois da guerra" foi dedução, ainda não confirmada.
 - De onde vieram Maud e Wulfric.
-- Nomes do padre, do ferreiro e do taberneiro. **[sugestão]** Padre Aldred, Osgar o ferreiro, Thurstan o taberneiro.
 - Os nomes que substituem Winchester, Wessex e Flandres.
-- Geografia: a vila fica no canto inferior esquerdo do mapa, mas a floresta está a oeste e a campina e a estrada ao sul.
-  Esses lugares ficam fora do mapa?
+- Geografia: com a vila na parte de baixo do mapa, no centro, sobra pouco espaço ao sul para a campina, as Pedras de Pé,
+  o Acampamento de Bandidos e a Estrada Real do Sul. Esses lugares ficam fora do mapa ou mudam de lugar?
+- A vila tem muralha própria (a versão anterior falava em "muralha no norte, com portão onde ela cruza o rio"), ou era
+  a Muralha Férrea?
+- Por que o único portão da Muralha Férrea está fechado?
+- O que é o Grambuche?
+- Quem era a sociedade antiga das Ruínas do Velho Burgo? (O povo antigo que pediu ao Netzach uma vitória eterna foi
+  descartado.)
 - **Falas a revisar no `game.json`** (tudo o que está marcado [a revisar]): "forasteiro" (7 falas), Isolda → Imelda,
   Sir Aymer → Mestre Aymer, "Casa do Senhor", nomes reais de lugares e o humor seco.
 
@@ -423,3 +459,5 @@ A lista do que o protagonista tenta, e por que falha, ainda está por fazer; ela
 - O veado branco como o rosto do Netzach.
 - Os bandidos da estrada do sul como batedores do rei rival.
 - A estrela de cauda como um dragão de antes.
+- Os nomes Padre Aldred, Osgar (ferreiro) e Thurstan (taberneiro): ficaram Padre Clemente, Bolder e Gunter.
+- A grafia separada "Riacho Sagrado" e "Charco Antigo": vale Riachossagrado e Charcoantigo.
