@@ -7,7 +7,7 @@
     aberta: false,   // false: os botões de compra ficam desligados
     moeda: 'BRL',
     pagar: null,     // function (item) { ... } : abre o pagamento do gateway
-    categorias: [{ id: 'cosmeticos', nome: 'Cosméticos' }],
+    categorias: [{ id: 'cosmeticos', nome: 'Itens cosméticos' }, { id: 'licenciados', nome: 'Produtos licenciados' }],
     // { id, categoria, nome, texto, preco (em centavos), imagem (opcional), estado: 'breve' | 'venda' | 'esgotado' }
     itens: []
   };
@@ -17,13 +17,14 @@
   LOJA.comprar = function (id) { var i = LOJA.itens.filter(function (x) { return x.id === id; })[0]; if (LOJA.compravel(i)) { LOJA.pagar(i); return true; } return false; };
   LOJA.mostra = function () {
     var el = document.querySelector('[data-loja]'); if (!el) { return; }
+    if (!LOJA.itens.length) { el.innerHTML = '<h2>Em breve</h2><p>Itens cosméticos e produtos licenciados serão publicados em breve.</p>'; return; }
     var h = LOJA.categorias.map(function (c) {
       var l = LOJA.itens.filter(function (i) { return i.categoria === c.id; });
-      return '<h3>' + esc(c.nome) + '</h3>' + (l.length ? '<div class="pj-itens">' + l.map(function (i) {
+      return !l.length ? '' : '<h3>' + esc(c.nome) + '</h3>' + ('<div class="pj-itens">' + l.map(function (i) {
         var ok = LOJA.compravel(i);
         return '<article>' + (i.imagem ? '<img src="../' + esc(i.imagem) + '" alt="">' : '') + '<b>' + esc(i.nome) + '</b><p>' + esc(i.texto) + '</p><span>' + (i.preco > 0 ? esc(LOJA.preco(i.preco)) : '') + '</span>' +
           '<button type="button" class="btn" data-compra="' + esc(i.id) + '"' + (ok ? '' : ' disabled') + '>' + (i.estado === 'esgotado' ? 'Esgotado' : ok ? 'Comprar' : 'Em breve') + '</button></article>';
-      }).join('') + '</div>' : '<p>Os primeiros itens aparecem aqui.</p>');
+      }).join('') + '</div>');
     }).join('');
     el.innerHTML = h;
   };
