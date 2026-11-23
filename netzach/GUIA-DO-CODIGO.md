@@ -183,11 +183,14 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   em `G.items`; `registraVariantes` faz isso ao abrir um save; `novaPeca` sorteia; `chanceQuebra` e `maestria`) e
   `Sim.prototype.usaArma` (rola a quebra e soma a maestria, em `swing`), `gastaDefesa` (em `hitPlayer`) e `quebrou`.
   Oficina: `consertos`, `conserta`, `custoConserto`. Lojas: `estoque` e `vitrine` (o dia é `st.daily.day`). Pedra: `afia`.
+  Comparação com a peça equipada (janela do item na Bolsa): `atributos` e `atributosHtml` em `js/ui.js`, `.cmp` no CSS.
   Na tela: `itemLines`, `corRar`, `rarStyle`, `oficinaBox` e `shopBox` em `js/ui.js`; a borda colorida é `.sell-cell.rar` e a
   peça quebrada `.quebrada` no `css/netzach.css`.
 - **Saque no chão:** `js/sim.js`, `deixaSaque`, `pegaSaque` e `macroSaque` (o que a macro pega: `st.saqueDeixa`); tempo e
   limite em `game.json` → `saque`. Janela e botão Saque da macro em `js/ui.js` (`openSaque`, `renderSaqueCfg`); o
   saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).
+- **Música de combate:** `musicaCombate` em `js/ui.js` (quando entra e sai: `COMBATE_FIM`), `NZ.calc.perseguido` em `js/sim.js` (quem
+  conta: bicho com `aggro` em `game.json`) e a trilha em `compassoCombate`, em `js/som.js`. Sons de quebrar: `QUEBRA`, em `js/som.js`.
 - **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
 - **Animais perseguindo:** `js/sim.js`, `mobTick` (bichos), `chase` e `hitPlayer` (perseguir e bater).
 - **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.

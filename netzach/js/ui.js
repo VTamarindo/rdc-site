@@ -610,6 +610,15 @@
   // som do campo de trigo (js/som.js, campo): a distância até o trigo mais perto e de que lado ele está em relação à câmera,
   // dez vezes por segundo. Andando dentro do trigo, o farfalhar cresce; numa casa, fica abafado. Na tela inicial (a música de
   // aventura) e no escuro do acordar da campanha (camp.escuro: as crianças rindo), nada: ele entra com a imagem
+  // música de combate: entra quando um bicho bravo persegue o jogador e sai COMBATE_FIM segundos depois do último largar.
+  // Com a aba escondida, para (o laço do jogo também para; na volta, ela entra de novo se ainda for o caso)
+  var COMBATE_FIM = 4, ultimoAggro = -1e9; // ms do relógio de verdade: o passo do quadro é limitado e, em máquina lenta, 4 s virariam muito mais
+  function musicaCombate(t) {
+    if (!NZ.som || !NZ.som.combate) { return; }
+    if (st && !camp.escuro() && calc.perseguido(world, st)) { ultimoAggro = t; NZ.som.combate(true); return; }
+    if (!st || t - ultimoAggro >= COMBATE_FIM * 1000) { NZ.som.combate(false); }
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && NZ.som && NZ.som.combate) { ultimoAggro = -1e9; NZ.som.combate(false); } });
   var ambT = 0, ambPos = null, trigos = null;
   function ambiente(dt) {
     var S = NZ.som, s = st; if (!S || !S.campo) { return; }
@@ -636,7 +645,7 @@
     requestAnimationFrame(frame);
     if (aba.fechada) { return; } // passou o jogo para outra aba: nada roda nem desenha aqui
     var fdt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
-    ambiente(fdt);
+    ambiente(fdt); musicaCombate(t);
     if (!st) { // tela inicial: fundo preto (#w-title), com a música de aventura; o mundo não é desenhado, e o controle só navega
       ctrl.tick(fdt);
       return;
@@ -744,6 +753,7 @@
       } else if (e.type === 'gain') {
         floatScreen(0.5, 0.44, '+' + e.n + ' ' + G.items[e.item].name, 'gain');
       } else if (e.type === 'alert') { toast(e.text, 4); if (document.hidden) { document.title = '(!) ' + baseTitle; } }
+      else if (e.type === 'quebrou') { if (NZ.som) { NZ.som.quebra((G.items[e.item] || {}).class || 'roupa'); } }
       else if (e.type === 'level') { toast('Nível ' + st.player.lv + '!'); }
       else if (e.type === 'quest') { toast('Missão concluída: ' + (G.quests[e.id] || G.daily.quests[e.id]).title + '.', 3); }
     });
@@ -1343,8 +1353,15 @@
     return out.join(' · ');
   }
   // linhas de descrição de um item: números da arma, armadura, bônus
-  function itemLines(k) {
+  // soTexto: sem os números que a tabela de atributos da bolsa já mostra (atributos, abaixo)
+  function itemLines(k, soTexto) {
     var it = G.items[k], L = [], c = it.class && G.weaponClasses[it.class];
+    if (soTexto && calc.ehPeca(it)) {
+      if (c) { L.push(c.name + (c.about ? ' · ' + c.about : '')); }
+      if (it.q !== undefined) { L.push(linhaQualidade(it)); }
+      if (it.quebrada) { L.push(linhaQuebrada(it)); }
+      return L;
+    }
     if (it.dmg) {
       L.push((c ? c.name + ' · ' : '') + 'dano ' + it.dmg[0] + '–' + it.dmg[1] + ' · um golpe a cada ' + num(it.interval, 2) + ' s · alcance ' + num(it.reach) + ' m');
       if (c && c.about) { L.push(c.about); }
@@ -1354,15 +1371,14 @@
     for (var g in (it.gather || {})) { L.push(G.nodes[g].name + ': coleta ' + pct(it.gather[g]) + ' mais rápida'); }
     if (it.stack) { L.push('Munição do arco: fica na aljava, fora da bolsa, e cada tiro gasta uma.'); }
     if (calc.ehPeca(it) && it.q !== undefined) {
-      var gen = it.g || 'm', Q = G.qualidade.niveis[it.q], R = G.raridade.niveis[it.r || 0];
-      L.push('Qualidade: ' + Q.nome[gen] + ' · raridade: ' + R.nome[gen] + (R.mult !== 1 ? ' (modificadores ' + mult(R.mult) + ')' : ''));
-      if (it.class && it.quebrada) { L.push('Quebrada: não serve até o Ferreiro restaurar.'); }
+      L.push(linhaQualidade(it));
+      if (it.quebrada) { L.push(linhaQuebrada(it)); }
       else if (it.class) {
         L.push('Chance de quebrar a cada golpe: ' + pctFino(calc.chanceQuebra(world, st.player, k)) +
           ' (maestria de ' + G.weaponClasses[it.class].name.toLowerCase() + ' ' + pct(calc.maestria(world, st.player, it.class)) + ')');
       } else {
         var du = calc.durabilidade(G, k);
-        L.push(it.quebrada ? 'Quebrada: não protege nem dá bônus até o Ferreiro ou o Alfaiate repararem.' : 'Durabilidade: ' + du.resta + ' de ' + du.max + ' (cada golpe recebido gasta um pouco)');
+        L.push('Durabilidade: ' + du.resta + ' de ' + du.max + ' (cada golpe recebido gasta um pouco)');
       }
     }
     var pb = it.afia ? it : it.base && G.items[it.base] && G.items[it.base].afia ? G.items[it.base] : null;
@@ -1371,6 +1387,52 @@
       L.push('Usos: ' + (it.restam || pb.usos) + ' de ' + pb.usos);
     }
     return L;
+  }
+  function linhaQualidade(it) {
+    var gen = it.g || 'm', R = G.raridade.niveis[it.r || 0];
+    return 'Qualidade: ' + G.qualidade.niveis[it.q].nome[gen] + ' · raridade: ' + R.nome[gen] + (R.mult !== 1 ? ' (modificadores ' + mult(R.mult) + ')' : '');
+  }
+  function linhaQuebrada(it) {
+    return it.class ? 'Quebrada: não serve até o Ferreiro restaurar.' : 'Quebrada: não protege nem dá bônus até o Ferreiro ou o Alfaiate repararem.';
+  }
+  // ---------- atributos da peça, comparados com a equipada ----------
+  var NOME_BONUS = { melee: 'Dano corpo a corpo', ranged: 'Dano com arco', crit: 'Chance de crítico', critMult: 'Crítico (multiplicador)', hp: 'Vida máxima', regen: 'Recuperação de vida',
+    move: 'Passo', haste: 'Ritmo de ataque', xp: 'Experiência', potion: 'Cura das poções', gather: 'Ritmo de coleta', bag: 'Casas na bolsa', discount: 'Desconto nas compras', markup: 'Ganho nas vendas', rep: 'Reputação' };
+  // [{ id, nome, v, mostra (texto do valor), f (formato da diferença), menor (menos é melhor) }]. Peça quebrada: os números dela inteira
+  function atributos(k) {
+    if (G.items[k].quebrada) { k = calc.inteira(G, k); }
+    var it = G.items[k], A = [], b;
+    function n1(v) { return num(v, 1); } function n2(v) { return num(v, 2); }
+    function seg(v) { return num(v, 2) + ' s'; } function m(v) { return num(v, 1) + ' m'; }
+    function add(id, nome, v, f, menor, mostra) { A.push({ id: id, nome: nome, v: v, f: f, menor: !!menor, mostra: mostra || f(v) }); }
+    if (it.dmg) {
+      var med = (it.dmg[0] + it.dmg[1]) / 2;
+      add('dmg', 'Dano', med, n1, false, n1(it.dmg[0]) + '–' + n1(it.dmg[1]) + ' · média ' + n1(med));
+      add('interval', 'Entre golpes', it.interval, seg, true);
+      add('reach', 'Alcance', it.reach, m);
+      add('quebra', 'Chance de quebrar', calc.chanceQuebra(world, st.player, k), pctFino, true);
+    }
+    if (it.def) { add('def', 'Defesa', it.def, n1); }
+    if (calc.ehDefesa(it)) { var du = calc.durabilidade(G, k); add('dur', 'Durabilidade', du.resta, function (v) { return String(Math.round(v)); }, false, du.resta + ' de ' + du.max); }
+    for (b in (it.bonus || {})) { add('b:' + b, NOME_BONUS[b] || b, it.bonus[b], b === 'hp' || b === 'bag' ? n1 : b === 'critMult' ? n2 : pct); }
+    for (b in (it.gather || {})) { add('g:' + b, 'Coleta: ' + G.nodes[b].name, it.gather[b], pct); }
+    return A;
+  }
+  // cur = a peça equipada na casa (ou nada: sem comparação). Verde = melhor que a equipada, vermelho = pior; igual fica na cor do texto.
+  // O que só a equipada tem aparece como zero
+  function atributosHtml(k, cur) {
+    var A = atributos(k), B = cur ? atributos(cur) : null, tem = {};
+    A.forEach(function (a) { tem[a.id] = true; });
+    (B || []).forEach(function (b) { if (!tem[b.id]) { A.push({ id: b.id, nome: b.nome, v: 0, f: b.f, menor: b.menor, mostra: b.f(0) }); } });
+    return (cur ? '<p class="hint">Comparado com ' + esc(G.items[cur].name.toLowerCase()) + ', que você usa agora:</p>' : '') + '<dl class="cmp">' + A.map(function (a) {
+      var cls = '', dif = '';
+      if (B) {
+        var o = B.filter(function (x) { return x.id === a.id; })[0], d = a.v - (o ? o.v : 0), t = a.f(Math.abs(d));
+        if (t === a.f(0)) { dif = ' <i>(=)</i>'; } // igual no que a tela mostra
+        else { cls = (d > 0) !== a.menor ? 'melhor' : 'pior'; dif = ' <i>(' + (d > 0 ? '+' : '−') + esc(t) + ')</i>'; }
+      }
+      return '<div' + (cls ? ' class="' + cls + '"' : '') + '><dt>' + esc(a.nome) + '</dt><dd>' + esc(a.mostra) + dif + '</dd></div>';
+    }).join('') + '</dl>';
   }
   // a chance de quebrar é pequena: mostra com duas casas
   function pctFino(v) { return (Math.round(v * 10000) / 100).toLocaleString('pt-BR') + '%'; }
@@ -1557,7 +1619,8 @@
   function openBagItem(k) {
     var p = st.player, it = G.items[k], res = Math.min(p.inv[k] || 0, sim.reserved(st, k)), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
     var buyers = Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === 'sell' && s.items.indexOf(it.base || k) >= 0; }); });
-    var html = popHead(itemIcon(k), it.name, (p.inv[k] || 0) + ' na bolsa' + (res ? ' · ' + res + ' para missão' : ''), corRar(k)) + linesHtml(itemLines(k));
+    var html = popHead(itemIcon(k), it.name, (p.inv[k] || 0) + ' na bolsa' + (res ? ' · ' + res + ' para missão' : ''), corRar(k)) +
+      linesHtml(itemLines(k, true)) + (slot ? atributosHtml(k, p.equip[slot]) : '');
     if (buyers.length) { html += '<p class="hint">Quem compra: ' + esc(buyers.map(function (id) { return G.npcs[id].name; }).join(', ')) + ' (' + coins(calc.sellPrice(world, p, k, 1)) + ' cada).</p>'; }
     if (slot) {
       var cur = p.equip[slot];

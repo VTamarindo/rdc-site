@@ -310,6 +310,14 @@ body.touch .only-pc { display: none; }
 .at-ok #at-undo { flex: none; }
 /* janela por cima: linhas do item e itens que servem na casa */
 .pop-lines { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.35; }
+/* atributos da peça na bolsa, comparados com a equipada (js/ui.js, atributosHtml) */
+.cmp { margin: 0; font-size: 14px; line-height: 1.3; }
+.cmp > div { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dotted rgba(74, 44, 20, .4); }
+.cmp dt { color: var(--ink2); }
+.cmp dd { margin: 0; text-align: right; }
+.cmp i { font-style: normal; white-space: nowrap; }
+.cmp .melhor dd { color: #22601a; font-weight: bold; }
+.cmp .pior dd { color: #a3160e; font-weight: bold; }
 .sell-pop h3 { margin: 4px 0 0; font-size: 15px; color: var(--wax); font-weight: normal; font-variant: small-caps; letter-spacing: .04em; }
 .sell-pop .hint { margin: 0; }
 .pop-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 5px 8px; }

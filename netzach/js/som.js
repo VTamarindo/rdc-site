@@ -1,5 +1,5 @@
 /* Netzach · sons feitos por código (Web Audio), provisórios, para testar a experiência:
-   - musica('menu' | 'campo' | false): a trilha que toca (uma de cada vez, com troca suave). 'menu': a da tela inicial,
+   - musica('menu' | 'campo' | 'combate' | false): a trilha que toca (uma de cada vez, com troca suave). 'menu': a da tela inicial,
      medieval e épica (pedal grave, coro, tambores de guerra, cordas, metais e trompas; ~104 s em laço). 'campo': a do começo da campanha,
      calma (acordes longos, caixinha de música, eco; 24 s em laço). false: a música some devagar;
    - motivo(): o motivo do Netzach sozinho (~5 s), a frase que aparece no meio da música do menu, para momentos marcantes;
@@ -293,6 +293,61 @@
     }
   }
 
+  // 'combate': toca quando um bicho bravo pega o aggro (js/ui.js, musicaCombate). Da família da do menu (Ré eólio, taikos, cordas
+  // e trompas), mais rápida: 140 batidas por minuto, 40 compassos de 4 tempos (~69 s), em laço.
+  // entrada 4 · marcha 8 · tema 8 · motivo 8 · clímax 8 · virada 4 (o rufar leva de volta à entrada).
+  // O pulso é 3+3+2 (as pancadas fora do tempo empurram para a frente); no meio, o MOTIVO do Netzach escondido por baixo das cordas
+  var CB = 60 / 140;
+  var CP = ['Dm', 'Dm', 'Bb', 'C', 'Dm', 'Dm', 'Gm', 'A'];
+  var CFORMA = [].concat(['Dm', 'Dm', 'Dm', 'Dm'], CP, CP, ['Dm', 'Dm', 'C', 'C', 'Bb', 'Bb', 'Gm', 'A'], CP, ['Gm', 'Bb', 'A', 'A']);
+  var CINI = { marcha: 4, tema: 12, motivo: 20, climax: 28, virada: 36 };
+  function parteC(i) { return i < 4 ? 'entrada' : i < 12 ? 'marcha' : i < 20 ? 'tema' : i < 28 ? 'motivo' : i < 36 ? 'climax' : 'virada'; }
+  var CTEMA = [ // [tempo, nota MIDI, duração em tempos], um compasso por linha (sobre CP)
+    [[0, 62, 1.5], [1.5, 65, 0.5], [2, 69, 2]], [[0, 67, 1], [1, 65, 1], [2, 64, 2]], [[0, 65, 1.5], [1.5, 70, 0.5], [2, 74, 2]], [[0, 72, 1], [1, 67, 1], [2, 72, 2]],
+    [[0, 74, 1.5], [1.5, 72, 0.5], [2, 69, 2]], [[0, 65, 1], [1, 67, 1], [2, 69, 2]], [[0, 70, 1], [1, 69, 1], [2, 67, 2]], [[0, 69, 2], [2, 73, 2]]
+  ];
+  // pancadas em semicolcheias: [posição de 0 a 15, força, grande]
+  var CTAIKO = [[0, 1, true], [3, 0.5, false], [6, 0.75, true], [8, 0.9, true], [11, 0.5, false], [14, 0.7, true]];
+  function golpe(bus, m, t, vol) { // metal curto: uma serra só, com o filtro fechando (leve de gravar)
+    var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = 'sawtooth'; o.frequency.value = hz(m); f.type = 'lowpass'; f.Q.value = 0.8; f.frequency.setValueAtTime(2400, t); f.frequency.exponentialRampToValueAtTime(700, t + 0.3);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    o.connect(f); f.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.36);
+  }
+  function compassoCombate(M, i, t) {
+    var P = parteC(i), c = AC[CFORMA[i]], s16 = CB / 4, bar = 4 * CB, k, forte = P === 'climax' ? 1.2 : P === 'motivo' ? 0.75 : 1;
+    metal(M.bus, c[0], t, bar, P === 'climax' ? 0.07 : 0.055);
+    // tambores
+    CTAIKO.forEach(function (d) { if (P !== 'motivo' || d[2]) { tambor(M.bus, t + d[0] * s16, 0.42 * d[1] * forte, d[2]); } });
+    if (P === 'climax') { timpano(M.bus, t, 0.24); timpano(M.bus, t + 2 * CB, 0.18); }
+    if (P === 'virada') { for (k = 0; k < 8; k++) { timpano(M.bus, t + k * CB / 2, 0.06 + 0.02 * k + (i - CINI.virada) * 0.03); } }
+    // cordas: semicolcheias (colcheias no celular) com o acento no 3+3+2
+    var passo = TOQUE ? 2 : 1, figura = [0, 0, 12, 0, 0, 7, 0, 0, 12, 0, 0, 7, 0, 0, 10, 12];
+    for (k = 0; k < 16; k += passo) {
+      var ac = k === 0 || k === 6 || k === 8 || k === 14;
+      corda(M.bus, c[0] + 12 + figura[k], t + k * s16, s16 * passo * 0.85, (ac ? 0.075 : 0.048) * (P === 'motivo' ? 0.85 : 1));
+    }
+    // metais curtos: o acorde em golpes, fora do tempo
+    if (P === 'marcha' || P === 'climax' || P === 'virada') {
+      (i % 2 ? [0, 6, 12] : [0, 6]).forEach(function (q) { c[1].slice(-3).forEach(function (m) { golpe(M.bus, m, t + q * s16, P === 'climax' ? 0.05 : 0.042); }); });
+    }
+    // o tema nas trompas; no clímax, com a oitava e o coro
+    if (P === 'tema' || P === 'climax') {
+      CTEMA[(i - 4) % 8].forEach(function (x) {
+        trompa(M.bus, x[1], t + x[0] * CB, x[2] * CB * 0.95, P === 'climax' ? 0.075 : 0.065, P === 'climax');
+        if (P === 'climax') { voz(M.bus, x[1] - 12, t + x[0] * CB, x[2] * CB * 0.95, 0.04, M.lfo, 'a', 0.06); }
+      });
+    }
+    // o motivo do Netzach, escondido: devagar (um tempo dele em dois) e baixo, por baixo das cordas
+    if (P === 'motivo') {
+      var n = i - CINI.motivo, meio = n % 2, linha = MOTIVO[Math.floor(n / 2) % 2];
+      linha.forEach(function (x) {
+        var ini = x[0] * 2 - meio * 4; // em que tempo deste compasso a nota começa
+        if (ini >= 0 && ini < 4) { trompa(M.bus, x[1], t + ini * CB, x[2] * 2 * CB * 0.95, 0.05, false); }
+      });
+    }
+  }
+
   // o motivo do Netzach sozinho (um momento marcante do jogo): a trompa sobre um acorde do coro e o pedal grave, ~5 s.
   // Toca no volume da música, por cima do que estiver tocando
   function motivo() {
@@ -309,7 +364,8 @@
   // cauda: segundos de som que sobram depois da última nota (a reverberação de 3 s; no campo, também o eco da caixinha)
   var TRILHAS = {
     menu: { comp: 4 * BAT, n: FORMA.length, compasso: compassoMenu, vol: 1.3, abafa: 9000, oscila: 7, cauda: 3.2 },
-    campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9, cauda: 6.2 }
+    campo: { comp: 3, n: CICLO.length, compasso: compassoCampo, vol: 1.1, abafa: 3200, oscila: 9, cauda: 6.2 },
+    combate: { comp: 4 * CB, n: CFORMA.length, compasso: compassoCombate, vol: 0.9, abafa: 9000, oscila: 5, cauda: 3.2, entra: 0.35, sr: 24000 } // entra: segundos da entrada suave (padrão 2,5); sr: gravada em 24 kHz, metade do custo e da memória
   };
 
   // ---------- trilhas gravadas ----------
@@ -351,7 +407,7 @@
     } finally { ctx = antes[0]; reverb = antes[1]; eco = antes[2]; }
   }
   function gravaPedaco(nome, pd) {
-    var sr = ctx.sampleRate, T = TRILHAS[nome];
+    var T = TRILHAS[nome], sr = T.sr || ctx.sampleRate;
     // primeiro só mede quanto dura (montar é rápido; o caro é gravar), depois monta de novo num contexto do tamanho certo
     var fim = montaPedaco(new OfflineAudioContext(2, sr, sr), nome, pd[0], pd[1]) + T.cauda + 0.1;
     var c = new OfflineAudioContext(2, Math.ceil(fim * sr), sr);
@@ -382,7 +438,7 @@
   var querMusica = null, musica = null; // musica: { nome, ganho, base, ... } (ganho: o volume que o jogador acerta)
   function tocaMusica() {
     if (!querMusica || (musica && musica.nome === querMusica) || !pronto()) { return; }
-    if (musica) { paraMusica(1.6); }
+    if (musica) { paraMusica(TRILHAS[querMusica].entra ? 0.6 : 1.6); }
     if (!gravaTrilhas()) { tocaAoVivo(); return; }
     var nome = querMusica, G = grava(nome, true), saida = ctx.createGain();
     saida.gain.value = 0.0001; saida.connect(mestre);
@@ -391,6 +447,8 @@
       if (musica !== M) { return; }
       if (G.falhou && !M.comecou) { clearInterval(M.timer); musica = null; saida.disconnect(); tocaAoVivo(); return; }
       var now = ctx.currentTime;
+      // a de combate não espera: se o trecho seguinte ainda não gravou, repete desde o começo em vez de calar
+      if (TRILHAS[nome].entra && M.comecou && !G.partes[M.k] && G.partes[0] && M.ate < now + 0.6) { M.k = 0; }
       while (G.partes[M.k]) {
         if (M.ate < now + 0.1) { M.ate = now + 0.15; } // o primeiro, ou um pedaço que atrasou para gravar: entra agora
         if (M.ate > now + 4) { break; }
@@ -398,7 +456,7 @@
         s.start(Math.max(now, M.ate - ADIANTE)); M.fontes.push(s);
         s.onended = (function (f) { return function () { var j = M.fontes.indexOf(f); if (j >= 0) { M.fontes.splice(j, 1); } }; })(s);
         if (!M.comecou) { // a entrada suave, quando o primeiro pedaço toca
-          M.comecou = true; saida.gain.setValueAtTime(0.0001, M.ate); saida.gain.linearRampToValueAtTime(Math.max(0.0001, USER.musica), M.ate + 2.5);
+          M.comecou = true; saida.gain.setValueAtTime(0.0001, M.ate); saida.gain.linearRampToValueAtTime(Math.max(0.0001, USER.musica), M.ate + (TRILHAS[nome].entra || 2.5));
         }
         M.ate += G.dur[M.k]; M.k = (M.k + 1) % G.n;
       }
@@ -412,7 +470,7 @@
     var T = TRILHAS[querMusica], bus = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), lp = ctx.createBiquadFilter();
     lp.type = 'lowpass'; lp.frequency.value = T.abafa;
     bus.connect(lp); lp.connect(mestre); lp.connect(reverb);
-    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, T.vol * USER.musica), ctx.currentTime + 2.5);
+    bus.gain.setValueAtTime(0.0001, ctx.currentTime); bus.gain.linearRampToValueAtTime(Math.max(0.0001, T.vol * USER.musica), ctx.currentTime + (T.entra || 2.5));
     lfo.frequency.value = 0.23; lg.gain.value = T.oscila; lfo.connect(lg); lfo.start();
     var M = musica = { nome: querMusica, ganho: bus.gain, base: T.vol, bus: bus, lfo: lg, ate: ctx.currentTime + 0.15, i: 0 };
     function adiante() { // marca os compassos dos próximos 4 s, um por um
@@ -520,6 +578,42 @@
       o.connect(g); g.connect(sfx); o.start(at); o.stop(at + dur + 0.02);
     });
   }
+  // ---------- armamento quebrando ----------
+  // quebra('espada' | 'machado' | 'arco' | 'roupa'): um som por tipo; tipo que não conhece toca o da espada
+  function estalo(t, vol, dur, filtro, f, q) { // ruído filtrado que some depressa: o corpo de um estalo, um rasgo ou um caco
+    var s = ctx.createBufferSource(), bq = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = ruidoCurto(); bq.type = filtro; bq.frequency.value = f; bq.Q.value = q || 1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(bq); bq.connect(g); g.connect(sfx); s.start(t, Math.random() * 1.2, dur + 0.02);
+  }
+  function tinido(t, f, vol, dur, tipo, ate) { // um tom que soa e some; com ate, escorrega até essa frequência
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = tipo || 'sine'; o.frequency.setValueAtTime(f, t); if (ate) { o.frequency.exponentialRampToValueAtTime(ate, t + dur); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(sfx); o.start(t); o.stop(t + dur + 0.02);
+  }
+  var QUEBRA = {
+    espada: function (t) { // o estalo do aço, a lâmina tinindo (parciais de barra, desafinados) e os cacos caindo
+      estalo(t, 0.28, 0.06, 'highpass', 2500); estalo(t, 0.26, 0.12, 'bandpass', 900, 1.5);
+      [[1240, 0.13, 0.9], [2070, 0.09, 0.7], [3390, 0.07, 0.5], [5130, 0.04, 0.35]].forEach(function (p) { tinido(t, p[0], p[1], p[2], 'sine', p[0] * 0.985); });
+      [0.2, 0.33, 0.41, 0.56].forEach(function (d, i) { tinido(t + d, 2600 + i * 610, 0.06 - i * 0.01, 0.16); estalo(t + d, 0.05, 0.03, 'highpass', 4000); });
+    },
+    machado: function (t) { // o cabo racha, grave, e a cabeça de ferro bate no chão
+      estalo(t, 0.55, 0.09, 'bandpass', 520, 1.2); estalo(t + 0.05, 0.35, 0.07, 'bandpass', 1100, 1.5); tinido(t, 150, 0.35, 0.14, 'triangle', 85);
+      [[610, 0.16, 0.4], [985, 0.1, 0.32], [1730, 0.06, 0.22]].forEach(function (p) { tinido(t + 0.26, p[0], p[1], p[2]); });
+      tinido(t + 0.26, 90, 0.3, 0.16, 'sine', 55);
+    },
+    arco: function (t) { // a madeira estala em lascas e a corda solta, zunindo
+      [0, 0.035, 0.085].forEach(function (d, i) { estalo(t + d, 1.4 - i * 0.25, 0.06, 'bandpass', 1500 - i * 260, 1.8); });
+      tinido(t, 260, 0.35, 0.09, 'triangle', 140);
+      tinido(t + 0.1, 330, 0.16, 0.42, 'sawtooth', 120);
+    },
+    roupa: function (t) { // pano e couro rasgando: muitos fiozinhos, um atrás do outro, e o puxão do fim
+      for (var i = 0; i < 16; i++) { estalo(t + i * 0.021 + Math.random() * 0.008, 0.55 + i * 0.035, 0.04, 'bandpass', 1500 + i * 110, 0.9); }
+      estalo(t + 0.36, 1.2, 0.12, 'bandpass', 700, 1);
+    }
+  };
+  function quebra(tipo) { if (pronto()) { (QUEBRA[tipo] || QUEBRA.espada)(ctx.currentTime + 0.01); } }
   var focoT = 0;
   function foco() { var a = performance.now(); if (a - focoT < 45) { return; } focoT = a; toque([[1568, 0]], 'sine', 0.035, 0.07); }
   function clique() { toque([[784, 0], [1175, 0.045]], 'triangle', 0.07, 0.16); }
@@ -532,16 +626,27 @@
   document.addEventListener('focusin', function (e) { var b = doMenu(e.target); if (b && !b.disabled && !b.matches(':hover')) { foco(); } }, true);
   document.addEventListener('click', function (e) { var b = doMenu(e.target); if (b && !b.disabled) { clique(); } }, true);
 
+  // combate(true): a trilha de combate por cima da que tocava; combate(false): ela apaga e a de antes volta (se havia)
+  var emCombate = false, antesCombate = null;
+  function combate(v) {
+    v = !!v; if (v === emCombate) { return; }
+    var volta = antesCombate, de = querMusica;
+    NZ.som.musica(v ? 'combate' : volta || false, 3); // desliga emCombate
+    emCombate = v; antesCombate = v ? de : null;
+  }
+
   NZ.som = {
-    musica: function (nome, seg) { // 'menu', 'campo' (true = 'menu'), ou false para apagar devagar (seg segundos)
+    musica: function (nome, seg) { // 'menu', 'campo', 'combate' (true = 'menu'), ou false para apagar devagar (seg segundos)
+      emCombate = false; antesCombate = null; // quem pede outra música (a tela inicial, a campanha) encerra a de combate
       querMusica = nome === true ? 'menu' : (nome && TRILHAS[nome] ? nome : null);
       // a gravação não precisa de clique: começa já, para a música estar pronta quando o som destravar
+      if (querMusica !== 'menu' && gravaTrilhas() && prepara()) { grava('combate', true); } // saiu do menu: a de combate passa na frente do que falta dele
       if (querMusica && gravaTrilhas() && prepara()) { grava(querMusica, true); }
       if (querMusica) { tocaMusica(); } else if (ctx) { paraMusica(seg || 2.5); }
     },
     trilha: function () { return musica ? musica.nome : null; }, // para testes
     gravacao: function (nome) { var G = GRAVADAS[nome]; return G ? { partes: G.partes.slice(), dur: G.dur.slice(), adiante: ADIANTE } : null; }, // para testes
-    criancas: criancas, missao: missao, foco: foco, clique: clique, campo: campo, motivo: motivo,
+    criancas: criancas, missao: missao, quebra: quebra, combate: combate,  foco: foco, clique: clique, campo: campo, motivo: motivo,
     volume: function (k, v) {
       if (!(k in USER)) { return 0; }
       if (v === undefined) { return USER[k]; }

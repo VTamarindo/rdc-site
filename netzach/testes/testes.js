@@ -360,6 +360,14 @@
         var s = st.saque[0], msg = sim.pegaSaque(st, s.id, 'pele_lobo');
         confere(!(p.inv.pele_lobo > 0) && s.itens.pele_lobo === 1, 'passou do limite da bolsa (' + msg + ')');
       });
+      teste('aggro: só bicho bravo conta para a música de combate, e só enquanto persegue', function () {
+        var st = novo(), p = st.player, lobo = st.mobs.filter(function (m) { return m.kind === 'lobo'; })[0], coelho = st.mobs.filter(function (m) { return m.kind === 'coelho'; })[0];
+        confere(!NZ.calc.perseguido(world, st), 'perseguido na praça');
+        coelho.fight = true; confere(!NZ.calc.perseguido(world, st), 'coelho contou'); coelho.fight = false;
+        p.x = lobo.x + 2; p.z = lobo.z; p.hp = 1e6; sim.advance(st, 0.5);
+        confere(NZ.calc.perseguido(world, st), 'o lobo não pegou o aggro');
+        sim.faint(st); confere(!NZ.calc.perseguido(world, st), 'continuou depois do desmaio');
+      });
       teste('save de um jogo jogado cabe no armazenamento (menos de 60 KB)', function () {
         var st = novo(); sim.advance(st, 600);
         var kb = JSON.stringify(st).length / 1024;

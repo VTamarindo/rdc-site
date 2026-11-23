@@ -490,6 +490,8 @@
   }
   // fração da armadura: def / (def + armorK); nunca chega a 100%
   function armorCut(w, def) { return def > 0 ? def / (def + w.game.combat.armorK) : 0; }
+  // algum bicho bravo (monsters → aggro) persegue o jogador agora? Coelho e veado não contam
+  function perseguido(w, st) { return st.mobs.some(function (m) { return m.alive && m.fight && w.game.monsters[m.kind].aggro > 0; }); }
   function maxHp(w, p) { return stats(w, p).hp; }
   function potionHeal(w, p) { return Math.round(w.game.player.potionHeal * stats(w, p).potion); }
   function gatherSec(w, p, kind) { return w.game.nodes[kind].gatherSec / stats(w, p).gather[kind]; }
@@ -1751,6 +1753,6 @@
   NZ.Sim = Sim;
   NZ.newState = newState;
   NZ.calc = { maxHp: maxHp, stats: stats, mobStats: mobStats, armorCut: armorCut, bagCount: bagCount, bagCap: bagCap, buyPrice: buyPrice, sellPrice: sellPrice,
-    potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
+    perseguido: perseguido, potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
     novaPeca: novaPeca, maestria: maestria, chanceQuebra: chanceQuebra, ehDefesa: ehDefesa, durabilidade: durabilidade, custoConserto: custoConserto, inteira: inteira, pecaId: pecaId, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
 })(window.NZ = window.NZ || {});
