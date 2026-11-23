@@ -43,10 +43,6 @@ export default (G) => [
       {
         icone: '☄', titulo: 'Raros mais possíveis',
         itens: ['O lobo deixa equipamento 17% das vezes; antes, 8%.', 'Uma peça rara ou melhor fica com a **melhor de duas qualidades** sorteadas.']
-      },
-      {
-        icone: '⌂', titulo: 'No site',
-        itens: ['As Mecânicas e o Campo de treinamento seguem as regras novas.', 'A maestria das magias, e depois dos milagres, agora se chama **Proficiência**.']
       }
     ],
     aberto: [
