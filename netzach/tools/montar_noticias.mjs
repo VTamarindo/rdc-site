@@ -165,7 +165,7 @@ function pagina(n, i) {
     h += `<section class="nt-depois"><h2>O que mudou desde então</h2><ol>${n.depois.map(([d, t]) => `<li><time datetime="${d}">${data(d)}</time> ${rico(t)}</li>`).join('')}</ol></section>`;
   }
   if (n.aberto && n.aberto.length) {
-    h += `<section class="nt-aberto" id="aberto"><h2>Pontos em aberto</h2><p>O que ainda não está decidido, ou ainda não existe. A sua opinião pesa aqui.</p><div class="nt-cards">` +
+    h += `<section class="nt-aberto" id="aberto"><h2>Pontos em aberto</h2><p>A sua opinião pesa aqui.</p><div class="nt-cards">` +
       n.aberto.map((a) => `<article><h3>${esc(a.titulo)}</h3><p>${rico(a.texto)}</p><button type="button" class="btn ghost" data-opinar="${esc(a.titulo)}">Opinar</button></article>`).join('') + '</div></section>';
   }
   h += form(n);

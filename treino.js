@@ -50,7 +50,7 @@
   }
   function pinta() {
     var arma = acha(D.armas, $('arma').value), lv = +$('lv').value, L = luta(arma, lv), macro = $('modo').value === 'macro';
-    if (!L.porHora) { $('luta').textContent = 'A macro não luta com bicho bravo (' + L.b.nome.toLowerCase() + '): ela foge. Escolha coelho ou veado, ou jogue em uso.'; }
+    if (!L.porHora) { $('luta').textContent = 'A macro caça animais mansos e foge dos bravos (' + L.b.nome.toLowerCase() + '). Escolha coelho ou veado, ou jogue em uso.'; }
     else { $('luta').textContent = L.b.nome + ': cerca de ' + num(L.n) + ' ataques, ' + num(L.seg) + ' segundos de luta, ' + num(L.porHora, 1) + ' por hora' + (L.porHora * (L.seg + D.desmontagem) < 3500 ? ' (o resto do tempo é esperar ela voltar)' : '') + '.'; }
     // item
     var v = $('item').value.split(':'), dr = L.b.drops[+v[0]];
@@ -60,7 +60,7 @@
       if (dr.equip) { ch *= (v[1] === '*' ? 1 : 1 / dr.equip.length) * chancePeca(dr, +$('q').value, +$('r').value); }
       var h = 1 / ch / L.porHora, meta = Math.log(0.5) / Math.log(1 - Math.min(0.999999, ch)), nove = Math.log(0.1) / Math.log(1 - Math.min(0.999999, ch));
       saida('s1', h, [ch > 0.999 ? 'Toda criatura deixa.' : 'Em média, uma a cada ' + num(1 / ch, 1) + ' criaturas.', 'Metade dos jogadores consegue em ' + tempo(Math.max(1, meta) / L.porHora) + '; nove em cada dez, em ' + tempo(Math.max(1, nove) / L.porHora) + '.']);
-    } else { $('peca').hidden = true; $('s1').innerHTML = '<p>Essa criatura não deixa nada.</p>'; }
+    } else { $('peca').hidden = true; $('s1').innerHTML = '<p>Escolha uma criatura com saque.</p>'; }
     // maestria: nível por nível, porque o ritmo e a luta mudam. Outra classe: a primeira arma dela
     var alvo = +$('alvo').value, quais = $('cls').value === 'todas' ? Object.keys(D.classes) : [$('cls').value], total = 0, ataques = 0, partes = [];
     quais.forEach(function (k) {
