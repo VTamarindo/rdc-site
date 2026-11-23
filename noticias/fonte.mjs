@@ -17,6 +17,36 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export default (G) => [
   {
+    slug: 'mochila-leve', jogo: 'Netzach', data: '2026-11-23', simbolo: '✧', tom: 'ceu',
+    titulo: 'Mochila leve',
+    resumo: 'A tela preta foi corrigida, e o jogo roda em torno do dobro da velocidade em computador sem placa de vídeo.',
+    abre: 'Um viajante experiente não anda mais rápido. Ele só carrega menos coisa.',
+    cena: ['soldado_lanca', 'lobo'],
+    partes: [
+      {
+        icone: '☼', titulo: 'A tela preta',
+        texto: 'Às vezes o navegador reinicia a parte gráfica dele. O jogo não percebia e continuava rodando sem imagem.',
+        antes: 'A tela ficava preta até recarregar a página.', agora: 'A imagem volta sozinha, em cerca de um segundo no nosso teste.',
+        nota: 'Se ela não voltar em 8 segundos, um aviso pede para recarregar, e o progresso fica salvo.'
+      },
+      {
+        icone: '➹', titulo: 'Desenho mais leve',
+        texto: 'Em computador antigo, o navegador pode não usar a placa de vídeo, e o processador desenha cada ponto da tela. O jogo agora desenha o que está perto primeiro e não pinta o que ficaria escondido. O visual é o mesmo.',
+        tabela: { cabeca: ['Num i5 de 2011, sem usar a placa', 'Antes', 'Agora'], linhas: [['Praça da vila', '20 quadros por segundo', '32 a 38'], ['Trigal da campanha', '13 a 15', '24 a 32']] }
+      },
+      {
+        icone: '⌂', titulo: 'Abertura mais rápida',
+        texto: 'O céu e as texturas são preparados depois que a tela inicial aparece.',
+        antes: '2,8 segundos até a tela inicial, no mesmo computador.', agora: 'De 1,4 a 2 segundos.'
+      }
+    ],
+    aberto: [
+      { titulo: 'No celular', texto: 'As medidas são de computador. Conte quanto o jogo demora a abrir no seu aparelho e se ele engasga.' },
+      { titulo: 'O trigal', texto: 'É o lugar mais pesado do jogo. Simplificar as plantas distantes deixaria tudo mais rápido, mas mudaria um pouco o visual. Vale a pena?' },
+      { titulo: 'A música', texto: 'Ela é feita por código quando o jogo abre, e isso ocupa o processador. Arquivos prontos aliviariam, com mais download. O que você prefere?' }
+    ]
+  },
+  {
     slug: 'tambores-no-mato', jogo: 'Netzach', data: '2026-11-23', simbolo: '♫', tom: 'sangue',
     titulo: 'Tambores no mato',
     resumo: 'Música de combate quando um bicho bravo persegue você, sons de armamento quebrando e a comparação de atributos na Bolsa.',
