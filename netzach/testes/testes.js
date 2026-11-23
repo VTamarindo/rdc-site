@@ -443,17 +443,19 @@
           conta(c[0]).forEach(function (x, i) { confere(Math.abs(x - c[1][i]) < 0.03, 'nível ' + c[0] + ': ' + x + ' em vez de ' + c[1][i]); });
         });
       });
-      teste('lobo: um golpe a cada 3 s, parado na finta, e quem sai do alcance escapa', function () {
-        function lobo() { var st = novo(), m = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0]; st.player.x = m.x + 1; st.player.z = m.z; st.player.hp = 1e6; m.fight = true; return { st: st, m: m, p: st.player }; }
-        var L = lobo(), t = [], em = sim.emit, i;
-        sim.emit = function (s, e) { if (e.type === 'hit' && e.who === 'player') { t.push(s.t); } };
-        try { for (i = 0; i < 200; i++) { L.p.hp = 1e6; sim.tick(L.st); } } finally { sim.emit = em; }
-        confere(t.length >= 11 && t.length <= 14, 'golpes em 40 s: ' + t.length);
-        L = lobo(); for (i = 0; i < 100 && !(L.m.prep > 0); i++) { sim.tick(L.st); }
-        confere(L.m.prep > 0, 'não armou o golpe');
-        var x = L.m.x, hp = L.p.hp, esq = 0; L.p.x = L.m.x + 5; sim.emit = function (s, e) { if (e.type === 'esquiva') { esq++; } };
-        try { sim.tick(L.st); confere(L.m.x === x, 'andou na finta'); sim.tick(L.st); sim.tick(L.st); } finally { sim.emit = em; }
-        confere(esq === 1 && L.p.hp === hp, 'não esquivou: ' + esq + ', vida ' + L.p.hp);
+      teste('bichos bravos: um golpe a cada 3 s, parado na finta, e quem sai do alcance escapa', function () {
+        ['lobo', 'escorpiao', 'serpente', 'troll'].forEach(function (k) {
+          function novoBicho() { var st = novo(), m = st.mobs.filter(function (x) { return x.kind === k; })[0]; st.mobs = [m]; st.player.x = m.x + 0.9; st.player.inv.pocao = 0; st.player.z = m.z; st.player.hp = 1e6; m.fight = true; return { st: st, m: m, p: st.player }; }
+          var L = novoBicho(), t = [], em = sim.emit, i;
+          sim.emit = function (s, e) { if (e.type === 'hit' && e.who === 'player') { t.push(s.t); } };
+          try { for (i = 0; i < 200; i++) { L.p.hp = 1e6; L.p.poison = null; sim.tick(L.st); } } finally { sim.emit = em; }
+          confere(t.length >= 11 && t.length <= 14, k + ': golpes em 40 s: ' + t.length);
+          L = novoBicho(); for (i = 0; i < 100 && !(L.m.prep > 0); i++) { sim.tick(L.st); }
+          confere(L.m.prep > 0, k + ' não armou o golpe');
+          L.p.poison = null; var x = L.m.x, hp = L.p.hp, esq = 0; L.p.x = L.m.x + 5; sim.emit = function (s, e) { if (e.type === 'esquiva') { esq++; } };
+          try { sim.tick(L.st); confere(L.m.x === x, k + ' andou na finta'); sim.tick(L.st); sim.tick(L.st); } finally { sim.emit = em; }
+          confere(esq === 1 && L.p.hp === hp, k + ' não esquivou: ' + esq + ', vida ' + L.p.hp);
+        });
       });
       teste('magia: só ligada, gasta mana ou espera, treina 1 (meio na macro) e pode falhar', function () {
         var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], M = world.game.magias;
