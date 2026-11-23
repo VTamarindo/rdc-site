@@ -706,9 +706,9 @@
     var s = saqueOpen && sim.saqueDe(st, saqueOpen);
     if (!s || calc.dist(st.player.x, st.player.z, s.x, s.z) > G.settings.interactRange + 1) { saqueOpen = null; hide(); }
   }
-  // o que a macro pega sozinha: tudo o que algum bicho pode deixar, cada um com Pegar ou Deixar (st.saqueDeixa)
+  // o que a macro pega sozinha: tudo o que algum animal manso pode deixar (ela não luta com bicho bravo), cada um com Pegar ou Deixar (st.saqueDeixa)
   function saquePossivel() {
-    var k = {}; Object.keys(G.monsters).forEach(function (m) { (G.monsters[m].drops || []).forEach(function (d) { (d.equip || [d.item]).forEach(function (i) { k[i] = 1; }); }); });
+    var k = {}; Object.keys(G.monsters).forEach(function (m) { if (G.monsters[m].aggro > 0) { return; } (G.monsters[m].drops || []).forEach(function (d) { (d.equip || [d.item]).forEach(function (i) { k[i] = 1; }); }); });
     return Object.keys(k).filter(function (i) { return G.items[i]; }).sort(function (a, b) { return G.items[a].name.localeCompare(G.items[b].name); });
   }
   function renderSaqueCfg() {

@@ -194,7 +194,8 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
   saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).
 - **Música de combate:** `musicaCombate` em `js/ui.js` (quando entra e sai: `COMBATE_FIM`), `NZ.calc.perseguido` em `js/sim.js` (quem
   conta: bicho com `aggro` em `game.json`) e a trilha em `compassoCombate`, em `js/som.js`. Sons de quebrar: `QUEBRA`, em `js/som.js`.
-- **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
+- **Baile dos bichos:** `js/sim.js`, `chase`, `rodeia` (passos e pausas enquanto a barra enche) e `recua` (depois do ataque).
+- **Coleta e macro:** a macro só caça animal manso (sem `aggro`) e foge de bicho bravo (`macroTick`, fase `foge`). `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
 - **Animais perseguindo:** `js/sim.js`, `mobTick` (bichos), `chase` e `hitPlayer` (perseguir e bater).
 - **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.
 - **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`. Onde cada vaca e
