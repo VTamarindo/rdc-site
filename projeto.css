@@ -11,6 +11,7 @@
 .pj-ficha dd { color: #c8c6bf; }
 .pj-loja h3, .pj-disp h3 { margin: 0 0 6px; font-weight: normal; font-size: 18px; color: var(--tom); }
 .pj-loja { padding: 16px 18px; border: 1px dashed var(--line); border-radius: 10px; }
+.pj-balcao { padding: 28px 0 8px; }
 .pj-loja p { margin: 0; color: var(--mute); }
 .pj-itens { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .pj-itens article { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }

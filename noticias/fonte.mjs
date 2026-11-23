@@ -91,11 +91,11 @@ export default (G) => [
       },
       {
         icone: '⌂', titulo: 'O Netzach ganhou uma casa no site',
-        texto: 'Em Projetos, o Netzach agora tem a própria página, com informações, preços, dispositivos e notícias.',
+        texto: 'Em Projetos, o Netzach agora tem a própria página, com informações, dispositivos e notícias.',
         itens: [
           '**Mecânicas:** como o jogo funciona, explicado em palavras.',
           '**Campo de treinamento:** diga a arma, a criatura e o nível de maestria, e ele estima quanto tempo leva para conseguir um item raro ou subir de nível.',
-          'A seção de preços já tem o lugar dela.'
+          '**Loja:** o balcão do Netzach.'
         ]
       }
     ],

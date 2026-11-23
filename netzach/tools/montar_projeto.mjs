@@ -1,5 +1,5 @@
-// Romance de Cavalaria · monta as páginas do projeto Netzach (projetos/netzach.html, mecanicas-do-netzach.html e
-// campo-de-treinamento.html). Não roda sozinho: netzach/tools/montar_noticias.mjs chama no fim, com as peças comuns do site.
+// Romance de Cavalaria · monta as páginas do projeto Netzach (projetos/netzach.html, mecanicas-do-netzach.html,
+// campo-de-treinamento.html e loja.html). Não roda sozinho: netzach/tools/montar_noticias.mjs chama no fim, com as peças comuns do site.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -15,7 +15,7 @@ export function montaProjeto({ SITE, G, V, lista, cabeca, pe, ver, esc, rico, da
     .replace(/<a href="\.\/" *>Novidades/, '<a href="../noticias/">Novidades')
     .replace('<a href="../projetos.html">', '<a href="../projetos.html" aria-current="page">');
   const figuras = (fs_) => '<div class="nt-cena" aria-hidden="true">' + fs_.map((f) => { const [w, h] = tam(f); return `<img src="../noticias/img/${f}.png" alt="" width="${w}" height="${h}" style="--w:${w};--h:${h}">`; }).join('') + '</div>';
-  const abas = (aqui) => '<nav class="pj-abas" aria-label="Netzach">' + [['netzach', 'O jogo'], ['mecanicas-do-netzach', 'Mecânicas'], ['campo-de-treinamento', 'Campo de treinamento']]
+  const abas = (aqui) => '<nav class="pj-abas" aria-label="Netzach">' + [['netzach', 'O jogo'], ['mecanicas-do-netzach', 'Mecânicas'], ['campo-de-treinamento', 'Campo de treinamento'], ['loja', 'Loja']]
     .map(([u, t]) => `<a href="${u}.html"${u === aqui ? ' aria-current="page"' : ''}>${t}</a>`).join('') + '</nav>';
   const capa = (titulo, abre, cena, tom) => `<main class="nt tom-${tom}">
 <header class="nt-topo pj-topo"><div class="nt-brilho" aria-hidden="true"></div>${figuras(cena)}
@@ -27,21 +27,20 @@ export function montaProjeto({ SITE, G, V, lista, cabeca, pe, ver, esc, rico, da
 
   // ---------------------------------------------------------------- o jogo
   const novas = lista.filter((n) => n.jogo === 'Netzach');
-  grava('netzach', topo('Netzach', 'Tudo sobre o Netzach: o jogo, os preços, os dispositivos, as notícias, as mecânicas e o campo de treinamento.') +
+  grava('netzach', topo('Netzach', 'Tudo sobre o Netzach: o jogo, os dispositivos, as notícias, as mecânicas, o campo de treinamento e a loja.') +
     capa('Netzach', 'Uma vila medieval em primeira pessoa, no navegador. Ande, lute, aprenda, e deixe a macro juntar o material.', ['soldado_lanca', 'ferreiro', 'padeira', 'lobo'], 'ouro') +
     abas('netzach') +
-    '<p class="pj-acao"><a class="btn" id="netzach-btn" href="../netzach/">Jogar agora</a><a class="btn ghost" href="campo-de-treinamento.html">Campo de treinamento</a></p>' +
-    '<nav class="nt-ind" aria-label="Nesta página"><a href="#informacoes">Informações</a><a href="#precos">Preços</a><a href="#dispositivos">Dispositivos</a><a href="#noticias">Notícias</a></nav><div class="nt-partes">' +
+    '<p class="pj-acao"><a class="btn" id="netzach-btn" href="../netzach/">Jogar agora</a><a class="btn ghost" href="campo-de-treinamento.html">Campo de treinamento</a><a class="btn ghost" href="loja.html">Loja</a></p>' +
+    '<nav class="nt-ind" aria-label="Nesta página"><a href="#informacoes">Informações</a><a href="#dispositivos">Dispositivos</a><a href="#noticias">Notícias</a></nav><div class="nt-partes">' +
     secao('informacoes', '⌂', 'Informações', p('Você acorda num campo de trigo, e a vila é o começo de tudo: moradores com nome, oficinas, fazenda, floresta, pedregal e bichos que não gostam de visita. O combate é punitivo no princípio, para que cada evolução tenha gosto de conquista.') +
       '<dl class="pj-ficha">' + [['Situação', 'Em estágio inicial de desenvolvimento, já jogável'], ['Gênero', 'RPG medieval em primeira pessoa, com coleta automática de material (macro)'], ['Onde', 'No navegador, sem instalar nada'], ['Idioma', 'Português do Brasil'],
         ['Jogadores', 'Um'], ['Progresso', 'Salvo no navegador; com conta, também na nuvem'], ['Tempo fora', 'A macro segue juntando material por até ' + G.settings.offlineCapHours + ' horas com o jogo fechado']]
         .map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('') + '</dl><p><a href="mecanicas-do-netzach.html">Como o jogo funciona: as mecânicas</a></p>') +
-    secao('precos', '⚖', 'Preços', p('Hoje você joga o Netzach de graça.') + '<div id="loja" class="pj-loja" data-loja></div><noscript><p>Os primeiros itens aparecem aqui.</p></noscript>') +
     secao('dispositivos', '▣', 'Dispositivos', '<div class="pj-disp"><article><h3>Testado</h3><ul><li><b>Computador com Windows</b>, no Brave e no Edge. Medido num Intel Core i5-2400 com 8 GB, sem usar a placa de vídeo: de 32 a 38 quadros por segundo na vila.</li></ul></article>' +
       '<article><h3>Previsto, ainda sem medida</h3><ul><li><b>Celular</b>, com a tela deitada e controles de toque.</li><li><b>Controle</b> no computador.</li><li><b>Xbox</b>, pelo navegador do console.</li></ul></article></div>' +
       '<p class="nt-nota">Jogou em outro aparelho? <a href="../feedback.html">Conte como foi</a>: entra nesta lista.</p>') +
     secao('noticias', '❦', 'Notícias', '<div class="pj-noticias">' + novas.slice(0, 6).map((n) => `<a href="../noticias/${n.slug}.html"><small><time datetime="${n.data}">${data(n.data)}</time></small><b>${esc(n.titulo)}</b><span>${esc(n.resumo)}</span></a>`).join('') + '</div><p><a href="../noticias/">Ver todas as novidades</a></p>') +
-    '</div></main>' + pe(`<script src="../${ver('loja.js')}"></script>\n`));
+    '</div></main>' + pe());
 
   // ---------------------------------------------------------------- mecânicas (explicado, sem fórmula)
   const M = [
@@ -93,5 +92,10 @@ export function montaProjeto({ SITE, G, V, lista, cabeca, pe, ver, esc, rico, da
 <article><h2>Proficiência</h2><label>Magia<select id="ct-mag">${op(D.magias.lista.map((m) => [m.id, m.nome]).concat([['todas', 'As duas']]))}</select></label><label>Do nível<select id="ct-mlv">${op(niveis.slice(0, -1))}</select></label><label>Até o nível<select id="ct-mal">${op(niveis.slice(1).map(([v, t]) => [v, t, v === 5]))}</select></label><div class="ct-saida" id="ct-s3" role="status"></div></article>
 </div><p class="nt-nota">É uma estimativa. Conta o tempo de luta, uns 10 segundos de movimento entre uma criatura e outra e o tempo de ela voltar. A macro caça animais mansos, num ponto do mapa; em uso, contamos todos os pontos da criatura. Considera uma luta limpa: vida cheia, arma inteira e atributos iniciais.</p><noscript><p>Para usar o campo de treinamento, ligue o JavaScript.</p></noscript></section></main>` +
     pe(`<script src="../${ver('treino.js')}"></script>\n`));
-  console.log('3 páginas do Netzach montadas.');
+
+  // ---------------------------------------------------------------- loja: os itens e o pagamento ficam em loja.js
+  grava('loja', topo('Loja do Netzach', 'A loja do Netzach.') +
+    capa('Loja', 'O balcão do Netzach.', ['alfaiate', 'taberneiro', 'ferreiro'], 'vinho') + abas('loja') +
+    '<section class="pj-balcao"><div id="loja" class="pj-loja" data-loja></div><noscript><p>Para ver a loja, ligue o JavaScript.</p></noscript></section></main>' + pe(`<script src="../${ver('loja.js')}"></script>\n`));
+  console.log('4 páginas do Netzach montadas.');
 }
