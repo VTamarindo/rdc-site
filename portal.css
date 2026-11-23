@@ -1,5 +1,6 @@
 :root { --bg:#101218; --card:#1a1d27; --line:#2d3243; --txt:#e8e6df; --mute:#9a9dab; --gold:#c9a24b; --top:64px; }
 * { box-sizing: border-box; }
+:root { color-scheme: dark; }
 html, body { margin: 0; }
 html { scroll-behavior: smooth; scroll-padding-top: calc(var(--top) + 8px); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -59,6 +60,8 @@ a { color: inherit; }
 .slide { position: relative; flex: 0 0 100%; min-height: clamp(320px, 46vw, 440px); display: flex; align-items: flex-end; }
 .slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .slide-img.simb { display: flex; align-items: center; justify-content: flex-end; padding-right: 8%; font-size: clamp(120px, 22vw, 240px); color: rgba(201,162,75,.22); background: radial-gradient(circle at 75% 40%, #2a2416 0%, #151821 45%, #0b0c10 100%); }
+.slide-cena { display: flex; align-items: flex-end; justify-content: flex-end; gap: 18px; padding: 0 70px 60px 54%; background: radial-gradient(ellipse 50% 70% at 72% 85%, color-mix(in srgb, var(--tom) 34%, transparent), transparent 70%), linear-gradient(180deg, #0b0c10, var(--fundo)); }
+.slide-cena img { min-width: 0; max-height: 62%; image-rendering: pixelated; object-fit: contain; object-position: bottom; }
 .slide::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,12,16,.92) 0%, rgba(11,12,16,.6) 45%, rgba(11,12,16,0) 75%), linear-gradient(0deg, rgba(11,12,16,.8), rgba(11,12,16,0) 50%); pointer-events: none; }
 .slide-txt { position: relative; z-index: 1; padding: 32px 64px 56px; max-width: 620px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .slide-txt h2 { margin: 0; font-weight: normal; font-size: clamp(24px, 4vw, 38px); line-height: 1.15; color: #f3eedf; }
@@ -76,7 +79,12 @@ a { color: inherit; }
   .slide-txt { padding: 24px 20px 52px; }
   .slide::after { background: linear-gradient(0deg, rgba(11,12,16,.95) 0%, rgba(11,12,16,.7) 55%, rgba(11,12,16,.2) 100%); }
   .seta { display: none; }
+  .slide { min-height: 460px; }
+  .slide-cena { justify-content: center; align-items: flex-start; padding: 28px 16px 0; gap: 10px; }
+  .slide-cena img { max-height: 190px; object-position: top; }
 }
+.mais { margin: 20px 0 0; }
+.portas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); margin-top: 16px; }
 
 /* ---------- jogos e projetos ---------- */
 .secao { padding-top: 24px; }

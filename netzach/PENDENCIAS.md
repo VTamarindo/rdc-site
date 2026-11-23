@@ -11,7 +11,8 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
     ataque com −100 de reputação por incidente, soldados e homens atacam, mulheres e crianças fogem, quem cai levanta em 2 min,
     a hostilidade acaba com desmaio (multa de 25% das moedas) ou ficando 60 s longe da vila (`game.json` → `aldeoes`).
     **Em 9/11 (versão `20261109-10`) a opção Atacar saiu do menu:** o protagonista é da vila e não ataca os moradores.
-    O código da briga, da morte e dos substitutos continua no jogo, sem uso; dá para apagar depois.
+    Em 17/11 o código da briga, da morte e dos substitutos saiu do jogo (e `aldeoes` do `game.json`); as falas
+    provisórias das pessoas também saíram.
   - **Fauna:** 2 lobos, 4 escorpiões e 4 serpentes (com veneno), 6 veados que fogem; 5 ovelhas no aprisco.
   - **Fazenda:** leite das vacas (balde, no ferreiro), lã das ovelhas (tesoura, no alfaiate), colheita em 39 retalhos das
     plantações, regra da macro "Colher a plantação", 14 itens novos com compradores.
@@ -110,5 +111,5 @@ Este arquivo lista o que ainda falta, o que depende de decisão do usuário e o 
 - Com a interface de verdade (os agentes testaram por código): "andar até aqui" no mapa entrando numa construção, a macro e o
   tempo fora com o personagem dentro de uma sala, o arco atirando de verdade, a perseguição de veado à mão.
 - 9/11: a macro no pasto e no aprisco, a mensagem da parede, a figura deitada, as marcas na porta e o mapa foram
-  vistos no navegador do PC; a fuga e o cerco dos guardas, só por código (simulação), não numa briga de verdade.
+  vistos no navegador do PC (a figura deitada e a briga com a vila saíram do jogo em 17/11).
 - Desempenho: dentro das salas, 150 a 400 desenhos por quadro; na praça, 320 a 500 (antes, 230 a 370). Medido no PC.

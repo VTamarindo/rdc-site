@@ -86,8 +86,6 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 #macro-line.on { border-color: var(--wax); color: #5a1208; }
 #macro-line { transition: opacity 1.2s; }
 #macro-line.fade { opacity: 0; }
-#macro-line.hostil { border-color: var(--wax); color: #9a0f06; font-weight: bold; }
-#hover.hostil { color: #a3100a; font-weight: bold; border-color: var(--wax); }
 #toast { left: 50%; top: 58%; transform: translateX(-50%); padding: 7px 16px; border-color: var(--wax); border-radius: 3px; pointer-events: none; text-align: center; max-width: 80%; font-size: 15px; z-index: 7; }
 #hurt { inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(178, 30, 20, 0); transition: box-shadow .35s; }
 #hurt.on { box-shadow: inset 0 0 120px rgba(178, 30, 20, .75); transition: none; }
@@ -396,6 +394,8 @@ body.touch #q-toggle { min-height: 34px; }
 .sell-cell .n { position: absolute; right: 3px; bottom: 1px; font-size: 14px; font-weight: bold; color: var(--ink); text-shadow: 0 0 2px #f8efd8, 0 0 2px #f8efd8, 0 0 3px #f8efd8; }
 .sell-cell .res { position: absolute; left: 4px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--wax); box-shadow: 0 0 0 1px #f3e6c8; }
 .sell-cell.off svg { opacity: .55; }
+.sell-cell.quebrada svg, .eq-cell.quebrada svg { opacity: .45; filter: grayscale(1); } /* peça quebrada */
+.sell-cell.rar { box-shadow: inset 0 0 0 2px var(--rar), inset 0 0 8px var(--rar); } /* peça incomum ou mais rara: a cor da raridade (game.json → raridade) */
 .sell-cell:focus-visible { outline-offset: -2px; z-index: 1; }
 
 /* venda: submenu de quantidade */

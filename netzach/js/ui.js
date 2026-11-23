@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261110-15', SAVE_VER = '20261105-3';
+  var VERSION = '20261123-1', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -605,7 +605,6 @@
   function snapPrev() {
     var o = { player: { x: st.player.x, z: st.player.z } };
     st.mobs.forEach(function (m) { o[m.id] = { x: m.x, z: m.z }; });
-    for (var id in st.gente) { var g = st.gente[id]; if (g.x !== undefined) { o['p:' + id] = { x: g.x, z: g.z }; } } // moradores em luta
     return o;
   }
   // som do campo de trigo (js/som.js, campo): a distância até o trigo mais perto e de que lado ele está em relação à câmera,
@@ -681,7 +680,7 @@
     if (!s) { if (openWin === 'w-saque') { hide(); } return; }
     var p = st.player, livre = calc.bagCap(world, p) - calc.bagCount(world, p);
     $('saque-itens').innerHTML = Object.keys(s.itens).map(function (k) {
-      return '<li><span class="saque-ico">' + itemIcon(k) + '</span><span class="saque-nome">' + esc(qty(s.itens[k], k)) + '</span>' +
+      return '<li><span class="saque-ico">' + itemIcon(k) + '</span><span class="saque-nome"' + rarStyle(k) + '>' + esc(qty(s.itens[k], k)) + '</span>' +
         '<button type="button" data-pega="' + esc(k) + '">Pegar</button></li>';
     }).join('');
     if (!$('saque-msg').textContent) { $('saque-msg').textContent = 'Espaço na bolsa: ' + livre + '.'; }
@@ -692,7 +691,7 @@
   }
   // o que a macro pega sozinha: tudo o que algum bicho pode deixar, cada um com Pegar ou Deixar (st.saqueDeixa)
   function saquePossivel() {
-    var k = {}; Object.keys(G.monsters).forEach(function (m) { (G.monsters[m].drops || []).forEach(function (d) { k[d.item] = 1; }); });
+    var k = {}; Object.keys(G.monsters).forEach(function (m) { (G.monsters[m].drops || []).forEach(function (d) { (d.equip || [d.item]).forEach(function (i) { k[i] = 1; }); }); });
     return Object.keys(k).filter(function (i) { return G.items[i]; }).sort(function (a, b) { return G.items[a].name.localeCompare(G.items[b].name); });
   }
   function renderSaqueCfg() {
@@ -703,12 +702,12 @@
         '<button type="button" data-cfg="' + esc(k) + '" aria-pressed="' + pega + '">' + (pega ? 'Pegar' : 'Deixar') + '</button></li>';
     }).join('');
   }
-  // a conversa fecha quando o jogador se afasta (ou quem fala cai desacordado)
+  // a conversa fecha quando o jogador se afasta
   function nearOpen() {
     var q = world.personById[npcOpen];
     if (!q) { return sim.nearNpc(st, npcOpen); }
     var pos = personPos(npcOpen);
-    return !sim.isKo(st, npcOpen) && !!pos && calc.dist(st.player.x, st.player.z, pos.x, pos.z) <= G.settings.interactRange + 1;
+    return !!pos && calc.dist(st.player.x, st.player.z, pos.x, pos.z) <= G.settings.interactRange + 1;
   }
   function angDiff(a, b) { var d = a - b; while (d > Math.PI) { d -= Math.PI * 2; } while (d < -Math.PI) { d += Math.PI * 2; } return d; }
 
@@ -739,12 +738,6 @@
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
         var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : ''); }
-      } else if (e.type === 'hit' && e.who === 'gente') {
-        view.hit(e.id); view.shake = 0.05;
-        floatAt(e.x, 1.5, e.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : '');
-      } else if (e.type === 'hostil') {
-        if (e.on && npcOpen && world.personById[npcOpen]) { hide(); } // a conversa não sobrevive à briga
-        lineTxt = null;
       } else if (e.type === 'hit' && e.who === 'player') {
         var h = $('hurt'); h.classList.add('on'); setTimeout(function () { h.classList.remove('on'); }, 60);
         floatScreen(0.5, 0.62, '-' + e.n + (e.crit ? '!' : ''), 'me'); view.shake = 0.12;
@@ -808,10 +801,6 @@
     // campanha antes do mundo aberto: sem dica de mapa; ela aparece uma vez, com a macro e a caminhada juntas, no fim do capítulo
     var hint = semMacro() ? '' : isTouch ? 'Toque no mapa pequeno, no canto, para andar ou usar a macro' : p.mapNav === 'macro' ? 'Mapa (M): clique para a macro trabalhar · Caminhada: para só andar' : 'Mapa (M): clique para andar · Macro (G): escolha a área de trabalho';
     var txt = on ? 'Macro: ' + macroText(p) : p.goto ? 'Andando até o ponto marcado no mapa' : (p.macro.stop || hint);
-    // vila em armas: a linha fica fixa, em vermelho, e conta o tempo que falta longe da vila
-    var H = st.hostil, AT = G.aldeoes.textos;
-    if (H) { busy = true; txt = H.fora > 0 ? AT.fora.replace('{s}', Math.ceil(G.aldeoes.calmaSeg - H.fora)) : AT.linha + (p.goto ? ' · andando até o ponto marcado' : ''); }
-    line.classList.toggle('hostil', !!H);
     // o que está acontecendo fica na tela; dica e aviso de parada somem depois de LINE_MS, e a dica só aparece uma vez
     if (txt !== lineTxt) { lineTxt = txt; line.textContent = txt; lineEnd = !txt || (txt === hint && hintSeen) ? 0 : now + LINE_MS; } // sem texto: a linha fica escondida
     if (!p.name && txt) { lineEnd = now + LINE_MS; } // a contagem só começa depois de criar o personagem
@@ -1360,17 +1349,39 @@
       L.push((c ? c.name + ' · ' : '') + 'dano ' + it.dmg[0] + '–' + it.dmg[1] + ' · um golpe a cada ' + num(it.interval, 2) + ' s · alcance ' + num(it.reach) + ' m');
       if (c && c.about) { L.push(c.about); }
     }
-    if (it.def) { L.push('Defesa +' + it.def); }
+    if (it.def) { L.push('Defesa +' + num(it.def)); }
     for (var b in (it.bonus || {})) { L.push(effText(b, it.bonus[b])); }
     for (var g in (it.gather || {})) { L.push(G.nodes[g].name + ': coleta ' + pct(it.gather[g]) + ' mais rápida'); }
     if (it.stack) { L.push('Munição do arco: fica na aljava, fora da bolsa, e cada tiro gasta uma.'); }
+    if (calc.ehPeca(it) && it.q !== undefined) {
+      var gen = it.g || 'm', Q = G.qualidade.niveis[it.q], R = G.raridade.niveis[it.r || 0];
+      L.push('Qualidade: ' + Q.nome[gen] + ' · raridade: ' + R.nome[gen] + (R.mult !== 1 ? ' (modificadores ' + mult(R.mult) + ')' : ''));
+      if (it.class && it.quebrada) { L.push('Quebrada: não serve até o Ferreiro restaurar.'); }
+      else if (it.class) {
+        L.push('Chance de quebrar a cada golpe: ' + pctFino(calc.chanceQuebra(world, st.player, k)) +
+          ' (maestria de ' + G.weaponClasses[it.class].name.toLowerCase() + ' ' + pct(calc.maestria(world, st.player, it.class)) + ')');
+      } else {
+        var du = calc.durabilidade(G, k);
+        L.push(it.quebrada ? 'Quebrada: não protege nem dá bônus até o Ferreiro ou o Alfaiate repararem.' : 'Durabilidade: ' + du.resta + ' de ' + du.max + ' (cada golpe recebido gasta um pouco)');
+      }
+    }
+    var pb = it.afia ? it : it.base && G.items[it.base] && G.items[it.base].afia ? G.items[it.base] : null;
+    if (pb) {
+      L.push('Afia a espada ou o machado da mão: +' + Math.round(pb.afia.mult * 100) + '% de dano nos próximos ' + pb.afia.golpes + ' golpes');
+      L.push('Usos: ' + (it.restam || pb.usos) + ' de ' + pb.usos);
+    }
     return L;
   }
+  // a chance de quebrar é pequena: mostra com duas casas
+  function pctFino(v) { return (Math.round(v * 10000) / 100).toLocaleString('pt-BR') + '%'; }
+  // a cor da raridade (comum fica na cor do texto)
+  function corRar(k) { var it = G.items[k]; return it && it.r ? G.raridade.niveis[it.r].cor : ''; }
+  function rarStyle(k, prop) { var c = corRar(k); return c ? ' style="' + (prop || 'color') + ':' + c + '"' : ''; }
   function linesHtml(L) { return L.length ? '<ul class="pop-lines">' + L.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : ''; }
   function itemName(k, n) { var it = G.items[k]; return n === undefined || n === 1 ? it.name : (it.plural || it.name); }
   // quem na vila vende ou compra o item (para as dicas)
   function npcsWith(type, test) {
-    return Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === type && s.items.some(test); }); })
+    return Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === type && (s.items || []).concat(s.fixos || [], s.rotativos || []).some(test); }); })
       .map(function (id) { return G.npcs[id].name; });
   }
 
@@ -1412,10 +1423,10 @@
     var p = st.player, wc = p.equip.arma && G.items[p.equip.arma].class, S = G.stances[p.stance], sd = S.dmg;
     $('eq-grid').innerHTML = calc.keys(G.equipSlots).map(function (sl) {
       var D = G.equipSlots[sl], k = p.equip[sl], it = k && G.items[k], off = D.only && wc !== D.only;
-      return '<button type="button" class="eq-cell' + (it ? '' : ' empty') + (off ? ' off' : '') + '" data-slot="' + sl + '" data-k="slot:' + sl + '" style="grid-area:' + sl + '"' +
+      return '<button type="button" class="eq-cell' + (it ? '' : ' empty') + (off ? ' off' : '') + (it && it.quebrada ? ' quebrada' : '') + '" data-slot="' + sl + '" data-k="slot:' + sl + '" style="grid-area:' + sl + '"' +
         ' aria-label="' + esc(D.name + ': ' + (it ? it.name + (it.stack ? ', ' + (p.inv[k] || 0) : '') : 'vazio')) + '">' +
         '<span class="ic">' + (it ? itemIcon(k) : slotIcon(sl)) + (it && it.stack ? '<span class="n">' + (p.inv[k] || 0) + '</span>' : '') + '</span>' +
-        '<span class="eq-t"><small>' + esc(D.name) + '</small><b>' + esc(it ? it.name : off ? 'só com arco' : 'vazio') + '</b></span></button>';
+        '<span class="eq-t"><small>' + esc(D.name) + '</small><b' + (it ? rarStyle(k) : '') + '>' + esc(it ? it.name : off ? 'só com arco' : 'vazio') + '</b></span></button>';
     }).join('');
     var avg = (s.min + s.max) / 2 * sd * (1 + s.crit * (s.critMult - 1)), cut = calc.armorCut(world, s.def);
     var arma = s.weapon ? G.items[s.weapon].name : G.player.unarmed.name + (s.noAmmo ? ' (o arco está sem flechas)' : '');
@@ -1425,11 +1436,14 @@
       ['Ritmo', 'um golpe a cada ' + num(s.interval, 2) + ' s · cerca de ' + num(avg / s.interval) + ' de dano por segundo'],
       ['Alcance', num(s.reach) + ' m'],
       ['Crítico', pct(s.crit) + ' de chance, dano ' + mult(num(s.critMult, 2))],
-      ['Defesa', s.def + ' · a armadura tira ' + pct(cut) + ' do dano, e a postura deixa passar ' + mult(S.taken)],
+      ['Defesa', num(s.def) + ' · a armadura tira ' + pct(cut) + ' do dano, e a postura deixa passar ' + mult(S.taken)],
       ['Passo', pct(s.move) + ' do normal'],
       ['Coleta', calc.keys(G.nodes).map(function (n) { return G.nodes[n].name + ' ' + num(calc.gatherSec(world, p, n)) + ' s'; }).join(' · ')],
-      ['Bolsa', s.bag + ' casas']
+      ['Bolsa', s.bag + ' casas'],
+      ['Maestria', calc.keys(G.weaponClasses).map(function (c) { return G.weaponClasses[c].name + ' ' + pct(calc.maestria(world, p, c)); }).join(' · ')]
     ];
+    if (s.weapon) { rows.splice(1, 0, ['Quebra', pctFino(calc.chanceQuebra(world, p, s.weapon, s.cls)) + ' de chance a cada golpe']); }
+    if (p.afiada && p.afiada.arma === s.weapon) { rows.splice(2, 0, ['Afiada', '+' + Math.round(p.afiada.mult * 100) + '% de dano por mais ' + p.afiada.n + ' golpe' + (p.afiada.n === 1 ? '' : 's')]); }
     $('eq-stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) {
       var id = b.dataset.stance;
@@ -1446,7 +1460,7 @@
     for (var k in p.inv) {
       var it = G.items[k]; if (!(p.inv[k] > 0) || !it || it.noBag) { continue; }
       var res = Math.min(p.inv[k], sim.reserved(st, k)); n++;
-      cells.push('<button type="button" class="sell-cell" data-item="' + k + '" data-k="bag:' + k + '" title="' + esc(it.name) + '" aria-label="' + esc(it.name + ': ' + p.inv[k] + (res ? ', ' + res + ' para missão' : '')) + '">' +
+      cells.push('<button type="button" class="sell-cell' + (corRar(k) ? ' rar' : '') + (it.quebrada ? ' quebrada' : '') + '"' + rarStyle(k, '--rar') + ' data-item="' + k + '" data-k="bag:' + k + '" title="' + esc(it.name) + '" aria-label="' + esc(it.name + ': ' + p.inv[k] + (res ? ', ' + res + ' para missão' : '')) + '">' +
         itemIcon(k) + '<span class="n">' + p.inv[k] + '</span>' + (res ? '<i class="res" aria-hidden="true"></i>' : '') + '</button>');
     }
     var all = Math.max(SELL_ROWS, Math.ceil(n / SELL_COLS)) * SELL_COLS;
@@ -1494,8 +1508,8 @@
   // a mesma moldura do submenu de venda; o controle a enxerga pela mesma porta (ctrlApi.sell)
   var pop = null;
   function svgIcon(body) { return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + body + '</svg>'; }
-  function popHead(icon, title, sub) {
-    return '<div class="sell-id"><span class="ic">' + icon + '</span><span class="nm"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span>' +
+  function popHead(icon, title, sub, cor) {
+    return '<div class="sell-id"><span class="ic">' + icon + '</span><span class="nm"><b' + (cor ? ' style="color:' + cor + '"' : '') + '>' + esc(title) + '</b><small>' + esc(sub) + '</small></span>' +
       '<button type="button" class="x" data-x>Fechar</button></div>';
   }
   function openPop(label, inner) {
@@ -1524,12 +1538,12 @@
     var p = st.player, D = G.equipSlots[sl], k = p.equip[sl], it = k && G.items[k], wc = p.equip.arma && G.items[p.equip.arma].class;
     var fits = Object.keys(p.inv).filter(function (x) { var d = G.items[x]; return d && d.slot === D.type && p.inv[x] > 0 && x !== k; });
     var sellers = npcsWith('shop', function (x) { return G.items[x].slot === D.type; });
-    var html = popHead(it ? itemIcon(k) : slotIcon(sl), it ? it.name : D.name, it ? D.name + (it.stack ? ' · ' + (p.inv[k] || 0) + ' na aljava' : '') : 'Casa vazia');
+    var html = popHead(it ? itemIcon(k) : slotIcon(sl), it ? it.name : D.name, it ? D.name + (it.stack ? ' · ' + (p.inv[k] || 0) + ' na aljava' : '') : 'Casa vazia', it ? corRar(k) : '');
     if (it) { html += linesHtml(itemLines(k)) + '<button type="button" data-un>Tirar</button>'; }
     if (D.only && wc !== D.only) { html += '<p class="sell-note">Esta casa só vale com ' + esc(G.weaponClasses[D.only].name.toLowerCase()) + ' na mão.</p>'; }
     if (fits.length) {
       html += '<h3>Da bolsa</h3>' + fits.map(function (x) {
-        return '<button type="button" class="pop-item" data-eq="' + x + '">' + itemIcon(x) + '<span><b>' + esc(G.items[x].name) + (G.items[x].stack ? ' · ' + p.inv[x] : '') + '</b><small>' + esc(itemLines(x)[0] || '') + '</small></span></button>';
+        return '<button type="button" class="pop-item" data-eq="' + x + '">' + itemIcon(x) + '<span><b' + rarStyle(x) + '>' + esc(G.items[x].name) + (G.items[x].stack ? ' · ' + p.inv[x] : '') + '</b><small>' + esc(itemLines(x)[0] || '') + '</small></span></button>';
       }).join('');
     } else {
       html += '<p class="hint">' + (sellers.length ? 'Nada na bolsa serve aqui. Quem vende: ' + esc(sellers.join(', ')) + '.' : 'Ainda não existe nada para esta casa.') + '</p>';
@@ -1542,13 +1556,14 @@
   // item da bolsa: o que é, para que serve, quem compra; equipar se for de vestir
   function openBagItem(k) {
     var p = st.player, it = G.items[k], res = Math.min(p.inv[k] || 0, sim.reserved(st, k)), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
-    var buyers = Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === 'sell' && s.items.indexOf(k) >= 0; }); });
-    var html = popHead(itemIcon(k), it.name, (p.inv[k] || 0) + ' na bolsa' + (res ? ' · ' + res + ' para missão' : '')) + linesHtml(itemLines(k));
+    var buyers = Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === 'sell' && s.items.indexOf(it.base || k) >= 0; }); });
+    var html = popHead(itemIcon(k), it.name, (p.inv[k] || 0) + ' na bolsa' + (res ? ' · ' + res + ' para missão' : ''), corRar(k)) + linesHtml(itemLines(k));
     if (buyers.length) { html += '<p class="hint">Quem compra: ' + esc(buyers.map(function (id) { return G.npcs[id].name; }).join(', ')) + ' (' + coins(calc.sellPrice(world, p, k, 1)) + ' cada).</p>'; }
     if (slot) {
       var cur = p.equip[slot];
       html += '<button type="button" class="main" data-eq>Equipar' + (cur ? ' no lugar de ' + esc(G.items[cur].name.toLowerCase()) : '') + '</button>';
     }
+    if (it.afia || (it.base && G.items[it.base] && G.items[it.base].afia)) { html += '<button type="button" class="main" data-afia>Afiar a arma da mão</button>'; }
     // soltar no chão: com mais de um, a mesma barra de quantidade da compra
     var tem = p.inv[k] || 0, min = Math.round(((G.saque && G.saque.dura) || 300) / 60);
     html += '<h3>Soltar no chão</h3>';
@@ -1560,6 +1575,7 @@
       (res ? ' ' + res + ' ' + (res === 1 ? 'é' : 'são') + ' para missão.' : '') + '</p><button type="button" data-drop></button>';
     var P = openPop(it.name, html), b = P.pop.querySelector('[data-eq]'), q = function (sel) { return P.pop.querySelector(sel); };
     if (b) { b.onclick = function () { gearDone(sim.equip(st, k, slot)); }; }
+    var af = q('[data-afia]'); if (af) { af.onclick = function () { gearDone(sim.afia(st, k)); }; }
     var nd = tem, range = q('[type=range]'), box = q('.num'), drop = q('[data-drop]');
     function paintDrop() {
       drop.textContent = 'Soltar ' + nd + ' ' + itemName(k, nd).toLowerCase();
@@ -1579,7 +1595,8 @@
   function lotOf(s, k) { return (s.lots && s.lots[k]) || 1; }
   function openBuy(id, s, k) {
     var p = st.player, it = G.items[k], lot = lotOf(s, k), unit = calc.buyPrice(world, p, k, lot), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
-    var max = Math.max(1, Math.min(20, Math.floor((p.inv.moeda || 0) / unit))), cur = slot && p.equip[slot];
+    var noEstoque = s.items.indexOf(k) < 0 ? (sim.estoque(st, s).itens[k] || 0) : 20; // do estoque: só o que a loja tem
+    var max = Math.max(1, Math.min(noEstoque, 20, Math.floor((p.inv.moeda || 0) / unit))), cur = slot && p.equip[slot];
     var html = popHead(itemIcon(k), it.name, coins(unit) + (lot > 1 ? ' o feixe de ' + lot : '')) + linesHtml(itemLines(k));
     if (cur) { html += '<p class="hint">Hoje em ' + esc(G.equipSlots[slot].name.toLowerCase()) + ': ' + esc(G.items[cur].name) + (itemLines(cur)[0] ? ' (' + esc(itemLines(cur)[0]) + ')' : '') + '.</p>'; }
     if (lot > 1) {
@@ -1612,16 +1629,18 @@
     var p = st.player, wrap = document.createElement('div'), board = document.createElement('div');
     wrap.className = 'sell'; board.className = 'sell-board';
     wrap.innerHTML = '<div class="sell-top"><h3>Comprar</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
-    s.items.forEach(function (k) {
-      var it = G.items[k], lot = lotOf(s, k), price = calc.buyPrice(world, p, k, lot), b = document.createElement('button');
-      b.type = 'button'; b.className = 'sell-cell' + ((p.inv.moeda || 0) >= price ? '' : ' off'); b.dataset.k = 'buy:' + k;
-      b.title = it.name + ' · ' + coins(price);
+    var V = sim.vitrine(st, s); // consumíveis, e o estoque do dia (fixos, rotativos, únicos)
+    V.forEach(function (o) {
+      var k = o.item, it = G.items[k], lot = lotOf(s, k), price = calc.buyPrice(world, p, k, lot), b = document.createElement('button');
+      b.type = 'button'; b.className = 'sell-cell' + ((p.inv.moeda || 0) >= price ? '' : ' off') + (corRar(k) ? ' rar' : ''); b.dataset.k = 'buy:' + k;
+      if (corRar(k)) { b.style.setProperty('--rar', corRar(k)); }
+      b.title = it.name + ' · ' + coins(price) + (o.n ? ' · ' + o.n + ' em estoque' : '');
       b.setAttribute('aria-label', 'Comprar ' + it.name + (lot > 1 ? ', feixe de ' + lot : '') + ': ' + coins(price));
-      b.innerHTML = itemIcon(k) + '<span class="n price">' + price + '</span>' + (lot > 1 ? '<span class="lot">×' + lot + '</span>' : '');
+      b.innerHTML = itemIcon(k) + '<span class="n price">' + price + '</span>' + (lot > 1 ? '<span class="lot">×' + lot + '</span>' : o.n > 1 ? '<span class="lot">' + o.n + '</span>' : '');
       b.onclick = function () { openBuy(id, s, k); };
       board.appendChild(b);
     });
-    for (var i = s.items.length; i < Math.ceil(s.items.length / SELL_COLS) * SELL_COLS; i++) { var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e); }
+    for (var i = V.length; i < Math.ceil(V.length / SELL_COLS) * SELL_COLS; i++) { var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e); }
     wrap.appendChild(board);
     return wrap;
   }
@@ -1724,8 +1743,6 @@
     var def = G.npcs[id];
     return !!(def && world.personById[id].fixed && def.services.some(function (s) { return /^(shop|sell|buy|heal)$/.test(s.type); }));
   }
-  // o que a pessoa diz com a vila em armas: quem luta ameaça, quem não luta tem medo
-  function angry(id) { var P = persona(id), A = G.aldeoes.textos; return sim.papel(id).luta ? P.hostil || A.hostil : P.medo || A.medo; }
   // tem missão ou conversa nova para dar ('!') ou missão pronta para entregar ('?')
   function pending(id) {
     var def = G.npcs[id], dlg = def && def.dialogue && G.dialogues[def.dialogue], q = def && sim.npcQuest(st, id);
@@ -1741,17 +1758,16 @@
   }
   function personMenu(id, said) {
     $('npc-acts').innerHTML = ''; sellShown = null; $('npc-res').textContent = '';
-    var mk = st.hostil ? '' : pending(id), opts = [];
-    opts.push({ text: 'Conversar' + (mk === '!' ? ' (!)' : mk === '?' ? ' (?)' : ''), fn: function () { if (st.hostil) { personMenu(id, angry(id)); } else { talk(id); } } });
+    var mk = pending(id), opts = [];
+    opts.push({ text: 'Conversar' + (mk === '!' ? ' (!)' : mk === '?' ? ' (?)' : ''), fn: function () { talk(id); } });
     if (hasTrade(id)) { opts.push({ text: 'Negociar', fn: function () { negotiate(id); } }); }
     opts.push({ text: 'Fechar', fn: hide });
-    setTalk(said || (st.hostil ? angry(id) : alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.')), opts);
+    setTalk(said || alterna('ola:' + id, persona(id).ola, (G.npcs[id] && G.npcs[id].idle) || 'Bom dia.'), opts);
   }
   function backTo(id) { return { text: 'Voltar', fn: function () { personMenu(id); } }; }
-  // Negociar: a loja e os serviços de sempre, abaixo da fala; com a vila em armas, ninguém vende nada
+  // Negociar: a loja e os serviços de sempre, abaixo da fala
   function negotiate(id) {
     var def = G.npcs[id];
-    if (st.hostil) { setTalk(persona(id).recusa || G.aldeoes.textos.recusa, [backTo(id)]); return; }
     setTalk(def.idle || alterna('ola:' + id, persona(id).ola), [backTo(id)]);
     renderNpcActs(id);
   }
@@ -1759,13 +1775,6 @@
   function topics(id, text) {
     var T = persona(id).temas || [];
     setTalk(text, T.map(function (t, i) { return { text: t.p, fn: function () { topics(id, alterna('tema:' + id + ':' + i, t.r)); } }; }).concat([backTo(id)]));
-  }
-  // marca a pessoa como alvo: o golpe sai sozinho quando ela estiver ao alcance (como com os bichos)
-  function target(id) {
-    var p = st.player, pos = personPos(id);
-    if (sim.takeControl(st)) { toast('Macro pausada.'); }
-    p.goto = null; p.action = { type: 'luta', id: id };
-    if (pos && calc.dist(p.x, p.z, pos.x, pos.z) > calc.stats(world, p).reach) { toast('Alvo: ' + personName(id) + '. Aproxime-se para atacar.'); }
   }
   // Conversar: primeiro a conversa marcada (Anselmo), depois a missão, e por fim os assuntos de cada um
   function talk(id, said) {
@@ -1956,7 +1965,6 @@
     var aqui = world.salaEm(st.player.x, st.player.z), naPorta = {};
     world.npcs.forEach(function (n) {
       var def = G.npcs[n.id], dlg = def.dialogue && G.dialogues[def.dialogue], q = sim.npcQuest(st, n.id), sym = '';
-      if (sim.isKo(st, n.id)) { mark(n.id, '', n.x, 2.25, n.z); return; } // morto não dá missão
       if (dlg && !st.flags[dlg.flag]) { sym = '!'; }
       else if (q && q.state === 'available') { sym = '!'; }
       else if (q && q.state === 'ready') { sym = '?'; }
@@ -1974,12 +1982,35 @@
       if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
       if (s.type === 'deliver') { if (sim.dailyActive(st).length) { box.appendChild(sellBox(id, s)); } return; }
       if (s.type === 'shop') { box.appendChild(shopBox(id, s)); return; }
+      if (s.type === 'oficina') { box.appendChild(oficinaBox(id, s)); return; }
       var b = document.createElement('button'); b.type = 'button';
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
       if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + coins(calc.buyPrice(world, p, s.item)) + ')'; }
       b.onclick = function () { npcDone(id, sim.service(st, id, s)); };
       box.appendChild(b);
     });
+  }
+  // oficina: cada peça gasta ou quebrada, vestida ou na bolsa, com o preço do conserto; paga-se peça por peça
+  function oficinaBox(id, s) {
+    var p = st.player, wrap = document.createElement('div'), L = sim.consertos(st, s);
+    var oque = s.reparar && s.restaurar ? 'Reparar e restaurar' : s.reparar ? 'Reparar' : 'Restaurar';
+    wrap.className = 'sell oficina';
+    wrap.innerHTML = '<div class="sell-top"><h3>' + oque + '</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
+    if (!L.length) {
+      wrap.innerHTML += '<p class="hint">' + (s.restaurar ? 'Nada gasto nem quebrado: ' : 'Nada gasto: ') + (s.reparar ? 'armadura gasta ou quebrada' : '') +
+        (s.reparar && s.restaurar ? ' e ' : '') + (s.restaurar ? 'arma quebrada' : '') + ' se conserta' + (s.reparar && s.restaurar ? 'm' : '') + ' aqui.</p>';
+      return wrap;
+    }
+    L.forEach(function (c) {
+      var it = G.items[c.id], du = calc.durabilidade(G, c.id), b = document.createElement('button');
+      b.type = 'button'; b.className = 'pop-item'; b.disabled = (p.inv.moeda || 0) < c.custo;
+      var estado = it.quebrada ? 'quebrad' + ((it.g || 'm').charAt(0) === 'f' ? 'a' : 'o') : 'durabilidade ' + du.resta + ' de ' + du.max;
+      b.innerHTML = itemIcon(c.id) + '<span><b' + rarStyle(c.id) + '>' + esc(G.items[calc.inteira(G, c.id)].name) + (c.n > 1 ? ' ×' + c.n : '') + '</b><small>' +
+        esc((c.slot ? 'vestid' + ((it.g || 'm').charAt(0) === 'f' ? 'a' : 'o') : 'na bolsa') + ' · ' + estado + ' · ' + (c.tipo === 'restaurar' ? 'restaurar' : 'reparar') + ' por ' + coins(c.custo)) + '</small></span>';
+      b.onclick = function () { npcDone(id, sim.service(st, id, s, { id: c.id, slot: c.slot })); charSig = ''; };
+      wrap.appendChild(b);
+    });
+    return wrap;
   }
   function npcDone(id, msg) {
     $('npc-res').textContent = msg; renderNpcActs(id); save();
@@ -2063,6 +2094,18 @@
   ITEM_ICONS.perneiras_couro = iLegs(LEATHER, LEATHER2, true);
   ITEM_ICONS.luvas_la = iGlove(WOOL, WOOL2, false);
   ITEM_ICONS.luvas_couro = iGlove(LEATHER, LEATHER2, true);
+  // pedras de amolar (o tamanho diz quantos usos) e os materiais únicos das lojas
+  function iWhet(w, h, cor, brilho) {
+    var x = 24 - w / 2, y = 26 - h / 2;
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + h / 2.4 + '" transform="rotate(-28 24 26)" fill="' + cor + '" ' + K + ' stroke-width="2.2"/>' +
+      '<path d="M' + (x + 4) + ' ' + (y + 3.5) + ' H' + (x + w - 6) + '" transform="rotate(-28 24 26)" stroke="' + brilho + '" stroke-width="1.8" stroke-linecap="round"/>';
+  }
+  ITEM_ICONS.pedra_amolar = iWhet(26, 10, '#8d8a83', '#c9c5bb');
+  ITEM_ICONS.pedra_amolar_grande = iWhet(34, 13, '#7e7a72', '#c9c5bb');
+  ITEM_ICONS.pedra_amolar_esplendida = iWhet(34, 13, '#5f7f9c', '#cfe6f7');
+  ITEM_ICONS.lingote_oricalco = '<path d="M8 36 L14 22 H34 L40 36 Z" fill="#c8743a" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M14 22 L17 17 H31 L34 22" fill="#e39a55" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M15 31 H25" stroke="#f3c08a" stroke-width="1.8" stroke-linecap="round"/>';
+  ITEM_ICONS.rubi = '<path d="M14 18 L20 11 H28 L34 18 L24 39 Z" fill="#b3202e" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M14 18 H34 M20 11 L22 18 L24 39 M28 11 L26 18" fill="none" stroke="#6e0f19" stroke-width="1.2"/><path d="M18 16 L21 13" stroke="#f3a3aa" stroke-width="1.6" stroke-linecap="round"/>';
+  ITEM_ICONS.perola = '<circle cx="24" cy="26" r="11" fill="#ece6da" ' + K + ' stroke-width="2.2"/><circle cx="20.5" cy="22" r="3.2" fill="#ffffff"/><path d="M29 32 C31 30 32 28 32 26" fill="none" stroke="#c2b9a8" stroke-width="1.6" stroke-linecap="round"/>';
   // do mato, do curral e da lavoura
   function iPelt(cloth, line, marks) {
     return '<path d="M16 7 L20 13 H28 L32 7 L35 15 C35 20 37 23 41 25 L36 29 C36 34 37 37 40 41 L31 39 L24 43 L17 39 L8 41 C11 37 12 34 12 29 L7 25 C11 23 13 20 13 15 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
@@ -2109,6 +2152,7 @@
   ITEM_ICONS._colar = '<path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" ' + K + ' stroke-width="3.6"/><path d="M9 7 C9 25 17 31 24 31 C31 31 39 25 39 7" fill="none" stroke="#c99a3b" stroke-width="1.6" stroke-dasharray="2.4 1.6"/>' +
     '<path d="M24 30 L30 37 L24 45 L18 37 Z" fill="#7d1e16" ' + K + ' stroke-width="1.8" stroke-linejoin="round"/><path d="M24 33 L27 37 L24 41" fill="none" stroke="#e39a84" stroke-width="1"/>';
   function itemIcon(k) {
+    k = (G.items[k] && G.items[k].base) || k; // peça com qualidade e raridade: o desenho do item base
     if (ITEM_ICONS[k]) { return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + ITEM_ICONS[k] + '</svg>'; }
     return '<b class="sell-ini" aria-hidden="true">' + esc(G.items[k].name.charAt(0)) + '</b>';
   }
@@ -2117,7 +2161,11 @@
   var SELL_COLS = 5, SELL_ROWS = 2; // tamanho mínimo do tabuleiro; cresce de linha em linha se precisar
   var sellShown = null, sellPop = null;
   // o mesmo tabuleiro serve para vender (s.type 'sell') e para colocar material no baú (s.type 'deliver')
-  function boardItems(s) { return s.type === 'deliver' ? sim.dailyItems(st) : s.items; }
+  function boardItems(s) {
+    if (s.type === 'deliver') { return sim.dailyItems(st); }
+    var pecas = Object.keys(st.player.inv).filter(function (k) { var d = G.items[k]; return d && d.base && !d.quebrada && s.items.indexOf(d.base) >= 0; }); // quebrada não se vende
+    return s.items.concat(pecas);
+  }
   function boardMax(s, k) { return s.type === 'deliver' ? sim.dailyMax(st, k) : sim.sellable(st, k); }
   // só os itens que o jogador tem e este NPC aceita; as outras casas ficam vazias
   function sellBox(id, s) {
@@ -2127,7 +2175,8 @@
     wrap.innerHTML = deliver ? '<div class="sell-top"><h3>Colocar no baú</h3></div>' : '<div class="sell-top"><h3>Vender</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
     owned.forEach(function (k) {
       var it = G.items[k], have = p.inv[k], can = boardMax(s, k), free = sim.sellable(st, k), b = document.createElement('button');
-      b.type = 'button'; b.className = 'sell-cell' + (can ? '' : ' off'); b.dataset.item = k;
+      b.type = 'button'; b.className = 'sell-cell' + (can ? '' : ' off') + (corRar(k) ? ' rar' : ''); b.dataset.item = k;
+      if (corRar(k)) { b.style.setProperty('--rar', corRar(k)); }
       b.title = it.name + (have > free ? ' (parte para missão)' : '');
       b.setAttribute('aria-label', it.name + ': ' + have + (have > free ? ', ' + (have - free) + ' para missão' : ''));
       b.innerHTML = itemIcon(k) + '<span class="n">' + have + '</span>' + (have > free ? '<i class="res" aria-hidden="true"></i>' : '');
@@ -2142,7 +2191,7 @@
     if (!owned.length) {
       var h = document.createElement('p'); h.className = 'hint';
       // armas e roupas que ele recompra entram numa palavra só, senão a lista não acaba
-      var raw = items.filter(function (k) { return !G.items[k].slot; }), gear = raw.length < items.length;
+      var raw = s.items.filter(function (k) { return !G.items[k].slot; }), gear = raw.length < s.items.length;
       h.textContent = (deliver ? 'Você não tem o material pedido. Falta: ' : 'Você não tem nada que se venda aqui. Compra: ') + raw.map(function (k) { return (G.items[k].plural || G.items[k].name).toLowerCase(); }).join(', ') +
         (gear ? (raw.length ? ' e ' : '') + 'o que ele mesmo vende, usado' : '') + '.';
       wrap.appendChild(h);
@@ -2269,8 +2318,6 @@
     if (ref.type === 'camp') { camp.interage(ref.id, d); return; }
     if (ref.type === 'npc' || ref.type === 'gente') {
       var nm = personName(ref.id);
-      if (sim.isKo(st, ref.id)) { toast(G.aldeoes.textos.desacordado.replace('{alvo}', nm)); return; }
-      if (sim.hostileTo(st, ref.id)) { target(ref.id); return; } // quem vem para cima não conversa: o clique é golpe
       var parede = sim.paredeEntre(st, ref.id); if (parede) { toast(parede); return; }
       if (d <= G.settings.interactRange + 0.5) { openPerson(ref.id); } else { toast('Aproxime-se de ' + nm + '.'); }
       return;
@@ -2311,10 +2358,10 @@
       if (d > 1.6 && (dx * fx + dz * fz) / d < 0.35) { return; }
       if (d < bd) { bd = d; best = ref; }
     }
-    // gente (parada ou andando), menos quem está desacordado
+    // gente (parada ou andando)
     function people(range) {
       world.people.forEach(function (q) {
-        var pos = personPos(q.id); if (!pos || sim.isKo(st, q.id)) { return; }
+        var pos = personPos(q.id); if (!pos) { return; }
         consider({ type: q.fixed ? 'npc' : 'gente', id: q.id }, pos.x, pos.z, range);
       });
     }
@@ -2524,7 +2571,6 @@
       var pt = mapPoint(e), wasMacro = macroOn();
       if (mapMenu) { mapMenu = false; mapUi(); return; } // clique fora do menu só fecha o menu
       mapHover = null;
-      if (mapNext() === 'macro' && st.hostil) { toast(G.aldeoes.textos.macro, 3); return; }
       if (mapNext() === 'macro') { sim.startMacro(st, pt); mapArmed = false; hide(); toast(wasMacro ? 'Área mudada. A macro segue trabalhando lá.' : 'Área marcada. O personagem vai trabalhar lá.'); return; }
       if (sim.goTo(st, pt.x, pt.z)) { mapArmed = false; hide(); toast(wasMacro ? 'Macro pausada. Indo até o ponto marcado.' : 'Indo até o ponto marcado.'); }
     });
@@ -2539,7 +2585,7 @@
       b.addEventListener('pointerleave', mapTipOff); b.addEventListener('blur', mapTipOff);
     });
     $('mm-pick').addEventListener('click', function () { mapMenu = false; mapArmed = 'macro'; mapUi(); });
-    $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } else if (st.hostil) { mapUi(); toast(G.aldeoes.textos.macro, 3); } });
+    $('mm-prev').addEventListener('click', function () { mapMenu = false; if (sim.startMacro(st)) { mapArmed = false; hide(); toast('Macro retomada na área anterior.'); } });
     $('mm-rules').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-rules'); renderRules(); });
     $('mm-saque').addEventListener('click', function () { mapMenu = false; mapArmed = false; show('w-saque-cfg'); renderSaqueCfg(); });
     $('saque-cfg').addEventListener('click', function (e) {
@@ -2654,10 +2700,9 @@
   function hoverAt(e) {
     var h = pickEvent(e), el = $('hover'), cv = $('view');
     if (!h) { el.hidden = true; cv.classList.remove('over'); return; }
-    var pos = refPos(h.ref), d = calc.dist(st.player.x, st.player.z, pos.x, pos.z), who = h.ref.type === 'npc' || h.ref.type === 'gente';
-    var g = who && st.hostil && st.gente[h.ref.id], life = h.ref.type === 'mob' ? sim.mobById(st, h.ref.id).hp : g ? g.hp : null;
+    var pos = refPos(h.ref), d = calc.dist(st.player.x, st.player.z, pos.x, pos.z);
+    var life = h.ref.type === 'mob' ? sim.mobById(st, h.ref.id).hp : null;
     el.textContent = refName(h.ref) + (life !== null ? ' · ' + Math.max(0, Math.ceil(life)) + ' de vida' : '') + ' · ' + d.toFixed(1) + ' m';
-    el.classList.toggle('hostil', who && sim.hostileTo(st, h.ref.id)); // quem vai lutar aparece em vermelho
     el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px'; el.hidden = false; cv.classList.add('over');
   }
 

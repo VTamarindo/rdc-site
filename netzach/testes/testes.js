@@ -230,10 +230,12 @@
         confere(loja, 'nenhuma loja nos dados');
         var st = novo(), p = st.player, it = loja.items.filter(function (k) { return !G.items[k].tool; })[0] || loja.items[0];
         p.inv.moeda = 100000;
-        var lot = (loja.lots && loja.lots[it]) || 1, preco = NZ.calc.buyPrice(world, p, it, lot), tinha = p.inv[it] || 0;
+        // equipamento sai com qualidade e raridade sorteadas: conta as peças do mesmo item base
+        function conta() { return Object.keys(p.inv).reduce(function (n, k) { return n + (k === it || (world.game.items[k] || {}).base === it ? p.inv[k] : 0); }, 0); }
+        var lot = (loja.lots && loja.lots[it]) || 1, preco = NZ.calc.buyPrice(world, p, it, lot), tinha = conta();
         var msg = sim.buyItem(st, loja, it, 1);
         confere(p.inv.moeda === 100000 - preco, dono + '/' + it + ': moedas ' + p.inv.moeda + ' (' + msg + ')');
-        confere(p.inv[it] === tinha + lot, 'item ' + p.inv[it]);
+        confere(conta() === tinha + lot, 'item ' + conta());
       });
       teste('sem moedas não compra', function () {
         var loja = null;
@@ -305,7 +307,6 @@
         confere(an(true, 0.02) === 's:a0', 'volta ao 1º: ' + o.tex);
         confere(an(false, 0.016) === 's:p', 'parou: ' + o.tex);
         confere(an(true, 3600) === 's:a0' || o.tex === 's:a1', 'muito tempo de uma vez: ' + o.tex);
-        o.userData.deitado = true; confere(an(true, 0.1) === 's:x', 'desacordado: ' + o.tex);
       });
       // saque: o lobo sempre deixa a pele (chance 1), bom para testar
       function abate(st, kind) {
@@ -363,6 +364,185 @@
         var st = novo(); sim.advance(st, 600);
         var kb = JSON.stringify(st).length / 1024;
         confere(kb < 60, Math.round(kb) + ' KB');
+      });
+    });
+
+    // ---------------------------------------------------------------- raridade e qualidade
+    parte('Raridade e qualidade', function () {
+      var GI = world.game.items, C = NZ.calc, QQ = world.game.qualidade, RR = world.game.raridade;
+      // QUALIDADE (até 5 testes)
+      teste('qualidade: o nome concorda com o gênero e a quebra vem da tabela', function () {
+        var e = C.variante(world.game, 'espada_ferro~0~2'), m = C.variante(world.game, 'machado_guerra~1~0'), l = C.variante(world.game, 'luvas_couro~6~4');
+        confere(e && e.name === 'Espada de ferro enferrujada rara', e && e.name);
+        confere(m && m.name === 'Machado de guerra velho', m && m.name);
+        confere(l && l.name === 'Luvas de couro celestiais lendárias', l && l.name);
+        var st = novo();
+        confere(Math.abs(C.chanceQuebra(world, st.player, 'espada_ferro~0~2', 'espada') - QQ.niveis[0].quebra) < 1e-12, 'quebra sem maestria');
+        confere(C.varId(world.game, 'espada_ferro', QQ.padrao, 0) === 'espada_ferro', 'a peça padrão e comum não é o id puro');
+      });
+      teste('qualidade: a maestria tira chance de quebrar', function () {
+        var st = novo(), p = st.player, base = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
+        p.maestria.espada = world.game.maestria.meio; // metade do caminho
+        var meio = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
+        confere(Math.abs(meio - base * (1 - world.game.maestria.corte * 0.5)) < 1e-12, base + ' → ' + meio);
+        confere(C.chanceQuebra(world, p, 'espada_ferro', 'machado') === base, 'a maestria de outra classe valeu');
+      });
+      teste('qualidade: a arma quebra no golpe, sai da mão e o golpe conta maestria', function () {
+        var st = novo(), p = st.player, Q0 = QQ.niveis[0].quebra, m = st.mobs.filter(function (x) { return x.alive; })[0];
+        C.variante(world.game, 'espada_ferro~0~0'); p.equip.arma = 'espada_ferro~0~0';
+        QQ.niveis[0].quebra = 2; // certeza
+        try { sim.swing(st, m); } finally { QQ.niveis[0].quebra = Q0; }
+        confere(p.equip.arma === null, 'não quebrou: ' + p.equip.arma);
+        confere(p.inv['espada_ferro~0~0~x'] === 1, 'a quebrada não foi para a bolsa: ' + JSON.stringify(p.inv));
+        confere(p.maestria.espada === 1, 'maestria ' + p.maestria.espada);
+        confere(st.log.some(function (l) { return /quebrou/.test(l.text || l); }), 'sem aviso no registro');
+      });
+      teste('qualidade: a peça e a maestria sobrevivem ao save, num jogo recém-aberto', function () {
+        var st = novo(), p = st.player;
+        C.variante(world.game, 'arco_longo~5~3'); p.equip.arma = 'arco_longo~5~3'; p.inv['coifa_couro~4~1'] = 1; C.variante(world.game, 'coifa_couro~4~1');
+        p.maestria.arco = 42;
+        var w2 = new NZ.World(copia(G), copia(V)), st2 = NZ.settle(w2, NZ.migrate(JSON.parse(JSON.stringify(st))));
+        confere(st2.player.equip.arma === 'arco_longo~5~3', 'arma ' + st2.player.equip.arma);
+        confere(w2.game.items['coifa_couro~4~1'] && w2.game.items['coifa_couro~4~1'].name === 'Coifa de couro ideal incomum', 'coifa sem ficha');
+        confere(st2.player.maestria.arco === 42, 'maestria ' + st2.player.maestria.arco);
+      });
+      // RARIDADE (até 5 testes)
+      teste('raridade: multiplica dano, defesa, bônus e preço', function () {
+        var b = GI.espada_ostanita, R = RR.niveis[4], v = C.variante(world.game, 'espada_ostanita~3~4'), t = C.variante(world.game, 'gambeson~3~2');
+        confere(Math.abs(v.dmg[0] - b.dmg[0] * R.mult) < 0.01 && Math.abs(v.dmg[1] - b.dmg[1] * R.mult) < 0.01, 'dano ' + v.dmg);
+        confere(Math.abs(v.bonus.crit - b.bonus.crit * R.mult) < 0.001, 'crítico ' + v.bonus.crit);
+        confere(Math.abs(t.def - GI.gambeson.def * RR.niveis[2].mult) < 0.01 && Math.abs(t.bonus.hp - GI.gambeson.bonus.hp * RR.niveis[2].mult) < 0.01, 'gambeson ' + t.def + ' ' + t.bonus.hp);
+        confere(v.price > b.price && v.buy > b.buy, 'preço ' + v.price + '/' + v.buy);
+        confere(v.interval === b.interval && v.reach === b.reach, 'mexeu no ritmo ou no alcance');
+      });
+      teste('raridade: bicho com equipamento na lista deixa uma peça no chão', function () {
+        var kind = keys(world.game.monsters).filter(function (k) { return (world.game.monsters[k].drops || []).some(function (d) { return d.equip; }); })[0];
+        confere(kind, 'nenhum bicho deixa equipamento');
+        var def = copia(world.game.monsters[kind]); def.drops = def.drops.filter(function (d) { return d.equip; }); def.drops[0].chance = 1;
+        var st = novo(), m = st.mobs[0], s = sim.deixaSaque(st, m, def);
+        var ks = s ? Object.keys(s.itens) : [];
+        confere(ks.length === 1 && def.drops[0].equip.indexOf(GI[ks[0]].base || ks[0]) >= 0, 'saque ' + ks);
+      });
+      teste('raridade: a peça se vende a quem compra o item base, pelo preço dela', function () {
+        var s = null;
+        keys(G.npcs).some(function (id) { return (G.npcs[id].services || []).some(function (x) { if (x.type === 'sell' && (x.items || []).some(function (k) { return C.ehPeca(GI[k]); })) { s = x; return true; } }); });
+        if (!s) { return; } // ninguém compra equipamento
+        var base = s.items.filter(function (k) { return C.ehPeca(GI[k]); })[0], id = base + '~6~4', st = novo(), p = st.player;
+        C.variante(world.game, id); p.inv[id] = 1; p.inv.moeda = 0;
+        var msg = sim.sellItem(st, s, id, 1);
+        confere(!p.inv[id] && p.inv.moeda === C.sellPrice(world, p, id, 1) && p.inv.moeda > C.sellPrice(world, p, base, 1), msg);
+      });
+      teste('raridade: a macro deixa no chão a peça marcada como Deixar (pelo item base)', function () {
+        var st = novo(), id = 'tunica_couro~2~3'; C.variante(world.game, id);
+        st.saque = [{ id: 'sqx', x: st.player.x, z: st.player.z, itens: {}, ate: 1e9 }]; st.saque[0].itens[id] = 1;
+        st.saqueDeixa = { tunica_couro: true };
+        sim.macroSaque(st, st.saque[0]);
+        confere(!st.player.inv[id] && st.saque[0].itens[id] === 1, 'a macro pegou');
+        st.saqueDeixa = {}; sim.macroSaque(st, st.saque[0]);
+        confere(st.player.inv[id] === 1, 'a macro não pegou com Pegar');
+      });
+    });
+
+    // ---------------------------------------------------------------- durabilidade, oficina, lojas e pedra de amolar
+    parte('Durabilidade, oficina, lojas e pedra de amolar', function () {
+      var GG = world.game, C = NZ.calc, O = GG.oficina;
+      function bicho(st) { return st.mobs.filter(function (x) { return x.alive && GG.monsters[x.kind].dmg; })[0]; }
+      function apanha(st, n) { var m = bicho(st); for (var i = 0; i < n; i++) { st.player.hp = 1e6; sim.hitPlayer(st, m, GG.monsters[m.kind]); } st.player.hp = 1e6; }
+      function oficina(npc) { return GG.npcs[npc].services.filter(function (x) { return x.type === 'oficina'; })[0]; }
+      function loja(npc) { return GG.npcs[npc].services.filter(function (x) { return x.type === 'shop'; })[0]; }
+      // DURABILIDADE (até 5)
+      teste('durabilidade: cada golpe recebido gasta 0,3 de todas as peças vestidas, sem mudar a defesa', function () {
+        var st = novo(), p = st.player; p.equip.peito = 'gambeson'; p.equip.cabeca = 'capuz_la';
+        var def0 = C.stats(world, p).def;
+        apanha(st, 10);
+        confere(GG.items[p.equip.peito].gasto === 30 && GG.items[p.equip.cabeca].gasto === 30, p.equip.peito + ' / ' + p.equip.cabeca);
+        confere(C.stats(world, p).def === def0, 'a defesa mudou com o desgaste');
+        var d = C.durabilidade(GG, p.equip.peito);
+        confere(d.max === Math.round(GG.qualidade.niveis[GG.qualidade.padrao].dur) && d.resta === Math.ceil(d.max - 3) && d.resta % 1 === 0, JSON.stringify(d));
+      });
+      teste('durabilidade: a armadura gasta até o fim quebra e fica vestida sem proteger', function () {
+        var st = novo(), p = st.player; C.variante(GG, 'gambeson~0~0'); p.equip.peito = 'gambeson~0~0';
+        var golpes = Math.ceil(GG.qualidade.niveis[0].dur / O.desgaste - 1e-9);
+        apanha(st, golpes - 1);
+        confere(!GG.items[p.equip.peito].quebrada, 'quebrou antes da hora');
+        apanha(st, 1);
+        confere(p.equip.peito === 'gambeson~0~0~x' && GG.items[p.equip.peito].quebrada, 'casa ' + p.equip.peito);
+        confere(C.stats(world, p).def === GG.player.defBase && C.stats(world, p).hp === C.stats(world, novo().player).hp, 'quebrada ainda protege');
+      });
+      teste('durabilidade: a celestial aguenta muito mais que a enferrujada', function () {
+        confere(GG.qualidade.niveis[6].dur >= GG.qualidade.niveis[0].dur * 20, 'celestial ' + GG.qualidade.niveis[6].dur);
+        confere(C.chanceQuebra(world, novo().player, 'gambeson') === 0, 'peça de defesa rolando dado de quebrar');
+      });
+      // OFICINA (até 5)
+      teste('oficina: reparar cobra pelo desgaste e devolve a peça inteira, mesma qualidade e raridade', function () {
+        var st = novo(), p = st.player; C.variante(GG, 'tunica_couro~4~1'); p.equip.peito = 'tunica_couro~4~1'; p.inv.moeda = 1000;
+        apanha(st, 50);
+        var s = oficina('alfaiate'), L = sim.consertos(st, s);
+        confere(L.length === 1 && L[0].tipo === 'reparar' && L[0].custo > 0, JSON.stringify(L));
+        var msg = sim.conserta(st, s, L[0].id, 'peito');
+        confere(p.equip.peito === 'tunica_couro~4~1' && p.inv.moeda === 1000 - L[0].custo, msg);
+      });
+      teste('oficina: só o Ferreiro restaura arma quebrada; restaurada volta igual', function () {
+        var st = novo(), p = st.player, id = 'machado_guerra~2~3~x'; C.variante(GG, id); p.inv[id] = 1; p.inv.moeda = 1000;
+        confere(!sim.consertos(st, oficina('alfaiate')).length, 'o Alfaiate restaura arma');
+        var s = oficina('ferreiro'), L = sim.consertos(st, s);
+        confere(L.length === 1 && L[0].tipo === 'restaurar', JSON.stringify(L));
+        sim.conserta(st, s, id, null);
+        confere(!p.inv[id] && p.inv['machado_guerra~2~3'] === 1, JSON.stringify(p.inv));
+      });
+      teste('oficina: sem moedas não conserta; quebrada não se vende nem se empunha', function () {
+        var st = novo(), p = st.player, id = 'espada_aco~3~0~x'; C.variante(GG, id); p.inv[id] = 1; p.inv.moeda = 0;
+        sim.conserta(st, oficina('ferreiro'), id, null);
+        confere(p.inv[id] === 1, 'consertou de graça');
+        confere(sim.sellable(st, id) === 0, 'quebrada à venda');
+        sim.equip(st, id); confere(p.equip.arma !== id, 'empunhou a quebrada');
+      });
+      // LOJAS (até 5)
+      teste('lojas: fixos à venda (um de cada), consumíveis sem limite, estoque sai ao comprar', function () {
+        var st = novo(), p = st.player, s = loja('ferreiro'), V = sim.vitrine(st, s); p.inv.moeda = 1e6;
+        s.fixos.forEach(function (b) { confere(V.some(function (o) { return o.item === b && o.n === 1; }), 'faltou o fixo ' + b); });
+        s.items.forEach(function (b) { confere(V.some(function (o) { return o.item === b && o.n === null; }), 'faltou o consumível ' + b); });
+        sim.buyItem(st, s, s.fixos[0], 1);
+        confere(!sim.vitrine(st, s).some(function (o) { return o.item === s.fixos[0]; }), 'o fixo continuou à venda');
+        confere(sim.buyItem(st, s, s.fixos[0], 1) === 'Isso não se compra aqui.', 'comprou o mesmo fixo de novo');
+      });
+      teste('lojas: dia novo repõe os fixos e sorteia os rotativos dentro do limite da loja', function () {
+        var st = novo(), s = loja('ferreiro'), N = GG.lojas.niveis.comum, total = 0;
+        for (var d = 1; d <= 60; d++) {
+          st.daily.day = '2026-1-' + d;
+          var e = sim.estoque(st, s);
+          s.fixos.forEach(function (b) { confere(e.itens[b] === 1, 'dia ' + d + ' sem o fixo ' + b); });
+          Object.keys(e.itens).forEach(function (k) {
+            var it = GG.items[k]; if (!it.base) { return; }
+            confere(s.rotativos.indexOf(it.base) >= 0 && N.qualidade[it.q] > 0 && N.raridade[it.r] > 0, 'fora do limite: ' + k);
+            total += e.itens[k];
+          });
+        }
+        var med = total / 60 / s.rotativos.length; // média esperada por item: soma de n x peso
+        confere(med > 0.8 && med < 2.4, 'média de rotativos por item ' + med);
+      });
+      teste('lojas: os únicos aparecem às vezes, uma unidade, e o preço segue a qualidade e a raridade', function () {
+        var st = novo(), s = loja('ferreiro'), viu = 0;
+        for (var d = 1; d <= 200; d++) { st.daily.day = '2027-1-' + d; var e = sim.estoque(st, s); s.unicos.forEach(function (u) { if (e.itens[u.item]) { viu++; confere(e.itens[u.item] === 1, 'mais de um'); } }); }
+        confere(viu > 5 && viu < 80, 'únicos em 200 dias: ' + viu);
+        C.variante(GG, 'espada_aco~0~0'); C.variante(GG, 'espada_aco~4~1');
+        confere(C.buyPrice(world, st.player, 'espada_aco~0~0', 1) < C.buyPrice(world, st.player, 'espada_aco', 1) &&
+          C.buyPrice(world, st.player, 'espada_aco~4~1', 1) > C.buyPrice(world, st.player, 'espada_aco', 1), 'preço não segue a peça');
+      });
+      // PEDRA DE AMOLAR (até 5)
+      teste('pedra de amolar: +30% de dano por 5 golpes e gasta um uso', function () {
+        var st = novo(), p = st.player, m = bicho(st); p.inv.pedra_amolar = 1; p.equip.arma = 'espada_ferro';
+        var msg = sim.afia(st, 'pedra_amolar');
+        confere(p.afiada && p.afiada.n === 5 && Math.abs(p.afiada.mult - 0.3) < 1e-9, msg);
+        confere(!p.inv.pedra_amolar && p.inv['pedra_amolar~u4'] === 1, JSON.stringify(p.inv));
+        m.hp = 1e6; for (var i = 0; i < 5; i++) { sim.swing(st, m); }
+        confere(p.afiada === null, 'o fio não acabou: ' + JSON.stringify(p.afiada));
+      });
+      teste('pedra de amolar: arco não se afia; a esplêndida tem 15 usos e o troll a deixa', function () {
+        var st = novo(), p = st.player; p.inv.pedra_amolar_grande = 1; p.equip.arma = 'arco_curto';
+        sim.afia(st, 'pedra_amolar_grande'); confere(!p.afiada && p.inv.pedra_amolar_grande === 1, 'afiou o arco');
+        confere(GG.items.pedra_amolar_esplendida.usos === 15 && GG.items.pedra_amolar_grande.usos === 10, 'usos');
+        confere(GG.monsters.troll.drops.some(function (d) { return d.item === 'pedra_amolar_esplendida' && d.chance === 0.3; }), 'troll');
       });
     });
 

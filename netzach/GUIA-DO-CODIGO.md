@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **O dia a dia vai no ramo `dev`**; a `main` é o que está no site. Commit e push no `dev` não mudam o site.
-2. **Publicar** (só quando o dono do jogo pedir): rode os testes (abaixo), monte a notícia em `noticias.js` (na raiz) a partir
-   de `MUDANCAS.md`, zere o `MUDANCAS.md`, commite no `dev` e rode
+2. **Publicar** (só quando o dono do jogo pedir): rode os testes (abaixo), escreva a notícia em `noticias/fonte.mjs` (na raiz do site) a partir
+   de `MUDANCAS.md`, rode `node netzach/tools/montar_noticias.mjs` (monta uma página por notícia e o carrossel), zere o `MUDANCAS.md`, commite no `dev` e rode
    `powershell -ExecutionPolicy Bypass -File netzach\tools\publicar.ps1` na pasta do site (com `-Testar` ele só mostra o que iria).
    Ele troca a versão, junta o `dev` na `main` e envia. Espere uns 2 minutos e confira a versão no Menu do jogo.
 3. **Toda publicação troca a versão** (o `publicar.ps1` já faz, com `tools/versao.ps1`), senão quem já jogou fica com arquivos
@@ -38,6 +38,13 @@ instalado em 10/11 (com Pillow, numpy e scipy).
 
 **Erros dos jogadores:** `js/erros.js` manda cada erro de código que acontece no jogo de alguém para a tabela `erros` do
 Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. A tabela é criada por `supabase/erros.sql`.
+
+## As páginas do site
+- **Notícias:** o texto fica só em `noticias/fonte.mjs` (os campos estão explicados no topo): seções, tabelas, antes e agora,
+  pontos em aberto e o que mudou depois. `node netzach/tools/montar_noticias.mjs` gera `noticias/<slug>.html`,
+  `noticias/index.html` e `noticias.js`; não edite esses à mão. Figuras do topo: `noticias/img/` (recortes do atlas).
+- **Feedback e Quem somos:** `feedback.html` e `quem-somos.html`. O envio (`feedback.js`) vai para a tabela `feedback` do
+  Supabase; o que vem de uma notícia começa com `[Notícia: título]`. Estilo em `noticia.css`, junto de `portal.css`.
 
 ## Os arquivos
 | Arquivo | O que tem |
@@ -72,6 +79,18 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
 - **Itens** (`items`): nome, `price` (quanto o comerciante paga), `buy` (quanto a loja cobra). Armas: `dmg` [mínimo, máximo],
   `interval` (segundos entre golpes), `reach` (alcance em metros). Roupas: `def` (defesa). `bonus` dá extras.
 - **Classes de arma** (`weaponClasses`): espada, machado, arco (arco usa flechas).
+- **Qualidade e raridade** (`qualidade`, `raridade`, `maestria`): os nomes de cada nível (pelo gênero do item, `g` em `items`),
+  a chance de a arma quebrar por golpe (`quebra`), a durabilidade da defesa (`dur`), o multiplicador dos modificadores
+  (`mult`), o do preço (`preco`), a cor e os pesos do sorteio no saque. A maestria (`meio`, `corte`) diz quanto o uso tira da
+  chance de quebrar (só armas). Um bicho deixa equipamento com `{ "equip": [itens], "chance" }` em `drops` (pode trazer pesos
+  `qualidade` e `raridade`). Uma missão pode dar uma peça certa com `item~qualidade~raridade` em `reward.items`.
+- **Durabilidade e conserto** (`oficina`): o desgaste por golpe recebido, os tipos de casa cuja peça quebrada vai para a bolsa
+  (`paraBolsa`), e os preços de reparar, restaurar e revender. Um NPC conserta com o serviço `{ "type": "oficina", "reparar":
+  true, "restaurar": true }`.
+- **Estoque das lojas** (`lojas` e o serviço `shop` dos NPCs): `items` = consumíveis sem limite; `fixos` = uma peça boa e comum,
+  reposta todo dia; `rotativos` = sorteados todo dia (quantidade em `lojas.quantidade`, qualidade e raridade em
+  `lojas.niveis`, pelo `nivel` da loja: `comum` ou `escolhida`); `unicos` = `{ item, chance }` por dia.
+- **Pedra de amolar** (`items`: `usos`, `afia`): quantas vezes afia e o efeito de cada uso.
 - **Atributos** (`attributes`): o efeito de cada ponto (`per`), o limite (`cap`) e a descrição mostrada no jogo (`desc`).
 - **Combate** (`combat.armorK`): quanto a defesa reduz o dano. **Posturas** (`stances`): ofensiva e defensiva.
 - **Monstros e animais** (`monsters`): vida, dano, velocidade, XP, o que deixam cair (`drops`), tempo para renascer
@@ -79,11 +98,11 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
   fuga dos veados.
 - **Recursos** (`nodes`): árvores e veios: tempo de coleta e o que dão.
 - **NPCs** (`npcs`): nome, fala, e o que vendem e compram (`services`: `shop` = loja, `sell` = compra do jogador).
-- **Pessoas** (`pessoas`): papel, saudações (`ola`) e assuntos (`temas`) de cada um dos 22 moradores e lojistas.
-- **Hostilidade** (`aldeoes`): **desligada desde a versão `20261109-10`**: o menu das pessoas não tem mais "Atacar" (o
-  protagonista é da vila; ver `LORE.md`), e um save gravado no meio de uma briga termina a briga ao carregar
-  (`NZ.settle`, em `js/sim.js`). O resto do sistema continua no código, sem uso. Antes: reputação perdida (por incidente e por inocente morto), multa, tempo para acalmar e a força de cada papel na luta.
-  **Morte** (`aldeoes` → `morte`): quanto tempo o corpo fica, quando chegam os substitutos de lojistas e guardas, e os nomes deles.
+- **Pessoas** (`pessoas`): nome de cada morador e, quando houver, saudações (`ola`) e assuntos (`temas`). As falas
+  provisórias saíram em 17/11; hoje ninguém tem fala própria.
+- Não há briga com a vila: o protagonista é da vila e não ataca os moradores (ver `LORE.md`). O sistema de briga, morte e
+  substitutos saiu do código em 17/11; um save antigo perde a briga, os feridos e os mortos ao carregar (`NZ.settle`,
+  em `js/sim.js`), e quem já tinha substituto fica com o nome dele (`st.nomes`).
 - **Macro** (`macro`): as regras automáticas. **Diárias** (`daily`): missões do quadro, horário de reinício e recompensas.
 - **Missões** (`quests`) e **conversas** (`dialogues`, `_textos`).
 
@@ -160,12 +179,17 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Céu e horários:** `js/ceu.js`, tabela `HORAS` (cores por hora do dia); montanhas em `serra`.
 - **Distância da névoa:** `js/view.js`, `fog: [45, 150]` (começa a 45 m e fecha em 150 m).
 - **Combate:** `js/sim.js`, `Sim.prototype.strike` (um golpe) e `swing`; contas do personagem em `stats`.
+- **Qualidade, raridade e quebra:** `js/sim.js`, seção "raridade e qualidade" (`variante` monta a ficha da peça `id~q~r` (`~g12` gasta, `~x` quebrada, `~u3` pedra com 3 usos)
+  em `G.items`; `registraVariantes` faz isso ao abrir um save; `novaPeca` sorteia; `chanceQuebra` e `maestria`) e
+  `Sim.prototype.usaArma` (rola a quebra e soma a maestria, em `swing`), `gastaDefesa` (em `hitPlayer`) e `quebrou`.
+  Oficina: `consertos`, `conserta`, `custoConserto`. Lojas: `estoque` e `vitrine` (o dia é `st.daily.day`). Pedra: `afia`.
+  Na tela: `itemLines`, `corRar`, `rarStyle`, `oficinaBox` e `shopBox` em `js/ui.js`; a borda colorida é `.sell-cell.rar` e a
+  peça quebrada `.quebrada` no `css/netzach.css`.
 - **Saque no chão:** `js/sim.js`, `deixaSaque`, `pegaSaque` e `macroSaque` (o que a macro pega: `st.saqueDeixa`); tempo e
   limite em `game.json` → `saque`. Janela e botão Saque da macro em `js/ui.js` (`openSaque`, `renderSaqueCfg`); o
   saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).
 - **Coleta e macro:** `js/sim.js`, `finishGather`, `macroTick`, `decide` (a colheita das plantações usa a mesma coleta).
-- **Animais e guardas perseguindo:** `js/sim.js`, `mobTick` (bichos), `genteTick` (moradores em briga), `chase` e
-  `hitPlayer` (perseguir e bater, comum a todos), `foge` (moradores fugindo por um caminho) e `afasta` (ninguém em cima de outro).
+- **Animais perseguindo:** `js/sim.js`, `mobTick` (bichos), `chase` e `hitPlayer` (perseguir e bater).
 - **Menu das pessoas e falas:** `js/ui.js`, procure por `pessoas` e `talk`.
 - **Leite e lã:** `js/ui.js`, procure por `farm` (vacas e ovelhas); o tempo de cada animal fica em `st.farm`. Onde cada vaca e
   ovelha está em cada instante: `World.bichoEm` em `js/sim.js` (pelo relógio do jogo, o mesmo para o desenho e a macro, que

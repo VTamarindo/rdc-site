@@ -1,5 +1,6 @@
 ﻿# Netzach · publica o que está no ramo dev: o dev entra na main, e a main é o que vai para o site
-# Só quando o usuário pedir. Antes de rodar: a notícia nova em noticias.js (montada a partir de netzach/MUDANCAS.md) e o
+# Só quando o usuário pedir. Antes de rodar: a notícia nova em noticias/fonte.mjs (escrita a partir de netzach/MUDANCAS.md),
+# as páginas montadas (node netzach/tools/montar_noticias.mjs) e o
 # MUDANCAS.md zerado, os dois commitados no dev.
 # Uso (na pasta do site):  powershell -ExecutionPolicy Bypass -File netzach\tools\publicar.ps1
 #   -Testar   mostra o que seria publicado e para (não muda nada)
@@ -7,7 +8,8 @@ param([switch]$Testar)
 $ErrorActionPreference = 'Stop'
 $site = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Set-Location $site
-function G { $s = & git @args 2>&1; if ($LASTEXITCODE) { throw "git $($args -join ' '): $s" }; return $s }
+# aviso do git (fim de linha) sai no canal de erro: só o código de saída diz se falhou
+function G { $ErrorActionPreference = 'Continue'; $s = & git @args 2>&1; if ($LASTEXITCODE) { throw "git $($args -join ' '): $s" }; return @($s | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] }) }
 
 if ((G branch --show-current) -ne 'dev') { throw 'Rode no ramo dev (git switch dev).' }
 if (G status --porcelain) { throw 'Há mudanças sem commit. Commite (ou guarde) antes de publicar.' }
