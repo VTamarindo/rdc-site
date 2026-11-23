@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { montaProjeto } from './montar_projeto.mjs';
 
 const SITE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = path.join(SITE, 'noticias');
@@ -103,7 +104,8 @@ function raridades() {
 function forja() {
   const it = G.items.espada_aco;
   const d = {
-    nome: it.name, dano: it.dmg, compra: it.buy, meio: G.maestria.meio, corte: G.maestria.corte,
+    nome: it.name, dano: it.dmg, compra: it.buy, meio: 300, corte: 0.9, // a maestria da época da notícia (hoje são 15 níveis)
+   
     q: G.qualidade.niveis.map((q) => ({ n: q.nome.f, quebra: q.quebra, preco: q.preco })),
     r: G.raridade.niveis.map((r, i) => ({ n: r.nome.f, mult: r.mult, preco: r.preco, cor: CORES[i] })), padrao: G.qualidade.padrao
   };
@@ -186,3 +188,4 @@ fs.writeFileSync(path.join(DIR, 'index.html'), indice());
 const carrossel = lista.map((n) => ({ jogo: n.jogo, data: n.data, titulo: n.titulo, texto: n.resumo, simbolo: n.simbolo, tom: n.tom, imagem: n.imagem || '', cena: (n.cena || []).slice(0, 5), link: 'noticias/' + n.slug + '.html', botao: 'Ler a notícia' }));
 fs.writeFileSync(path.join(SITE, 'noticias.js'), '// Notícias do carrossel. Gerado por netzach/tools/montar_noticias.mjs a partir de noticias/fonte.mjs. Não edite aqui.\nwindow.NOTICIAS = ' + JSON.stringify(carrossel, null, 1) + ';\n');
 console.log(`${lista.length} notícias montadas.`);
+montaProjeto({ SITE, G, V: JSON.parse(fs.readFileSync(path.join(SITE, 'netzach/data/vila.json'), 'utf8')), lista, cabeca, pe, ver, esc, rico, data, tam });

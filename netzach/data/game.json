@@ -66,7 +66,7 @@
     "unarmed": {
       "name": "Mãos nuas",
       "dmg": [1, 2],
-      "interval": 1,
+      "interval": 4,
       "reach": 1.4
     },
     "startEquip": {
@@ -162,15 +162,15 @@
       "noBag": true,
       "plural": "moedas"
     },
-    "_equip": "Equipamento: price = o que o mercador paga, buy = o que ele cobra (os dois antes do carisma). slot = tipo de casa (equipSlots). Armas: class (weaponClasses), dmg [mín, máx], interval em s, reach em m, sprite = figura em primeira pessoa. def = armadura. bonus soma aos mesmos efeitos dos atributos (hp, crit, move, haste, melee, ranged, gather...); gather por recurso em 'gather'. g = gênero do nome (m, f, mp, fp), para a qualidade e a raridade concordarem. Cada peça tem qualidade e raridade (ver qualidade e raridade, abaixo): o id puro é a qualidade padrão e comum; as outras são o id com ~qualidade~raridade (espada_ferro~5~2).",
-    "espada_ferro": { "g": "f", "name": "Espada de ferro", "plural": "espadas de ferro", "slot": "arma", "class": "espada", "dmg": [4, 6], "interval": 0.9, "reach": 1.7, "price": 8, "buy": 20, "sprite": "espada" },
-    "espada_aco": { "g": "f", "name": "Espada de aço", "plural": "espadas de aço", "slot": "arma", "class": "espada", "dmg": [6, 8], "interval": 0.9, "reach": 1.7, "price": 16, "buy": 40, "sprite": "espada_afiada" },
-    "espada_ostanita": { "g": "f", "name": "Espada de ostanita", "plural": "espadas de ostanita", "slot": "arma", "class": "espada", "dmg": [8, 11], "interval": 0.85, "reach": 1.8, "price": 44, "buy": 110, "bonus": { "crit": 0.03 }, "sprite": "espada_temperada" },
-    "machado_trabalho": { "g": "m", "name": "Machado de trabalho", "plural": "machados de trabalho", "slot": "arma", "class": "machado", "dmg": [5, 8], "interval": 1.25, "reach": 1.6, "price": 10, "buy": 25, "gather": { "arvore": 0.5 }, "sprite": "machado_trabalho" },
-    "machado_guerra": { "g": "m", "name": "Machado de guerra", "plural": "machados de guerra", "slot": "arma", "class": "machado", "dmg": [8, 12], "interval": 1.25, "reach": 1.7, "price": 28, "buy": 70, "sprite": "machado_guerra" },
-    "machado_duas_faces": { "g": "m", "name": "Machado de duas faces", "plural": "machados de duas faces", "slot": "arma", "class": "machado", "dmg": [11, 16], "interval": 1.35, "reach": 1.7, "price": 56, "buy": 140, "bonus": { "critMult": 0.25 }, "sprite": "machado_duas_faces" },
-    "arco_curto": { "g": "m", "name": "Arco curto", "plural": "arcos curtos", "slot": "arma", "class": "arco", "dmg": [3, 5], "interval": 1, "reach": 7, "price": 12, "buy": 30, "sprite": "arco_curto" },
-    "arco_longo": { "g": "m", "name": "Arco longo", "plural": "arcos longos", "slot": "arma", "class": "arco", "dmg": [7, 11], "interval": 1.5, "reach": 11, "price": 36, "buy": 90, "sprite": "arco_longo" },
+    "_equip": "Equipamento: price = o que o mercador paga, buy = o que ele cobra (os dois antes do carisma). slot = tipo de casa (equipSlots). Armas: class (weaponClasses), dmg [mín, máx], reach em m (o ritmo é o da classe, em weaponClasses), sprite = figura em primeira pessoa. def = armadura. bonus soma aos mesmos efeitos dos atributos (hp, crit, move, haste, melee, ranged, gather...); gather por recurso em 'gather'. g = gênero do nome (m, f, mp, fp), para a qualidade e a raridade concordarem. Cada peça tem qualidade e raridade (ver qualidade e raridade, abaixo): o id puro é a qualidade padrão e comum; as outras são o id com ~qualidade~raridade (espada_ferro~5~2).",
+    "espada_ferro": { "g": "f", "name": "Espada de ferro", "plural": "espadas de ferro", "slot": "arma", "class": "espada", "dmg": [4, 6], "reach": 1.7, "price": 8, "buy": 20, "sprite": "espada" },
+    "espada_aco": { "g": "f", "name": "Espada de aço", "plural": "espadas de aço", "slot": "arma", "class": "espada", "dmg": [6, 8], "reach": 1.7, "price": 16, "buy": 40, "sprite": "espada_afiada" },
+    "espada_ostanita": { "g": "f", "name": "Espada de ostanita", "plural": "espadas de ostanita", "slot": "arma", "class": "espada", "dmg": [8.5, 11.6], "reach": 1.8, "price": 44, "buy": 110, "bonus": { "crit": 0.03 }, "sprite": "espada_temperada" },
+    "machado_trabalho": { "g": "m", "name": "Machado de trabalho", "plural": "machados de trabalho", "slot": "arma", "class": "machado", "dmg": [5, 8], "reach": 1.6, "price": 10, "buy": 25, "gather": { "arvore": 0.5 }, "sprite": "machado_trabalho" },
+    "machado_guerra": { "g": "m", "name": "Machado de guerra", "plural": "machados de guerra", "slot": "arma", "class": "machado", "dmg": [8, 12], "reach": 1.7, "price": 28, "buy": 70, "sprite": "machado_guerra" },
+    "machado_duas_faces": { "g": "m", "name": "Machado de duas faces", "plural": "machados de duas faces", "slot": "arma", "class": "machado", "dmg": [10.2, 14.8], "reach": 1.7, "price": 56, "buy": 140, "bonus": { "critMult": 0.25 }, "sprite": "machado_duas_faces" },
+    "arco_curto": { "g": "m", "name": "Arco curto", "plural": "arcos curtos", "slot": "arma", "class": "arco", "dmg": [3, 5], "reach": 7, "price": 12, "buy": 30, "sprite": "arco_curto" },
+    "arco_longo": { "g": "m", "name": "Arco longo", "plural": "arcos longos", "slot": "arma", "class": "arco", "dmg": [4.7, 7.3], "reach": 11, "price": 36, "buy": 90, "sprite": "arco_longo" },
     "flecha": { "name": "Flecha", "plural": "flechas", "slot": "municao", "stack": true, "noBag": true, "price": 0, "buy": 0.6 },
     "capuz_la": { "g": "m", "name": "Capuz de lã", "plural": "capuzes de lã", "slot": "cabeca", "def": 1, "price": 4, "buy": 10 },
     "coifa_couro": { "g": "f", "name": "Coifa de couro", "plural": "coifas de couro", "slot": "cabeca", "def": 2, "price": 11, "buy": 28 },
@@ -184,9 +184,10 @@
     "luvas_couro": { "g": "fp", "name": "Luvas de couro", "plural": "luvas de couro", "slot": "luvas", "def": 1, "bonus": { "crit": 0.03 }, "price": 9, "buy": 22 }
   },
   "weaponClasses": {
-    "espada": { "name": "Espada", "scale": "melee", "about": "Equilibrada: golpe médio, ritmo constante." },
-    "machado": { "name": "Machado", "scale": "melee", "about": "Lento e pesado: cada golpe tira mais." },
-    "arco": { "name": "Arco", "scale": "ranged", "ranged": true, "ammo": "flecha", "about": "Atira de longe e gasta uma flecha por tiro. Sem flechas, você luta de mãos nuas." }
+    "_nota": "ritmo: segundos entre um ataque e outro, sem maestria e no último nível. acerto: chance de acertar em cheio e de raspão (fraco x o dano), sem maestria e no último nível; o resto erra. Sem acerto, nunca erra.",
+    "espada": { "name": "Espada", "scale": "melee", "ritmo": [4, 3], "about": "Equilibrada: golpe médio, ritmo constante." },
+    "machado": { "name": "Machado", "scale": "melee", "ritmo": [4.8, 3.5], "about": "Lento e pesado: cada golpe tira mais." },
+    "arco": { "name": "Arco", "scale": "ranged", "ranged": true, "ammo": "flecha", "ritmo": [4.2, 3.3], "acerto": { "cheio": [0.2, 0.35], "raspao": [0.6, 0.6] }, "fraco": 0.3333333, "about": "Atira de longe e gasta uma flecha por tiro. Sem flechas, você luta de mãos nuas." }
   },
   "equipSlots": {
     "_nota": "Ordem da tela de equipamento. type = o slot que o item declara; only = a casa só vale com essa classe de arma.",
@@ -242,9 +243,25 @@
     "saque": [60, 25, 10, 4, 1]
   },
   "maestria": {
-    "_nota": "Maestria: o personagem aprende com o uso. Cada golpe em bicho com uma classe de arma (weaponClasses) soma 1 nela (cortar árvore não conta). A maestria vai de 0 a 1: usos / (usos + meio). A chance de a arma quebrar é qualidade.quebra x (1 - corte x maestria). Peças de defesa não têm maestria.",
-    "meio": 300,
-    "corte": 0.9
+    "_nota": "Maestria: o personagem aprende com o uso. Cada ataque com uma classe de arma (weaponClasses) soma 1 nela, ou 'macro' com a macro ligada; errar e raspar também contam (cortar árvore não conta). São 'niveis' níveis por classe: o primeiro custa 'golpes' ataques e cada um custa 'cresce' vezes o anterior. Só subir de nível muda o efeito, que é maior nos últimos: no nível n vale n(n+1) / niveis(niveis+1), de 0 a 1. A chance de a arma quebrar é qualidade.quebra x (1 - corte x efeito). A chance de crítico soma critico x efeito, ou criticoMacro x efeito com a macro. O ritmo e o acerto da classe (weaponClasses) vão do primeiro ao segundo número pelo mesmo efeito. A proficiência das magias segue a mesma escada.",
+    "niveis": 15,
+    "golpes": 400,
+    "cresce": 1.6,
+    "macro": 0.5,
+    "corte": 0.25,
+    "critico": 0.07,
+    "criticoMacro": 0.04
+  },
+  "magias": {
+    "_nota": "Magias de teste (só no modo desenvolvedor, st.magias.on). Números provisórios. limite (do save, st.magias.limite): 'mana', 'espera' ou 'ambos'. acerto: chance de sair inteira, fraca (fraco x o efeito) ou falhar, do nível 0 ao último de proficiência. Cada tentativa com alvo válido gasta e treina, mesmo falhando.",
+    "mana": { "base": 20, "porNivel": 2, "porSeg": 0.4 },
+    "limite": "mana",
+    "acerto": { "cheio": [0.2, 0.35], "raspao": [0.6, 0.6] },
+    "fraco": 0.3333333,
+    "lista": {
+      "bola_de_fogo": { "name": "Bola de fogo", "tipo": "dano", "dmg": [10, 16], "alcance": 10, "mana": 8, "espera": 6, "desc": "Uma esfera de fogo num inimigo à vista." },
+      "revitalizar": { "name": "Revitalizar", "tipo": "cura", "cura": [14, 20], "mana": 10, "espera": 10, "desc": "Devolve um pouco da própria vida." }
+    }
   },
   "oficina": {
     "_nota": "Durabilidade e conserto (js/sim.js, seção 'oficina'). desgaste = quanto cada golpe recebido gasta de cada peça de defesa vestida. A peça de defesa que chega a zero quebra: continua vestida sem proteger nem dar bônus, a não ser que o tipo de casa esteja em paraBolsa (escudo), que vai para a bolsa como a arma quebrada (bolsa cheia: cai no chão). Serviço 'oficina' nos npcs: reparar (defesa gasta ou quebrada) e restaurar (arma quebrada). reparo = fração do buy da peça inteira cobrada pelo desgaste total (proporcional ao gasto); restauro = fração do buy cobrada para restaurar uma arma. revenda = quanto o desgaste total tira do preço de venda (0.5 = até a metade). Peça quebrada não se vende.",
@@ -290,8 +307,8 @@
         }
       ]
     },
-    "_fauna": "Bichos das regiões: spot = tipo do ponto marcado em vila.json (regions.spots.kind), count = quantos nascem em cada ponto. aggro = raio (m) em que atacam quem chega; leash = até onde perseguem a partir de casa. poison = veneno { dps, sec } a cada picada (a armadura não corta; poção e padre curam). flee = raio em que a presa foge; stamina = segundos de corrida até cansar, tiredSpeed = velocidade cansada, rest = fôlego recuperado por segundo longe do caçador.",
-    "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 1.3, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
+    "_fauna": "prepara = segundos parado armando o golpe (a finta), dentro do interval; quem sair do alcance nesse tempo escapa. Bichos das regiões: spot = tipo do ponto marcado em vila.json (regions.spots.kind), count = quantos nascem em cada ponto. aggro = raio (m) em que atacam quem chega; leash = até onde perseguem a partir de casa. poison = veneno { dps, sec } a cada picada (a armadura não corta; poção e padre curam). flee = raio em que a presa foge; stamina = segundos de corrida até cansar, tiredSpeed = velocidade cansada, rest = fôlego recuperado por segundo longe do caçador.",
+    "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 3, "prepara": 0.3, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
       "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }, { "equip": ["luvas_couro", "coifa_couro", "perneiras_couro", "sapatos_couro"], "chance": 0.08 }] },
     "escorpiao": { "name": "Escorpião", "spot": "escorpioes", "count": 4, "hp": 22, "dmg": [4, 6], "def": 8, "speed": 1.9, "wanderSpeed": 0.5, "interval": 1.5, "reach": 1.1, "aggro": 4.5, "poison": { "dps": 1, "sec": 6 }, "xp": 14, "respawn": 150, "leash": 14, "wanderRadius": 5,
       "drops": [{ "item": "ferrao", "n": 1, "chance": 0.7 }] },
@@ -483,6 +500,23 @@
         "cond": "bag_full",
         "act": "retreat_stop"
       },
+      "magia_cura": {
+        "label": "Usar revitalizar se a vida ficar abaixo de {v}%",
+        "cond": "magia_cura",
+        "act": "magia",
+        "magia": "revitalizar",
+        "val": 60,
+        "antes": "pocao",
+        "teste": "magias"
+      },
+      "magia_ataque": {
+        "label": "Lançar bola de fogo no bicho que está caçando",
+        "cond": "magia_ataque",
+        "act": "magia",
+        "magia": "bola_de_fogo",
+        "antes": "atacar",
+        "teste": "magias"
+      },
       "atacar": {
         "label": "Caçar os bichos dentro da área",
         "cond": "mob_in_area",
@@ -513,9 +547,11 @@
       }
     },
     "defaultOrder": [
+      "magia_cura",
       "pocao",
       "recuar",
       "bolsa",
+      "magia_ataque",
       "atacar",
       "madeira",
       "pedra",

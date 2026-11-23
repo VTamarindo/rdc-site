@@ -388,11 +388,98 @@
         confere(Math.abs(C.chanceQuebra(world, st.player, 'espada_ferro~0~2', 'espada') - QQ.niveis[0].quebra) < 1e-12, 'quebra sem maestria');
         confere(C.varId(world.game, 'espada_ferro', QQ.padrao, 0) === 'espada_ferro', 'a peça padrão e comum não é o id puro');
       });
+      function golpesAte(lv) { var t = 0; for (var i = 1; i <= lv; i++) { t += C.custoMaestria(world.game, i); } return t; }
+      teste('maestria: 400 ataques no primeiro nível, cada um 60% mais caro, 15 no total', function () {
+        var M = world.game.maestria, p = novo().player;
+        confere(C.custoMaestria(world.game, 1) === 400 && C.custoMaestria(world.game, 2) === 640 && C.custoMaestria(world.game, 3) === 1024, 'custos');
+        [[399.5, 0], [400, 1], [1039, 1], [1040, 2], [golpesAte(15) - 1, 14], [golpesAte(15), 15], [1e7, 15]].forEach(function (c) {
+          p.maestria.espada = c[0]; var m = C.nivelMaestria(world, p, 'espada');
+          confere(m.lv === c[1], c[0] + ' golpes: nível ' + m.lv);
+          confere(m.lv === M.niveis ? m.falta === 0 : m.falta > 0 && m.tem + m.falta === C.custoMaestria(world.game, m.lv + 1), 'falta ' + m.falta);
+        });
+      });
+      teste('maestria: cada nível dá mais que o anterior, e só muda ao subir', function () {
+        var antes = 0, passo = 0, p = novo().player;
+        for (var lv = 1; lv <= 15; lv++) { var e = C.efeitoMaestria(world.game, lv); confere(e - antes > passo, 'nível ' + lv); passo = e - antes; antes = e; }
+        confere(Math.abs(antes - 1) < 1e-12, 'no fim ' + antes);
+        p.maestria.espada = 500; var a = C.maestria(world, p, 'espada'); p.maestria.espada = 1000;
+        confere(C.maestria(world, p, 'espada') === a, 'mudou no meio do nível');
+      });
+      teste('maestria: crítico até +7% em uso e +4% na macro, só com a arma da classe', function () {
+        var p = novo().player, base; p.equip.arma = 'espada_ferro'; base = C.stats(world, p).crit;
+        p.maestria.espada = golpesAte(15);
+        confere(Math.abs(C.stats(world, p).crit - base - 0.07) < 1e-12, 'em uso ' + C.stats(world, p).crit);
+        p.mode = 'macro'; p.macro.on = true; confere(Math.abs(C.stats(world, p).crit - base - 0.04) < 1e-12, 'na macro ' + C.stats(world, p).crit);
+        p.macro.on = false; p.equip.arma = 'machado_guerra'; confere(Math.abs(C.stats(world, p).crit - base) < 1e-12, 'com o machado');
+        p.equip.arma = null; confere(Math.abs(C.stats(world, p).crit - base) < 1e-12, 'de mãos nuas');
+      });
+      teste('maestria: o golpe que completa o nível avisa', function () {
+        var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], n = 0, em = sim.emit;
+        p.equip.arma = 'espada_ferro'; p.maestria.espada = 399; m.hp = 1e6;
+        sim.emit = function (s, e) { if (e.type === 'maestria' && e.lv === 1) { n++; } };
+        try { sim.swing(st, m); if (!p.equip.arma) { p.equip.arma = 'espada_ferro'; } sim.swing(st, m); } finally { sim.emit = em; }
+        confere(n === 1, 'avisos: ' + n);
+        confere(st.log.some(function (l) { return /Maestria de espada: nível 1/.test(l.text || l); }), 'sem linha no registro');
+      });
+      teste('ritmo: um por classe, e a maestria acelera até o número do fim', function () {
+        var p = novo().player;
+        [['espada_ferro', 4, 3], ['espada_ostanita', 4, 3], ['machado_duas_faces', 4.8, 3.5], ['arco_longo', 4.2, 3.3]].forEach(function (a) {
+          var cls = world.game.items[a[0]].class; p.equip.arma = a[0]; p.equip.municao = 'flecha'; p.inv.flecha = 9; p.maestria = {};
+          confere(Math.abs(C.stats(world, p).interval - a[1]) < 1e-9, a[0] + ' começa em ' + C.stats(world, p).interval);
+          p.maestria[cls] = golpesAte(15); confere(Math.abs(C.stats(world, p).interval - a[2]) < 1e-9, a[0] + ' termina em ' + C.stats(world, p).interval);
+        });
+      });
+      teste('arco: 20-60-20 no começo e 35-60-5 no fim, e o erro gasta flecha e treina', function () {
+        function conta(lv) {
+          var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], r = [0, 0, 0], em = sim.emit, N = 4000;
+          p.equip.arma = 'arco_curto'; p.equip.municao = 'flecha'; p.inv.flecha = N; m.hp = 1e9; p.maestria.arco = golpesAte(lv);
+          var q = world.game.qualidade.niveis.map(function (x) { var v = x.quebra; x.quebra = 0; return v; }), de = p.maestria.arco;
+          sim.emit = function (s, e) { if (e.type === 'hit') { r[e.errou ? 2 : e.raspao ? 1 : 0]++; } };
+          try { for (var i = 0; i < N; i++) { sim.swing(st, m); } } finally { sim.emit = em; world.game.qualidade.niveis.forEach(function (x, j) { x.quebra = q[j]; }); }
+          confere(p.inv.flecha === 0 && p.maestria.arco === de + N, 'flechas ' + p.inv.flecha + ', treino ' + (p.maestria.arco - de));
+          return r.map(function (x) { return x / N; });
+        }
+        [[0, [0.2, 0.6, 0.2]], [15, [0.35, 0.6, 0.05]]].forEach(function (c) {
+          conta(c[0]).forEach(function (x, i) { confere(Math.abs(x - c[1][i]) < 0.03, 'nível ' + c[0] + ': ' + x + ' em vez de ' + c[1][i]); });
+        });
+      });
+      teste('lobo: um golpe a cada 3 s, parado na finta, e quem sai do alcance escapa', function () {
+        function lobo() { var st = novo(), m = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0]; st.player.x = m.x + 1; st.player.z = m.z; st.player.hp = 1e6; m.fight = true; return { st: st, m: m, p: st.player }; }
+        var L = lobo(), t = [], em = sim.emit, i;
+        sim.emit = function (s, e) { if (e.type === 'hit' && e.who === 'player') { t.push(s.t); } };
+        try { for (i = 0; i < 200; i++) { L.p.hp = 1e6; sim.tick(L.st); } } finally { sim.emit = em; }
+        confere(t.length >= 11 && t.length <= 14, 'golpes em 40 s: ' + t.length);
+        L = lobo(); for (i = 0; i < 100 && !(L.m.prep > 0); i++) { sim.tick(L.st); }
+        confere(L.m.prep > 0, 'não armou o golpe');
+        var x = L.m.x, hp = L.p.hp, esq = 0; L.p.x = L.m.x + 5; sim.emit = function (s, e) { if (e.type === 'esquiva') { esq++; } };
+        try { sim.tick(L.st); confere(L.m.x === x, 'andou na finta'); sim.tick(L.st); sim.tick(L.st); } finally { sim.emit = em; }
+        confere(esq === 1 && L.p.hp === hp, 'não esquivou: ' + esq + ', vida ' + L.p.hp);
+      });
+      teste('magia: só ligada, gasta mana ou espera, treina 1 (meio na macro) e pode falhar', function () {
+        var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], M = world.game.magias;
+        confere(/ainda não existem/.test(sim.lanca(st, 'bola_de_fogo')), 'saiu desligada');
+        st.magias.on = true; p.x = m.x + 2; p.z = m.z; p.action = { type: 'attack', id: m.id }; m.hp = 1e6;
+        confere(sim.lanca(st, 'bola_de_fogo') === '' && p.mana === M.mana.base - 8 && p.prof.bola_de_fogo === 1, 'mana ' + p.mana);
+        p.mana = 2; confere(/Mana/.test(sim.lanca(st, 'bola_de_fogo')) && p.prof.bola_de_fogo === 1, 'sem mana e saiu');
+        st.magias.limite = 'espera'; confere(sim.lanca(st, 'bola_de_fogo') === '' && p.mana === 2 && p.magCd.bola_de_fogo === 6, 'espera');
+        confere(/espere/.test(sim.lanca(st, 'bola_de_fogo')), 'não esperou');
+        p.magCd = {}; p.mode = 'macro'; p.macro.on = true; sim.lanca(st, 'bola_de_fogo'); confere(p.prof.bola_de_fogo === 2.5, 'treino na macro ' + p.prof.bola_de_fogo);
+        p.macro.on = false; p.mode = 'manual'; confere(/cheia/.test(sim.lanca(st, 'revitalizar')), 'curou cheio'); p.hp = 5;
+        var r = [0, 0, 0], em = sim.emit, q = golpesAte(0);
+        sim.emit = function (s, e) { if (e.type === 'magia') { r[e.falhou ? 2 : e.fraca ? 1 : 0]++; } };
+        try { for (var i = 0; i < 3000; i++) { p.magCd = {}; p.hp = 5; p.prof.revitalizar = q; sim.lanca(st, 'revitalizar'); } } finally { sim.emit = em; }
+        [0.2, 0.6, 0.2].forEach(function (c, k) { confere(Math.abs(r[k] / 3000 - c) < 0.03, 'nível 0: ' + r); });
+      });
+      teste('save: o formato 3 zera a maestria de quem já jogava', function () {
+        var st = novo(); st.fmt = 2; st.player.maestria = { espada: 900 }; st = NZ.settle(world, NZ.migrate(JSON.parse(JSON.stringify(st))));
+        confere(!st.player.maestria.espada, 'não zerou'); st.player.maestria.espada = 7;
+        st = NZ.settle(world, NZ.migrate(JSON.parse(JSON.stringify(st)))); confere(st.player.maestria.espada === 7, 'zerou de novo');
+      });
       teste('qualidade: a maestria tira chance de quebrar', function () {
         var st = novo(), p = st.player, base = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
-        p.maestria.espada = world.game.maestria.meio; // metade do caminho
-        var meio = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
-        confere(Math.abs(meio - base * (1 - world.game.maestria.corte * 0.5)) < 1e-12, base + ' → ' + meio);
+        p.maestria.espada = golpesAte(world.game.maestria.niveis);
+        var fim = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
+        confere(Math.abs(fim - base * (1 - world.game.maestria.corte)) < 1e-12, base + ' → ' + fim);
         confere(C.chanceQuebra(world, p, 'espada_ferro', 'machado') === base, 'a maestria de outra classe valeu');
       });
       teste('qualidade: a arma quebra no golpe, sai da mão e o golpe conta maestria', function () {
@@ -412,7 +499,7 @@
         try { sim.advance(st, 180); } finally { Q.quebra = q0; }
         confere(p.equip.arma === null && p.inv['espada_ferro~' + QQ.padrao + '~0~x'] === 1, 'não quebrou: ' + p.equip.arma);
         confere(!p.macro.on && /arma quebrou/.test(p.macro.stop), 'macro ligada: ' + p.macro.on + ' ' + p.macro.stop);
-        confere(p.maestria.espada === 1, 'golpes com a espada ' + p.maestria.espada);
+        confere(p.maestria.espada === 0.5, 'a macro não treinou pela metade: ' + p.maestria.espada);
         confere(Math.hypot(p.x - world.plaza.x, p.z - world.plaza.z) < 4, 'longe da praça: ' + p.x + ', ' + p.z);
       });
       teste('qualidade: a peça e a maestria sobrevivem ao save, num jogo recém-aberto', function () {

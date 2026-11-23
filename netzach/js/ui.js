@@ -754,7 +754,7 @@
       else if (e.type === 'saque' && openWin === 'w-saque') { renderSaque(); } // a macro ou o tempo mexeram no monte aberto
       else if (e.type === 'hit' && e.who === 'mob') {
         view.hit(e.id); view.shake = 0.05;
-        var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, '-' + e.n + (e.crit ? '!' : ''), e.crit ? 'crit' : ''); }
+        var m = sim.mobById(st, e.id); if (m) { floatAt(m.x, 0.7, m.z, e.errou ? 'errou' : '-' + e.n + (e.crit ? '!' : ''), e.errou ? 'errou' : e.raspao ? 'raspao' : e.crit ? 'crit' : ''); }
       } else if (e.type === 'hit' && e.who === 'player') {
         var h = $('hurt'); h.classList.add('on'); setTimeout(function () { h.classList.remove('on'); }, 60);
         floatScreen(0.5, 0.62, '-' + e.n + (e.crit ? '!' : ''), 'me'); view.shake = 0.12;
@@ -763,6 +763,13 @@
       } else if (e.type === 'alert') { toast(e.text, 4); if (document.hidden) { document.title = '(!) ' + baseTitle; } }
       else if (e.type === 'quebrou') { if (NZ.som) { NZ.som.quebra((G.items[e.item] || {}).class || 'roupa'); } }
       else if (e.type === 'level') { toast('Nível ' + st.player.lv + '!'); }
+      else if (e.type === 'esquiva') { floatScreen(0.5, 0.6, 'esquivou', 'errou'); }
+      else if (e.type === 'magia') {
+        var cura = e.alvo === null, txt = e.falhou ? 'falhou' : (cura ? '+' : '-') + e.n + (e.fraca ? ' (fraca)' : '');
+        if (cura) { floatScreen(0.5, 0.6, txt, e.falhou ? 'errou' : 'cura'); } else { if (!e.falhou) { view.hit(e.alvo); } floatAt(e.x, 0.9, e.z, txt, e.falhou ? 'errou' : 'fogo'); }
+      }
+      else if (e.type === 'proficiencia') { toast('Proficiência em ' + G.magias.lista[e.id].name.toLowerCase() + ': nível ' + e.lv + '!', 3); }
+      else if (e.type === 'maestria') { toast('Maestria de ' + G.weaponClasses[e.cls].name.toLowerCase() + ': nível ' + e.lv + '!', 3); }
       else if (e.type === 'quest') { toast('Missão concluída: ' + (G.quests[e.id] || G.daily.quests[e.id]).title + '.', 3); }
     });
     if (newLog) { renderLog(); }
@@ -803,6 +810,12 @@
     else if (a && a.type === 'rest') { pr.hidden = false; pr.firstChild.style.width = (p.hp / mh * 100) + '%'; }
     else { pr.hidden = true; }
 
+    // barra de ação: enche até o próximo ataque; cheia e vermelha = o ataque sai assim que houver alvo ao alcance
+    var gp = $('golpe'), alvo = a && a.type === 'attack', max = p.atkMax || calc.stats(world, p).interval;
+    gp.hidden = !(alvo || p.atkCd > 0);
+    if (!gp.hidden) { var f = Math.max(0, Math.min(1, 1 - (p.atkCd - acc) / max)); if (p.atkCd <= 0) { f = 1; } gp.firstChild.style.width = f * 100 + '%'; gp.classList.toggle('pronto', f >= 1); }
+    magiaHud(p);
+
     var now = performance.now(); if (now - hudT < 150) { return; } hudT = now;
     $('pname').textContent = p.name || '';
     $('lv').textContent = 'Nível ' + p.lv + ' · ' + p.rep + ' rp';
@@ -828,6 +841,35 @@
     renderQuests();
     drawMap($('mini'), 150, false);
     if (openWin === 'w-map') { drawMap($('bigmap'), 560, true); mapUi(); }
+  }
+  // ---------- magias de teste (modo desenvolvedor; js/sim.js, lanca) ----------
+  var MAGIA_ICO = { bola_de_fogo: '🔥', revitalizar: '✚' }, magiaOn = null;
+  function magiaHud(p) {
+    var on = !!(st.magias && st.magias.on), L = G.magias.lista, ids = Object.keys(L), lim = on && st.magias.limite;
+    if (on !== magiaOn) {
+      magiaOn = on; $('magias').hidden = !on;
+      $('magias').innerHTML = on ? ids.map(function (id, i) {
+        return '<button type="button" data-magia="' + id + '" title="' + esc(L[id].name + ' (' + (i + 1) + '): ' + L[id].desc) + '"><b>' + MAGIA_ICO[id] + '</b>' + (i + 1) + ' · ' + esc(L[id].name.split(' ')[0]) + '<i></i></button>';
+      }).join('') : '';
+    }
+    $('mana').hidden = !on || lim === 'espera';
+    if (!on) { return; }
+    var mm = calc.manaMax(world, p), mana = typeof p.mana === 'number' ? p.mana : mm;
+    $('mana-bar').style.width = Math.max(0, mana / mm * 100) + '%'; $('mana-t').textContent = Math.floor(mana) + ' / ' + mm + ' de mana';
+    Array.prototype.forEach.call($('magias').children, function (b) {
+      var id = b.dataset.magia, d = L[id], cd = lim !== 'mana' ? (p.magCd[id] || 0) : 0;
+      b.querySelector('i').style.height = cd / d.espera * 100 + '%';
+      b.classList.toggle('sem', cd > 0 || (lim !== 'espera' && mana < d.mana));
+    });
+  }
+  function usaMagia(i) {
+    var id = Object.keys(G.magias.lista)[i]; if (!id || !st || !st.magias.on) { return; }
+    var r = sim.lanca(st, id); if (r) { toast(r, 1.6); }
+  }
+  function limiteTxt() { return { mana: 'mana', espera: 'espera', ambos: 'mana e espera' }[st.magias.limite]; }
+  function devTxt() {
+    document.querySelector('[data-dbg=magias]').textContent = 'Magias de teste: ' + (st && st.magias.on ? 'ligadas' : 'desligadas');
+    document.querySelector('[data-dbg=limite]').textContent = 'Magia limitada por: ' + (st ? limiteTxt() : 'mana');
   }
   function macroText(p) {
     var a = p.action, ph = p.macro.phase;
@@ -1315,6 +1357,7 @@
     st.rules.forEach(function (r, i) {
       var def = G.macro.rules[r.id], li = document.createElement('li');
       if (!r.on) { li.className = 'off'; }
+      if (def.teste && !(st[def.teste] && st[def.teste].on)) { li.hidden = true; } // regra de teste: só com o teste ligado
       var label = esc(def.label).replace('{v}', '<input type="number" min="5" max="95" step="5" value="' + r.val + '" aria-label="Porcentagem">');
       li.innerHTML = '<label><input type="checkbox"' + (r.on ? ' checked' : '') + '> <span>' + label + '</span></label>' +
         '<button type="button" data-up aria-label="Subir"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
@@ -1371,7 +1414,7 @@
       return L;
     }
     if (it.dmg) {
-      L.push((c ? c.name + ' · ' : '') + 'dano ' + it.dmg[0] + '–' + it.dmg[1] + ' · um golpe a cada ' + num(it.interval, 2) + ' s · alcance ' + num(it.reach) + ' m');
+      L.push((c ? c.name + ' · ' : '') + 'dano ' + it.dmg[0] + '–' + it.dmg[1] + ' · um ataque a cada ' + num(calc.ritmo(world, st.player, it.class), 2) + ' s · alcance ' + num(it.reach) + ' m');
       if (c && c.about) { L.push(c.about); }
     }
     if (it.def) { L.push('Defesa +' + num(it.def)); }
@@ -1383,7 +1426,7 @@
       if (it.quebrada) { L.push(linhaQuebrada(it)); }
       else if (it.class) {
         L.push('Chance de quebrar a cada golpe: ' + pctFino(calc.chanceQuebra(world, st.player, k)) +
-          ' (maestria de ' + G.weaponClasses[it.class].name.toLowerCase() + ' ' + pct(calc.maestria(world, st.player, it.class)) + ')');
+          ' (maestria de ' + G.weaponClasses[it.class].name.toLowerCase() + ': nível ' + calc.nivelMaestria(world, st.player, it.class).lv + ')');
       } else {
         var du = calc.durabilidade(G, k);
         L.push('Durabilidade: ' + du.resta + ' de ' + du.max + ' (cada golpe recebido gasta um pouco)');
@@ -1416,7 +1459,7 @@
     if (it.dmg) {
       var med = (it.dmg[0] + it.dmg[1]) / 2;
       add('dmg', 'Dano', med, n1, false, n1(it.dmg[0]) + '–' + n1(it.dmg[1]) + ' · média ' + n1(med));
-      add('interval', 'Entre golpes', it.interval, seg, true);
+      add('interval', 'Entre ataques', calc.ritmo(world, st.player, it.class), seg, true);
       add('reach', 'Alcance', it.reach, m);
       add('quebra', 'Chance de quebrar', calc.chanceQuebra(world, st.player, k), pctFino, true);
     }
@@ -1505,13 +1548,27 @@
       ['Dano', Math.round(s.min * sd) + '–' + Math.round(s.max * sd) + ' por golpe' + (s.ranged ? ', de longe' : '') + ' (postura ' + S.name.toLowerCase() + ' ' + mult(sd) + ')'],
       ['Ritmo', 'um golpe a cada ' + num(s.interval, 2) + ' s · cerca de ' + num(avg / s.interval) + ' de dano por segundo'],
       ['Alcance', num(s.reach) + ' m'],
-      ['Crítico', pct(s.crit) + ' de chance, dano ' + mult(num(s.critMult, 2))],
+      ['Crítico', pctFino(s.crit) + ' de chance, dano ' + mult(num(s.critMult, 2)) + (s.cls && calc.maestria(world, p, s.cls) ?
+        ' (a maestria dá +' + pctFino(calc.critMaestria(world, p, s.cls, false)) + ', ou +' + pctFino(calc.critMaestria(world, p, s.cls, true)) + ' na macro)' : '')],
       ['Defesa', num(s.def) + ' · a armadura tira ' + pct(cut) + ' do dano, e a postura deixa passar ' + mult(S.taken)],
       ['Passo', pct(s.move) + ' do normal'],
       ['Coleta', calc.keys(G.nodes).map(function (n) { return G.nodes[n].name + ' ' + num(calc.gatherSec(world, p, n)) + ' s'; }).join(' · ')],
       ['Bolsa', s.bag + ' casas'],
-      ['Maestria', calc.keys(G.weaponClasses).map(function (c) { return G.weaponClasses[c].name + ' ' + pct(calc.maestria(world, p, c)); }).join(' · ')]
+      ['Maestria', calc.keys(G.weaponClasses).map(function (c) {
+        var m = calc.nivelMaestria(world, p, c);
+        return G.weaponClasses[c].name + ' nível ' + m.lv + (m.falta ? ' (' + Math.floor(m.tem).toLocaleString('pt-BR') + ' de ' + (m.tem + m.falta).toLocaleString('pt-BR') + ' ataques)' : ' (completa)');
+      }).join(' · ')]
     ];
+    if (s.weapon && G.weaponClasses[s.cls].acerto) {
+      var ch = calc.chances(G.weaponClasses[s.cls].acerto, calc.maestria(world, p, s.cls));
+      rows.splice(3, 0, ['Acerto', pct(ch.cheio) + ' em cheio · ' + pct(ch.raspao) + ' de raspão (um terço do dano) · ' + pct(ch.erra) + ' erra']);
+    }
+    if (st.magias && st.magias.on) {
+      rows.push(['Magias', Object.keys(G.magias.lista).map(function (id) {
+        var m = calc.nivelMagia(world, p, id), c = calc.chances(G.magias.acerto, calc.proficiencia(world, p, id));
+        return G.magias.lista[id].name + ' nível ' + m.lv + ' (' + Math.floor(m.tem).toLocaleString('pt-BR') + ' de ' + (m.tem + m.falta).toLocaleString('pt-BR') + ', falha ' + pct(c.erra) + ')';
+      }).join(' · ')]);
+    }
     if (s.weapon) { rows.splice(1, 0, ['Quebra', pctFino(calc.chanceQuebra(world, p, s.weapon, s.cls)) + ' de chance a cada golpe']); }
     if (p.afiada && p.afiada.arma === s.weapon) { rows.splice(2, 0, ['Afiada', '+' + Math.round(p.afiada.mult * 100) + '% de dano por mais ' + p.afiada.n + ' golpe' + (p.afiada.n === 1 ? '' : 's')]); }
     $('eq-stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
@@ -2465,7 +2522,7 @@
     if (c === 'map') { if (openWin === 'w-map') { hide(); } else { openMap(); } }
     else if ((c === 'macro' || c === 'rules') && semMacro()) { return; } // a macro ainda não existe nesta parte da campanha
     else if (c === 'rules') { toggle('w-rules', renderRules); }
-    else if (c === 'menu') { toggle('w-menu'); }
+    else if (c === 'menu') { devTxt(); toggle('w-menu'); }
     else if (c === 'fullscreen') { toggleFull(); }
     else if (c === 'inv') { openChar('equip'); }
     else if (c === 'bag') { openChar('bag'); }
@@ -2519,6 +2576,17 @@
       showTitle(); titleNewGame(n); return;
     }
     if (c === 'hurt') { st.player.hp = Math.max(1, st.player.hp - 15); hide(); return; }
+    if (c === 'magias') { st.magias.on = !st.magias.on; devTxt(); return; }
+    if (c === 'limite') { st.magias.limite = { mana: 'espera', espera: 'ambos', ambos: 'mana' }[st.magias.limite]; devTxt(); return; }
+    if (c === 'maestria') {
+      var cls = st.player.equip.arma && G.items[st.player.equip.arma].class; if (!cls) { toast('Sem arma na mão.'); return; }
+      var nm = calc.nivelMaestria(world, st.player, cls); if (nm.falta) { st.player.maestria[cls] = (st.player.maestria[cls] || 0) + nm.falta; }
+      toast(G.weaponClasses[cls].name + ': nível ' + calc.nivelMaestria(world, st.player, cls).lv); return;
+    }
+    if (c === 'prof') {
+      Object.keys(G.magias.lista).forEach(function (id) { var m = calc.nivelMagia(world, st.player, id); st.player.prof[id] = (st.player.prof[id] || 0) + m.falta; });
+      toast('Magias: nível ' + calc.nivelMagia(world, st.player, 'bola_de_fogo').lv); return;
+    }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
     var min = { away30: 30, away240: 240, away600: 600 }[c];
     if (min) { hide(); var now = clockNow(); beginAway(now - min * 60000); endAway(now); }
@@ -2551,6 +2619,7 @@
       var map = { KeyM: 'map', KeyR: 'rules', KeyT: 'stance', KeyF: 'potion', KeyG: 'macro', KeyI: 'inv', KeyB: 'bag' };
       if (map[e.code] && !e.repeat) { cmd(map[e.code]); e.preventDefault(); return; }
       if (openWin && openWin !== 'w-report') { return; }
+      if (/^Digit[12]$/.test(e.code) && !e.repeat && st && st.magias.on) { usaMagia(+e.code.slice(5) - 1); e.preventDefault(); return; }
       if (e.code === 'KeyE' && !e.repeat) { interactFront(); e.preventDefault(); return; }
       if (/^(Key[WASD]|Arrow)/.test(e.code)) { keys[e.code] = true; e.preventDefault(); if (openWin === 'w-report') { hide(); } }
     });
@@ -2691,6 +2760,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-cmd]'), function (b) { b.addEventListener('click', function () { cmd(b.dataset.cmd); b.blur(); }); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.addEventListener('click', function () { hide(); }); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-dbg]'), function (b) { b.addEventListener('click', function () { debug(b.dataset.dbg); }); });
+    $('magias').addEventListener('click', function (e) { var b = e.target.closest('[data-magia]'); if (b) { usaMagia(Object.keys(G.magias.lista).indexOf(b.dataset.magia)); b.blur(); } });
     $('w-menu').addEventListener('click', devTap);
 
     // botões de toque: segurar = andar

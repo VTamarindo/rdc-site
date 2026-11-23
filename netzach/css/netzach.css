@@ -67,6 +67,7 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 .bar { position: relative; height: 15px; background: rgba(70, 38, 12, .28); border: 1px solid var(--edge); margin: 5px 0; border-radius: 2px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(40, 20, 5, .4); }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; transition: width .15s; }
 .bar.hp i { background: linear-gradient(#b8382b, #7d1a12); }
+.bar.mana i { background: linear-gradient(#3f74c4, #1f3f86); }
 .bar.xp { height: 6px; }
 .bar.xp i { background: linear-gradient(#d8a843, #a8730f); }
 .bar span { position: absolute; inset: 0; font-size: 11.5px; line-height: 14px; text-align: center; color: #fff4dc; text-shadow: 0 0 2px #2a0f05, 0 1px 1px #2a0f05; }
@@ -81,6 +82,15 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 #cross { left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.7); box-shadow: 0 0 2px #000; pointer-events: none; }
 #prog { left: 50%; top: calc(50% + 18px); width: 120px; margin-left: -60px; height: 7px; background: rgba(40, 20, 5, .6); border: 1px solid #2a1508; pointer-events: none; }
 #prog i { display: block; height: 100%; width: 0; background: linear-gradient(#e0b04a, #a8730f); }
+#golpe { left: 50%; top: calc(50% + 32px); width: 120px; margin-left: -60px; height: 9px; background: rgba(40, 20, 5, .6); border: 1px solid #2a1508; pointer-events: none; }
+#golpe i { display: block; height: 100%; width: 0; background: linear-gradient(#c8d2dc, #77818c); }
+#golpe.pronto i { background: linear-gradient(#e0574a, #8e1c14); }
+#magias { left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 8px; }
+#magias button { position: relative; width: 62px; height: 54px; padding: 2px; font-size: 12px; line-height: 1.1; overflow: hidden; }
+#magias button b { display: block; font-size: 18px; }
+#magias button i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(30, 15, 5, .5); pointer-events: none; }
+#magias button.sem { opacity: .6; }
+body.touch #magias { bottom: 68px; }
 #hover { padding: 3px 9px; border-width: 1px; border-style: solid; border-radius: 2px; font-size: 13.5px; pointer-events: none; transform: translate(14px, 10px); white-space: nowrap; }
 #macro-line { left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 16px; border-radius: 3px; font-size: 14px; white-space: nowrap; pointer-events: none; max-width: calc(100% - 520px); overflow: hidden; text-overflow: ellipsis; }
 #macro-line.on { border-color: var(--wax); color: #5a1208; }
@@ -92,6 +102,10 @@ button.main { width: 100%; margin-top: 8px; padding: 10px; font-size: 17px; }
 #fx { inset: 0; pointer-events: none; overflow: hidden; }
 #fx span { position: absolute; font-weight: bold; font-size: 18px; text-shadow: 0 1px 2px #000; animation: rise .9s ease-out forwards; transform: translate(-50%, -50%); }
 #fx span.me { color: #ff7a6a; }
+#fx span.raspao { color: #d8c8a8; font-size: 14px; }
+#fx span.errou { color: #b8b0a0; font-size: 14px; font-style: italic; }
+#fx span.fogo { color: #ff9a3c; }
+#fx span.cura { color: #8fe07a; }
 #fx span.gain { color: #f0cd6a; font-size: 14px; }
 @keyframes rise { to { margin-top: -40px; opacity: 0; } }
 

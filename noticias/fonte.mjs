@@ -186,7 +186,8 @@ export default (G) => [
       { titulo: 'Lojas especiais', texto: 'Alguns ferreiros escolhidos vão vender até a qualidade ideal e a raridade incomum. Nenhum da vila é um deles ainda.' },
       { titulo: 'Onde achar o que é raro', texto: 'Faltam os bandidos, os orcs, os goblins, as masmorras e as missões que dão equipamento.' }
     ],
-    depois: [['2026-11-23', 'Se a arma quebra com a macro ligada, o personagem para e volta à praça, em vez de seguir lutando de mãos nuas.']]
+    depois: [['2026-11-23', 'Se a arma quebra com a macro ligada, o personagem para e volta à praça, em vez de seguir lutando de mãos nuas.'],
+      ['2026-11-23', 'A maestria virou 15 níveis por classe de arma, recomeçou do zero para todos e reduz a quebra em até um quarto. A forja desta página guarda as contas da época.']]
   },
   {
     slug: 'musica-epica-no-menu', jogo: 'Netzach', data: '2026-11-10', simbolo: '♫', tom: 'vinho',
