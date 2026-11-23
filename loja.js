@@ -23,7 +23,7 @@
         var ok = LOJA.compravel(i);
         return '<article>' + (i.imagem ? '<img src="../' + esc(i.imagem) + '" alt="">' : '') + '<b>' + esc(i.nome) + '</b><p>' + esc(i.texto) + '</p><span>' + (i.preco > 0 ? esc(LOJA.preco(i.preco)) : '') + '</span>' +
           '<button type="button" class="btn" data-compra="' + esc(i.id) + '"' + (ok ? '' : ' disabled') + '>' + (i.estado === 'esgotado' ? 'Esgotado' : ok ? 'Comprar' : 'Em breve') + '</button></article>';
-      }).join('') + '</div>' : '<p>Ainda não há nada à venda. Os primeiros itens aparecem aqui.</p>');
+      }).join('') + '</div>' : '<p>Os primeiros itens aparecem aqui.</p>');
     }).join('');
     el.innerHTML = h;
   };

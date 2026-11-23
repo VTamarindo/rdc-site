@@ -31,7 +31,7 @@ export default (G) => [
       },
       {
         icone: '⚙', titulo: 'A macro é para o trabalho',
-        texto: 'Ela serve para juntar material: coelho, veado, madeira, pedra, colheita e fazenda. **Bicho bravo, não mais.**',
+        texto: 'Ela serve para juntar material: coelho, veado, madeira, pedra, colheita e fazenda.',
         itens: ['Se um bicho bravo persegue o personagem, ele foge para a praça mais próxima, descansa e volta ao trabalho sozinho.', 'Longe dos lobos ela rende mais: marque a área fora do território deles.']
       },
       {
@@ -51,8 +51,8 @@ export default (G) => [
     ],
     aberto: [
       { titulo: 'O baile', texto: 'Os bichos estão fáceis de ler, ou rápidos demais? E no celular, dá para esquivar?' },
-      { titulo: 'Itens raros', texto: 'As chances de saque ainda vão passar por um balanceamento completo. O que vale a pena ser raro, e quanto?' },
-      { titulo: 'Macro perto dos lobos', texto: 'Se a área fica ao lado deles, o personagem vai e volta da praça várias vezes. Ela deveria parar e avisar?' }
+      { titulo: 'Itens raros', texto: 'O que vale a pena ser raro, e quanto?' },
+      { titulo: 'Macro perto dos lobos', texto: 'Como a fuga está funcionando no seu trabalho?' }
     ]
   },
   {
@@ -66,12 +66,12 @@ export default (G) => [
         icone: '⏳', titulo: 'Cada golpe pesa',
         texto: 'O combate ficou mais lento e mais punitivo no começo, para que cada evolução tenha gosto de conquista. Uma **barra de ação** abaixo da mira mostra quando sai o seu próximo ataque.',
         tabela: { cabeca: ['Arma', 'Sem maestria', 'No nível 15'], linhas: Object.keys(G.weaponClasses).filter((k) => k[0] !== '_').map((k) => [G.weaponClasses[k].name, 'um ataque a cada ' + num(G.weaponClasses[k].ritmo[0]) + ' s', 'a cada ' + num(G.weaponClasses[k].ritmo[1]) + ' s']) },
-        nota: 'O ritmo é o mesmo para todas as armas da classe. O dano da espada de ostanita, do machado de duas faces e do arco longo foi acertado para compensar. De mãos nuas, um ataque a cada 4 s.'
+        nota: 'O ritmo é o mesmo para todas as armas da classe. De mãos nuas, um ataque a cada 4 s.'
       },
       {
         icone: '☠', titulo: 'A finta',
         texto: 'Lobo, serpente, escorpião e troll agora atacam a cada 3 segundos e **param um instante, abaixados**, antes do golpe. Saia do alcance nesse momento e você escapa.',
-        antes: 'Eles batiam assim que chegavam perto, sem aviso.', agora: 'Dá para ler o golpe e esquivar. A macro não esquiva.'
+        antes: 'Eles batiam assim que chegavam perto, sem aviso.', agora: 'Dá para ler o golpe e esquivar.'
       },
       {
         icone: '✦', titulo: 'Quinze níveis de maestria',
@@ -95,7 +95,7 @@ export default (G) => [
         itens: [
           '**Mecânicas:** como o jogo funciona, explicado em palavras.',
           '**Campo de treinamento:** diga a arma, a criatura e o nível de maestria, e ele estima quanto tempo leva para conseguir um item raro ou subir de nível.',
-          'A seção de preços está pronta para o futuro. Hoje nada é vendido.'
+          'A seção de preços já tem o lugar dela.'
         ]
       }
     ],
@@ -104,7 +104,7 @@ export default (G) => [
       { titulo: 'O caminho até o 15', texto: 'O último nível de maestria pede uma dedicação enorme. É longe demais?' },
       { titulo: 'A finta no celular', texto: 'Dá tempo de ver o bicho se abaixar e sair do alcance no seu aparelho?' }
     ],
-    depois: [['2026-11-23', 'A maestria passou a começar no nível 1 e cada nível custa 43,5% a mais que o anterior. A finta caiu para 0,18 segundo, os bichos zanzam antes do bote, e a macro deixou de lutar com bicho bravo.']]
+    depois: [['2026-11-23', 'A maestria passou a começar no nível 1 e cada nível custa 43,5% a mais que o anterior. A finta caiu para 0,18 segundo, os bichos zanzam antes do bote, e a macro foge dos bichos bravos.']]
   },
   {
     slug: 'mochila-leve', jogo: 'Netzach', data: '2026-11-23', simbolo: '✧', tom: 'ceu',
@@ -132,8 +132,8 @@ export default (G) => [
     ],
     aberto: [
       { titulo: 'No celular', texto: 'As medidas são de computador. Conte quanto o jogo demora a abrir no seu aparelho e se ele engasga.' },
-      { titulo: 'O trigal', texto: 'É o lugar mais pesado do jogo. Simplificar as plantas distantes deixaria tudo mais rápido, mas mudaria um pouco o visual. Vale a pena?' },
-      { titulo: 'A música', texto: 'Ela é feita por código quando o jogo abre, e isso ocupa o processador. Arquivos prontos aliviariam, com mais download. O que você prefere?' }
+      { titulo: 'O trigal', texto: 'É o lugar mais pesado do jogo. Como ele roda no seu aparelho?' },
+      { titulo: 'A música', texto: 'Ela é feita por código quando o jogo abre. No seu aparelho, ela demora a entrar ou o jogo engasga?' }
     ]
   },
   {
@@ -149,7 +149,7 @@ export default (G) => [
         itens: [
           'Taikos, cordas rápidas e metais curtos, em **69 segundos** que se repetem sem emenda.',
           'O **motivo do Netzach**, da trilha do menu, está escondido no meio.',
-          'Tocam: lobo, escorpião, serpente e troll. Coelho e veado não.',
+          'Tocam: lobo, escorpião, serpente e troll.',
           'Ela apaga 4 segundos depois que o último bicho cai ou desiste.'
         ],
         nota: 'A música é feita por código e gravada quando o jogo abre. Num aparelho mais lento, ela pode demorar alguns segundos para entrar no primeiro combate.'
@@ -170,7 +170,7 @@ export default (G) => [
     aberto: [
       { titulo: 'Os sons', texto: 'Todos são provisórios, feitos por código. A música está alta ou baixa demais? Algum som incomoda?' },
       { titulo: 'No celular', texto: 'A música de combate ainda não foi ouvida em muitos aparelhos. Conte como ficou no seu.' },
-      { titulo: 'Arma quebrada com a bolsa cheia', texto: 'Hoje ela cai no chão e some em 5 minutos, e a macro leva o personagem embora. O que você prefere que aconteça?' }
+      { titulo: 'Arma quebrada com a bolsa cheia', texto: 'Ela cai no chão, à sua frente, e fica lá por 5 minutos. Já aconteceu com você? Conte como foi.' }
     ]
   },
   {
@@ -187,11 +187,11 @@ export default (G) => [
           cabeca: ['Qualidade', 'Arma quebra, por golpe', 'Durabilidade da armadura', 'Preço'],
           linhas: G.qualidade.niveis.map((q) => [cap(q.nome.f), pct(q.quebra), num(Math.round(q.dur)), '×' + num(q.preco)])
         },
-        nota: 'As chances valem para quem ainda não tem maestria nenhuma com a arma.'
+        nota: 'São as chances de quem está começando com a arma.'
       },
       {
         icone: '❖', titulo: 'Raridade: quanto a peça rende',
-        texto: 'A raridade multiplica o que a peça já tem: dano, defesa e bônus. Ela aparece na cor do nome e na borda da peça dentro da bolsa. O ritmo dos golpes e o alcance não mudam.',
+        texto: 'A raridade multiplica o que a peça já tem: dano, defesa e bônus. Ela aparece na cor do nome e na borda da peça dentro da bolsa.',
         raridades: true
       },
       { icone: '⚒', titulo: 'Experimente na forja', forja: true, texto: 'Monte uma espada de aço, escolha quanto treino o seu personagem tem e bata cem vezes. São as mesmas contas do jogo.' },
@@ -201,18 +201,16 @@ export default (G) => [
         itens: [
           'Cada golpe soma **maestria** com aquele tipo de arma: espada, machado ou arco. Com 300 golpes, ela chega a 50%.',
           'Quanto mais maestria, menor a chance de quebrar. Ela pode cair até um décimo da original.',
-          'A arma quebrada **não some**: sai da mão e vai para a bolsa. Com a bolsa cheia, cai no chão, à sua frente.',
-          'Cortar lenha com o machado não gasta a arma nem dá maestria.',
+          'A arma quebrada **sai da mão e vai para a bolsa**. Com a bolsa cheia, cai no chão, à sua frente.',
           'A janela do personagem mostra a chance de quebrar da arma que está na mão e a maestria de cada tipo.'
         ]
       },
       {
         icone: '⛨', titulo: 'Armaduras se gastam',
-        texto: 'Armadura não joga dado: ela se desgasta. Cada golpe que você recebe gasta um pouco de **todas** as peças vestidas.',
+        texto: 'A armadura se desgasta. Cada golpe que você recebe gasta um pouco de **todas** as peças vestidas.',
         itens: [
           'A proteção e os bônus são os mesmos **até a peça quebrar**.',
-          'Quebrada, ela continua no corpo, mas não protege nem dá bônus enquanto não for reparada.',
-          'Peça de defesa não tem maestria, pelo menos por enquanto.'
+          'Quebrada, ela continua no corpo e volta a proteger depois do reparo.'
         ]
       },
       {
@@ -225,7 +223,7 @@ export default (G) => [
             ['Restaurar arma quebrada', 'Só o Ferreiro', pct(G.oficina.restauro) + ' do preço da arma']
           ]
         },
-        nota: 'O carisma baixa os dois preços. Peça quebrada não se vende, e peça gasta vale menos.'
+        nota: 'O carisma baixa os dois preços. Peça gasta vale menos: conserte antes de vender.'
       },
       {
         icone: '⚖', titulo: 'Lojas com estoque do dia',
@@ -240,7 +238,7 @@ export default (G) => [
       },
       {
         icone: '◆', titulo: 'Pedras de amolar',
-        texto: 'Afie a espada ou o machado que está na mão: **+' + pct(G.items.pedra_amolar.afia.mult) + ' de dano nos próximos ' + G.items.pedra_amolar.afia.golpes + ' golpes**. Usar de novo renova, não soma. Arco não se afia.',
+        texto: 'Afie a espada ou o machado que está na mão: **+' + pct(G.items.pedra_amolar.afia.mult) + ' de dano nos próximos ' + G.items.pedra_amolar.afia.golpes + ' golpes**. Usar de novo renova os golpes.',
         tabela: {
           cabeca: ['Pedra', 'Usos', 'Onde achar'],
           linhas: [
