@@ -8,7 +8,8 @@ param([switch]$Testar)
 $ErrorActionPreference = 'Stop'
 $site = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Set-Location $site
-function G { $s = & git @args 2>&1; if ($LASTEXITCODE) { throw "git $($args -join ' '): $s" }; return $s }
+# aviso do git (fim de linha) sai no canal de erro: só o código de saída diz se falhou
+function G { $ErrorActionPreference = 'Continue'; $s = & git @args 2>&1 | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] -or $LASTEXITCODE }; if ($LASTEXITCODE) { throw "git $($args -join ' '): $s" }; return $s }
 
 if ((G branch --show-current) -ne 'dev') { throw 'Rode no ramo dev (git switch dev).' }
 if (G status --porcelain) { throw 'Há mudanças sem commit. Commite (ou guarde) antes de publicar.' }
