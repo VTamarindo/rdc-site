@@ -459,18 +459,31 @@
           confere(esq === 1 && L.p.hp === hp, k + ' não esquivou: ' + esq + ', vida ' + L.p.hp);
         });
       });
-      teste('bicho: rodeia enquanto a barra enche e vem correndo quando ela enche', function () {
-        var st = novo(), m = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0], p = st.player, longe = 0, n = 0, perto = 0, lados = {}, em = sim.emit, i, a0;
-        st.mobs = [m]; p.x = m.x + 2; p.z = m.z; m.fight = true; sim.emit = function () {};
-        try {
-          for (i = 0; i < 400; i++) {
-            p.hp = 1e6; a0 = Math.atan2(m.x - p.x, m.z - p.z); sim.tick(st);
-            var d = Math.hypot(m.x - p.x, m.z - p.z), g = Math.atan2(Math.sin(Math.atan2(m.x - p.x, m.z - p.z) - a0), Math.cos(Math.atan2(m.x - p.x, m.z - p.z) - a0));
-            if (m.atkCd > 0.4 && m.atkCd < 1.6) { n++; if (d > 1.5) { longe++; } if (Math.abs(g) > 0.03) { lados[g > 0 ? 'e' : 'd'] = 1; } }
-            if (m.prep > 0 && d <= 1.5) { perto++; }
-          }
-        } finally { sim.emit = em; }
-        confere(longe / n > 0.8, 'ficou colado: ' + longe + ' de ' + n); confere(lados.e && lados.d, 'só rodeou para um lado'); confere(perto >= 8, 'botes: ' + perto);
+      teste('bicho: anda um pouco, para, zanza, vem correndo, ataca e recua, acertando ou não', function () {
+        [false, true].forEach(function (esquiva) {
+          var st = novo(), m = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0], p = st.player, em = sim.emit, i, x, z, d, andou, antes = null, trocas = 0, parado = 0, seguidos = 0, maior = 0, n = 0, golpes = 0, recuos = 0, esperando = 0, d0 = 0, houve = false;
+          st.mobs = [m]; p.x = m.x + 2; p.z = m.z; m.fight = true;
+          sim.emit = function (q, e) { if ((e.type === 'hit' && e.who === 'player') || e.type === 'esquiva') { houve = true; } };
+          try {
+            for (i = 0; i < 600; i++) {
+              p.hp = 1e6; x = m.x; z = m.z;
+              if (esquiva && m.prep > 0) { var h = world.spawnById[m.id], k = Math.atan2(h.x - m.x, h.z - m.z); p.x = m.x + Math.sin(k) * 3; p.z = m.z + Math.cos(k) * 3; } // escapa para o lado da toca, para não sair do território
+              sim.tick(st); d = Math.hypot(m.x - p.x, m.z - p.z);
+              if (houve) { houve = false; golpes++; esperando = 4; d0 = d; }
+              else if (esperando && !--esperando && d > d0 + 0.4) { recuos++; }
+              if (m.atkCd > 0 && !(m.prep > 0) && d < 4) {
+                andou = Math.hypot(m.x - x, m.z - z) > 0.02; n++;
+                if (!andou) { parado++; }
+                if (antes !== null && andou !== antes) { trocas++; }
+                seguidos = andou ? seguidos + 1 : 0; maior = Math.max(maior, seguidos); antes = andou;
+              }
+            }
+          } finally { sim.emit = em; }
+          var q = esquiva ? ' (esquivando)' : '';
+          confere(golpes > 25, 'golpes' + q + ': ' + golpes); confere(recuos / golpes > 0.8, 'recuou ' + recuos + ' de ' + golpes + q);
+          confere(parado / n > 0.25 && parado / n < 0.75, 'parado' + q + ': ' + parado + ' de ' + n);
+          confere(trocas > golpes * 2, 'anda e para' + q + ': ' + trocas); confere(maior <= 8, 'andou sem parar' + q + ': ' + maior);
+        });
       });
       teste('macro: caça só animal manso, e foge de bicho bravo sem revidar', function () {
         var st = novo(), p = st.player, l = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0], fases = {}, i;

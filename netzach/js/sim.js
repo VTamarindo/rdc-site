@@ -824,7 +824,7 @@
   Sim.prototype.hitPlayer = function (st, e, def) {
     var w = this.w, G = w.game, p = st.player;
     var h = this.strike(st, mobStats(def), stats(w, p), G.stances[p.stance].taken);
-    p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval;
+    p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval; this.recua(st, e);
     this.gastaDefesa(st); // a defesa vestida se gasta a cada golpe recebido
     // veneno: dano por segundo que a armadura não corta; a picada nova renova o tempo, não soma
     if (def.poison && !(p.poison && p.poison.t > def.poison.sec)) {
@@ -898,7 +898,7 @@
       if (e.prep > 1e-6) { return; }
       var sobra = e.prep; e.prep = 0;
       if (d <= def.reach) { this.hitPlayer(st, e, def); if (e.fight) { e.atkCd = def.interval - def.prepara + sobra; } }
-      else { e.atkCd = def.interval - def.prepara + sobra; this.emit(st, { type: 'esquiva', id: e.id }); }
+      else { e.atkCd = def.interval - def.prepara + sobra; this.recua(st, e); this.emit(st, { type: 'esquiva', id: e.id }); }
       return;
     }
     if (e.atkCd > 0 && !smart && d < def.reach + 3.2) { this.rodeia(e, p, def, dt, d, st); return; }
@@ -921,19 +921,28 @@
     }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
   };
-  // enquanto a barra dele enche, o bicho rodeia o jogador sem rumo certo: muda de lado, de distância e de passo; quando enche,
-  // volta para o caminho normal de chase e vem correndo
+  // o baile, enquanto a barra dele enche: recua depois de atacar (acertando ou não), para, anda dois ou três passos para um lado
+  // qualquer em volta do jogador, para, anda de novo... Quando a barra enche, chase vem correndo e ataca
   Sim.prototype.rodeia = function (e, p, def, dt, d, st) {
-    e.orbT = (e.orbT || 0) - dt;
-    if (!e.orb || e.orbT <= 0) {
-      e.orbT = 0.5 + rnd(st) * 1.1;
-      e.orb = { lado: rnd(st) < 0.5 ? -1 : 1, r: def.reach + 0.8 + rnd(st) * 1.6, v: 0.45 + rnd(st) * 0.4 };
+    var B = e.baile;
+    if (!B || (B.t -= dt) < 1e-6) {
+      // depois de andar ou recuar, para; depois de parar, anda
+      if (!B || B.fase === 'para') {
+        B = { fase: 'anda', t: (rnd(st) < 0.5 ? 2 : 3) * 0.2, lado: rnd(st) < 0.5 ? -1 : 1, r: def.reach + 0.8 + rnd(st) * 1.6, v: 0.5 + rnd(st) * 0.3 };
+      } else { B = { fase: 'para', t: 0.4 + Math.floor(rnd(st) * 3) * 0.2 }; }
+      e.baile = B;
     }
-    var o = e.orb, a = Math.atan2(e.x - p.x, e.z - p.z) + o.lado * 0.8, tx = p.x + Math.sin(a) * o.r, tz = p.z + Math.cos(a) * o.r;
-    var dd = dist(e.x, e.z, tx, tz), step = Math.min(def.speed * o.v * dt, dd);
-    if (dd > 0.05 && this.passo(e, Math.atan2(tx - e.x, tz - e.z), step, 0.15, CERCO) === null) { o.lado = -o.lado; }
-    e.face = Math.atan2(p.x - e.x, p.z - e.z);
+    var a = Math.atan2(e.x - p.x, e.z - p.z);
+    if (B.fase === 'recua') {
+      this.passo(e, a + B.desvio, def.speed * 0.8 * dt, 0.15, CERCO);
+    } else if (B.fase === 'anda') {
+      var q = a + B.lado * 0.8, tx = p.x + Math.sin(q) * B.r, tz = p.z + Math.cos(q) * B.r, dd = dist(e.x, e.z, tx, tz);
+      if (dd > 0.05 && this.passo(e, Math.atan2(tx - e.x, tz - e.z), Math.min(def.speed * B.v * dt, dd), 0.15, CERCO) === null) { B.lado = -B.lado; }
+    }
+    e.face = Math.atan2(p.x - e.x, p.z - e.z); // sempre de olho no jogador
   };
+  // terminou o ataque: recua um pouco, meio de lado
+  Sim.prototype.recua = function (st, e) { e.baile = { fase: 'recua', t: 0.6, desvio: (rnd(st) - 0.5) * 0.9 }; };
   Sim.prototype.stopMacro = function (st, reason) {
     var m = st.player.macro;
     if (st.player.mode === 'macro') { st.player.mode = 'manual'; }
@@ -1302,14 +1311,14 @@
       return;
     }
     m.atkCd -= dt;
-    if (m.fight && !m.luta) { m.atkCd = def.interval; } // entrou na luta: a barra começa vazia
+    if (m.fight && !m.luta) { m.atkCd = def.interval; m.baile = null; } // entrou na luta: a barra começa vazia
     m.luta = m.fight;
     if (m.calm > 0) { m.calm -= dt; }
     var step, d, dx, dz;
     if (def.flee && this.flee(st, m, def, sp, dt)) { return; }
     // bicho bravo (aggro = raio em m): ataca quem chega perto, mas só dentro da sua área (leash) e não logo depois de desistir,
     // senão ficaria preso entre atacar e voltar para casa
-    if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = m.luta = true; m.wait = 0; m.atkCd = def.interval; }
+    if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = m.luta = true; m.wait = 0; m.atkCd = def.interval; m.baile = null; }
     if (m.fight) {
       if (dist(m.x, m.z, sp.x, sp.z) > def.leash || dist(m.x, m.z, p.x, p.z) > def.leash) {
         m.fight = false; m.prep = 0; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
