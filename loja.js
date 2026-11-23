@@ -1,4 +1,4 @@
-// Romance de Cavalaria · a loja da página do Netzach (projetos/netzach.html). Por enquanto só o ambiente: nada é vendido e nenhum
+// Romance de Cavalaria · a loja do Netzach (projetos/loja.html). Por enquanto só o ambiente: nada é vendido e nenhum
 // pagamento existe. Para pôr um produto, acrescente em LOJA.itens; para vender de verdade, ligue um gateway em LOJA.pagar e
 // LOJA.aberta = true. Este arquivo é público: nenhuma chave secreta aqui, e quem confirma o pagamento é sempre o servidor.
 (function () {
