@@ -58,8 +58,9 @@
       $('peca').hidden = !dr.equip;
       var ch = dr.c;
       if (dr.equip) { ch *= (v[1] === '*' ? 1 : 1 / dr.equip.length) * chancePeca(dr, +$('q').value, +$('r').value); }
-      var h = 1 / ch / L.porHora, meta = Math.log(0.5) / Math.log(1 - Math.min(0.999999, ch)), nove = Math.log(0.1) / Math.log(1 - Math.min(0.999999, ch));
-      saida('s1', h, [ch > 0.999 ? 'Toda criatura deixa.' : 'Em média, uma a cada ' + num(1 / ch, 1) + ' criaturas.', 'Metade dos jogadores consegue em ' + tempo(Math.max(1, meta) / L.porHora) + '; nove em cada dez, em ' + tempo(Math.max(1, nove) / L.porHora) + '.']);
+      var h = 1 / ch / L.porHora, q = Math.min(0.999999, ch);
+      function com(sobra) { return tempo(Math.max(1, Math.log(sobra) / Math.log(1 - q)) / L.porHora); } // quando só 'sobra' dos jogadores ainda não tem
+      saida('s1', h, ch > 0.999 ? ['Vem em toda criatura.'] : ['É o tempo médio. A chance é de 1 em ' + num(1 / ch, ch > 0.1 ? 1 : 0) + ' por criatura.', 'Com muita sorte: menos de ' + com(0.9) + '.', 'Com muito azar: mais de ' + com(0.1) + '.']);
     } else { $('peca').hidden = true; $('s1').innerHTML = '<p>Escolha uma criatura com saque.</p>'; }
     // maestria: nível por nível, porque o ritmo e a luta mudam. Outra classe: a primeira arma dela
     var alvo = +$('alvo').value, quais = $('cls').value === 'todas' ? Object.keys(D.classes) : [$('cls').value], total = 0, ataques = 0, partes = [];
