@@ -1354,16 +1354,26 @@
     for (var g in (it.gather || {})) { L.push(G.nodes[g].name + ': coleta ' + pct(it.gather[g]) + ' mais rápida'); }
     if (it.stack) { L.push('Munição do arco: fica na aljava, fora da bolsa, e cada tiro gasta uma.'); }
     if (calc.ehPeca(it) && it.q !== undefined) {
-      var gen = it.g || 'm', Q = G.qualidade.niveis[it.q], R = G.raridade.niveis[it.r || 0], cls = it.class || 'armadura';
+      var gen = it.g || 'm', Q = G.qualidade.niveis[it.q], R = G.raridade.niveis[it.r || 0];
       L.push('Qualidade: ' + Q.nome[gen] + ' · raridade: ' + R.nome[gen] + (R.mult !== 1 ? ' (modificadores ' + mult(R.mult) + ')' : ''));
-      L.push('Chance de quebrar ' + (it.class ? 'a cada golpe' : 'a cada golpe recebido') + ': ' + pctFino(calc.chanceQuebra(world, st.player, k, cls)) +
-        ' (maestria de ' + maestriaNome(cls).toLowerCase() + ' ' + pct(calc.maestria(world, st.player, cls)) + ')');
+      if (it.class && it.quebrada) { L.push('Quebrada: não serve até o Ferreiro restaurar.'); }
+      else if (it.class) {
+        L.push('Chance de quebrar a cada golpe: ' + pctFino(calc.chanceQuebra(world, st.player, k)) +
+          ' (maestria de ' + G.weaponClasses[it.class].name.toLowerCase() + ' ' + pct(calc.maestria(world, st.player, it.class)) + ')');
+      } else {
+        var du = calc.durabilidade(G, k);
+        L.push(it.quebrada ? 'Quebrada: não protege nem dá bônus até o Ferreiro ou o Alfaiate repararem.' : 'Durabilidade: ' + du.resta + ' de ' + du.max + ' (cada golpe recebido gasta um pouco)');
+      }
+    }
+    var pb = it.afia ? it : it.base && G.items[it.base] && G.items[it.base].afia ? G.items[it.base] : null;
+    if (pb) {
+      L.push('Afia a espada ou o machado da mão: +' + Math.round(pb.afia.mult * 100) + '% de dano nos próximos ' + pb.afia.golpes + ' golpes');
+      L.push('Usos: ' + (it.restam || pb.usos) + ' de ' + pb.usos);
     }
     return L;
   }
   // a chance de quebrar é pequena: mostra com duas casas
   function pctFino(v) { return (Math.round(v * 10000) / 100).toLocaleString('pt-BR') + '%'; }
-  function maestriaNome(cls) { return cls === 'armadura' ? G.maestria.armadura : G.weaponClasses[cls].name; }
   // a cor da raridade (comum fica na cor do texto)
   function corRar(k) { var it = G.items[k]; return it && it.r ? G.raridade.niveis[it.r].cor : ''; }
   function rarStyle(k, prop) { var c = corRar(k); return c ? ' style="' + (prop || 'color') + ':' + c + '"' : ''; }
@@ -1371,7 +1381,7 @@
   function itemName(k, n) { var it = G.items[k]; return n === undefined || n === 1 ? it.name : (it.plural || it.name); }
   // quem na vila vende ou compra o item (para as dicas)
   function npcsWith(type, test) {
-    return Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === type && s.items.some(test); }); })
+    return Object.keys(G.npcs).filter(function (id) { return G.npcs[id].services.some(function (s) { return s.type === type && (s.items || []).concat(s.fixos || [], s.rotativos || []).some(test); }); })
       .map(function (id) { return G.npcs[id].name; });
   }
 
@@ -1413,7 +1423,7 @@
     var p = st.player, wc = p.equip.arma && G.items[p.equip.arma].class, S = G.stances[p.stance], sd = S.dmg;
     $('eq-grid').innerHTML = calc.keys(G.equipSlots).map(function (sl) {
       var D = G.equipSlots[sl], k = p.equip[sl], it = k && G.items[k], off = D.only && wc !== D.only;
-      return '<button type="button" class="eq-cell' + (it ? '' : ' empty') + (off ? ' off' : '') + '" data-slot="' + sl + '" data-k="slot:' + sl + '" style="grid-area:' + sl + '"' +
+      return '<button type="button" class="eq-cell' + (it ? '' : ' empty') + (off ? ' off' : '') + (it && it.quebrada ? ' quebrada' : '') + '" data-slot="' + sl + '" data-k="slot:' + sl + '" style="grid-area:' + sl + '"' +
         ' aria-label="' + esc(D.name + ': ' + (it ? it.name + (it.stack ? ', ' + (p.inv[k] || 0) : '') : 'vazio')) + '">' +
         '<span class="ic">' + (it ? itemIcon(k) : slotIcon(sl)) + (it && it.stack ? '<span class="n">' + (p.inv[k] || 0) + '</span>' : '') + '</span>' +
         '<span class="eq-t"><small>' + esc(D.name) + '</small><b' + (it ? rarStyle(k) : '') + '>' + esc(it ? it.name : off ? 'só com arco' : 'vazio') + '</b></span></button>';
@@ -1430,9 +1440,10 @@
       ['Passo', pct(s.move) + ' do normal'],
       ['Coleta', calc.keys(G.nodes).map(function (n) { return G.nodes[n].name + ' ' + num(calc.gatherSec(world, p, n)) + ' s'; }).join(' · ')],
       ['Bolsa', s.bag + ' casas'],
-      ['Maestria', calc.keys(G.weaponClasses).concat(['armadura']).map(function (c) { return maestriaNome(c) + ' ' + pct(calc.maestria(world, p, c)); }).join(' · ')]
+      ['Maestria', calc.keys(G.weaponClasses).map(function (c) { return G.weaponClasses[c].name + ' ' + pct(calc.maestria(world, p, c)); }).join(' · ')]
     ];
     if (s.weapon) { rows.splice(1, 0, ['Quebra', pctFino(calc.chanceQuebra(world, p, s.weapon, s.cls)) + ' de chance a cada golpe']); }
+    if (p.afiada && p.afiada.arma === s.weapon) { rows.splice(2, 0, ['Afiada', '+' + Math.round(p.afiada.mult * 100) + '% de dano por mais ' + p.afiada.n + ' golpe' + (p.afiada.n === 1 ? '' : 's')]); }
     $('eq-stats').innerHTML = rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-stance]'), function (b) {
       var id = b.dataset.stance;
@@ -1449,7 +1460,7 @@
     for (var k in p.inv) {
       var it = G.items[k]; if (!(p.inv[k] > 0) || !it || it.noBag) { continue; }
       var res = Math.min(p.inv[k], sim.reserved(st, k)); n++;
-      cells.push('<button type="button" class="sell-cell' + (corRar(k) ? ' rar' : '') + '"' + rarStyle(k, '--rar') + ' data-item="' + k + '" data-k="bag:' + k + '" title="' + esc(it.name) + '" aria-label="' + esc(it.name + ': ' + p.inv[k] + (res ? ', ' + res + ' para missão' : '')) + '">' +
+      cells.push('<button type="button" class="sell-cell' + (corRar(k) ? ' rar' : '') + (it.quebrada ? ' quebrada' : '') + '"' + rarStyle(k, '--rar') + ' data-item="' + k + '" data-k="bag:' + k + '" title="' + esc(it.name) + '" aria-label="' + esc(it.name + ': ' + p.inv[k] + (res ? ', ' + res + ' para missão' : '')) + '">' +
         itemIcon(k) + '<span class="n">' + p.inv[k] + '</span>' + (res ? '<i class="res" aria-hidden="true"></i>' : '') + '</button>');
     }
     var all = Math.max(SELL_ROWS, Math.ceil(n / SELL_COLS)) * SELL_COLS;
@@ -1552,6 +1563,7 @@
       var cur = p.equip[slot];
       html += '<button type="button" class="main" data-eq>Equipar' + (cur ? ' no lugar de ' + esc(G.items[cur].name.toLowerCase()) : '') + '</button>';
     }
+    if (it.afia || (it.base && G.items[it.base] && G.items[it.base].afia)) { html += '<button type="button" class="main" data-afia>Afiar a arma da mão</button>'; }
     // soltar no chão: com mais de um, a mesma barra de quantidade da compra
     var tem = p.inv[k] || 0, min = Math.round(((G.saque && G.saque.dura) || 300) / 60);
     html += '<h3>Soltar no chão</h3>';
@@ -1563,6 +1575,7 @@
       (res ? ' ' + res + ' ' + (res === 1 ? 'é' : 'são') + ' para missão.' : '') + '</p><button type="button" data-drop></button>';
     var P = openPop(it.name, html), b = P.pop.querySelector('[data-eq]'), q = function (sel) { return P.pop.querySelector(sel); };
     if (b) { b.onclick = function () { gearDone(sim.equip(st, k, slot)); }; }
+    var af = q('[data-afia]'); if (af) { af.onclick = function () { gearDone(sim.afia(st, k)); }; }
     var nd = tem, range = q('[type=range]'), box = q('.num'), drop = q('[data-drop]');
     function paintDrop() {
       drop.textContent = 'Soltar ' + nd + ' ' + itemName(k, nd).toLowerCase();
@@ -1582,7 +1595,8 @@
   function lotOf(s, k) { return (s.lots && s.lots[k]) || 1; }
   function openBuy(id, s, k) {
     var p = st.player, it = G.items[k], lot = lotOf(s, k), unit = calc.buyPrice(world, p, k, lot), slot = it.slot && !it.stack ? sim.slotFor(st, k) : null;
-    var max = Math.max(1, Math.min(20, Math.floor((p.inv.moeda || 0) / unit))), cur = slot && p.equip[slot];
+    var noEstoque = s.items.indexOf(k) < 0 ? (sim.estoque(st, s).itens[k] || 0) : 20; // do estoque: só o que a loja tem
+    var max = Math.max(1, Math.min(noEstoque, 20, Math.floor((p.inv.moeda || 0) / unit))), cur = slot && p.equip[slot];
     var html = popHead(itemIcon(k), it.name, coins(unit) + (lot > 1 ? ' o feixe de ' + lot : '')) + linesHtml(itemLines(k));
     if (cur) { html += '<p class="hint">Hoje em ' + esc(G.equipSlots[slot].name.toLowerCase()) + ': ' + esc(G.items[cur].name) + (itemLines(cur)[0] ? ' (' + esc(itemLines(cur)[0]) + ')' : '') + '.</p>'; }
     if (lot > 1) {
@@ -1615,16 +1629,18 @@
     var p = st.player, wrap = document.createElement('div'), board = document.createElement('div');
     wrap.className = 'sell'; board.className = 'sell-board';
     wrap.innerHTML = '<div class="sell-top"><h3>Comprar</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
-    s.items.forEach(function (k) {
-      var it = G.items[k], lot = lotOf(s, k), price = calc.buyPrice(world, p, k, lot), b = document.createElement('button');
-      b.type = 'button'; b.className = 'sell-cell' + ((p.inv.moeda || 0) >= price ? '' : ' off'); b.dataset.k = 'buy:' + k;
-      b.title = it.name + ' · ' + coins(price) + (calc.ehPeca(it) ? ' · qualidade e raridade sorteadas' : '');
+    var V = sim.vitrine(st, s); // consumíveis, e o estoque do dia (fixos, rotativos, únicos)
+    V.forEach(function (o) {
+      var k = o.item, it = G.items[k], lot = lotOf(s, k), price = calc.buyPrice(world, p, k, lot), b = document.createElement('button');
+      b.type = 'button'; b.className = 'sell-cell' + ((p.inv.moeda || 0) >= price ? '' : ' off') + (corRar(k) ? ' rar' : ''); b.dataset.k = 'buy:' + k;
+      if (corRar(k)) { b.style.setProperty('--rar', corRar(k)); }
+      b.title = it.name + ' · ' + coins(price) + (o.n ? ' · ' + o.n + ' em estoque' : '');
       b.setAttribute('aria-label', 'Comprar ' + it.name + (lot > 1 ? ', feixe de ' + lot : '') + ': ' + coins(price));
-      b.innerHTML = itemIcon(k) + '<span class="n price">' + price + '</span>' + (lot > 1 ? '<span class="lot">×' + lot + '</span>' : '');
+      b.innerHTML = itemIcon(k) + '<span class="n price">' + price + '</span>' + (lot > 1 ? '<span class="lot">×' + lot + '</span>' : o.n > 1 ? '<span class="lot">' + o.n + '</span>' : '');
       b.onclick = function () { openBuy(id, s, k); };
       board.appendChild(b);
     });
-    for (var i = s.items.length; i < Math.ceil(s.items.length / SELL_COLS) * SELL_COLS; i++) { var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e); }
+    for (var i = V.length; i < Math.ceil(V.length / SELL_COLS) * SELL_COLS; i++) { var e = document.createElement('span'); e.className = 'sell-cell empty'; board.appendChild(e); }
     wrap.appendChild(board);
     return wrap;
   }
@@ -1966,12 +1982,35 @@
       if (s.type === 'sell') { box.appendChild(sellBox(id, s)); return; }
       if (s.type === 'deliver') { if (sim.dailyActive(st).length) { box.appendChild(sellBox(id, s)); } return; }
       if (s.type === 'shop') { box.appendChild(shopBox(id, s)); return; }
+      if (s.type === 'oficina') { box.appendChild(oficinaBox(id, s)); return; }
       var b = document.createElement('button'); b.type = 'button';
       if (s.type === 'heal') { b.textContent = 'Pedir cura (grátis)'; }
       if (s.type === 'buy') { b.textContent = 'Comprar ' + G.items[s.item].name.toLowerCase() + ' (' + coins(calc.buyPrice(world, p, s.item)) + ')'; }
       b.onclick = function () { npcDone(id, sim.service(st, id, s)); };
       box.appendChild(b);
     });
+  }
+  // oficina: cada peça gasta ou quebrada, vestida ou na bolsa, com o preço do conserto; paga-se peça por peça
+  function oficinaBox(id, s) {
+    var p = st.player, wrap = document.createElement('div'), L = sim.consertos(st, s);
+    var oque = s.reparar && s.restaurar ? 'Reparar e restaurar' : s.reparar ? 'Reparar' : 'Restaurar';
+    wrap.className = 'sell oficina';
+    wrap.innerHTML = '<div class="sell-top"><h3>' + oque + '</h3><span>Moedas: ' + (p.inv.moeda || 0) + '</span></div>';
+    if (!L.length) {
+      wrap.innerHTML += '<p class="hint">' + (s.restaurar ? 'Nada gasto nem quebrado: ' : 'Nada gasto: ') + (s.reparar ? 'armadura gasta ou quebrada' : '') +
+        (s.reparar && s.restaurar ? ' e ' : '') + (s.restaurar ? 'arma quebrada' : '') + ' se conserta' + (s.reparar && s.restaurar ? 'm' : '') + ' aqui.</p>';
+      return wrap;
+    }
+    L.forEach(function (c) {
+      var it = G.items[c.id], du = calc.durabilidade(G, c.id), b = document.createElement('button');
+      b.type = 'button'; b.className = 'pop-item'; b.disabled = (p.inv.moeda || 0) < c.custo;
+      var estado = it.quebrada ? 'quebrad' + ((it.g || 'm').charAt(0) === 'f' ? 'a' : 'o') : 'durabilidade ' + du.resta + ' de ' + du.max;
+      b.innerHTML = itemIcon(c.id) + '<span><b' + rarStyle(c.id) + '>' + esc(G.items[calc.inteira(G, c.id)].name) + (c.n > 1 ? ' ×' + c.n : '') + '</b><small>' +
+        esc((c.slot ? 'vestid' + ((it.g || 'm').charAt(0) === 'f' ? 'a' : 'o') : 'na bolsa') + ' · ' + estado + ' · ' + (c.tipo === 'restaurar' ? 'restaurar' : 'reparar') + ' por ' + coins(c.custo)) + '</small></span>';
+      b.onclick = function () { npcDone(id, sim.service(st, id, s, { id: c.id, slot: c.slot })); charSig = ''; };
+      wrap.appendChild(b);
+    });
+    return wrap;
   }
   function npcDone(id, msg) {
     $('npc-res').textContent = msg; renderNpcActs(id); save();
@@ -2055,6 +2094,18 @@
   ITEM_ICONS.perneiras_couro = iLegs(LEATHER, LEATHER2, true);
   ITEM_ICONS.luvas_la = iGlove(WOOL, WOOL2, false);
   ITEM_ICONS.luvas_couro = iGlove(LEATHER, LEATHER2, true);
+  // pedras de amolar (o tamanho diz quantos usos) e os materiais únicos das lojas
+  function iWhet(w, h, cor, brilho) {
+    var x = 24 - w / 2, y = 26 - h / 2;
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + h / 2.4 + '" transform="rotate(-28 24 26)" fill="' + cor + '" ' + K + ' stroke-width="2.2"/>' +
+      '<path d="M' + (x + 4) + ' ' + (y + 3.5) + ' H' + (x + w - 6) + '" transform="rotate(-28 24 26)" stroke="' + brilho + '" stroke-width="1.8" stroke-linecap="round"/>';
+  }
+  ITEM_ICONS.pedra_amolar = iWhet(26, 10, '#8d8a83', '#c9c5bb');
+  ITEM_ICONS.pedra_amolar_grande = iWhet(34, 13, '#7e7a72', '#c9c5bb');
+  ITEM_ICONS.pedra_amolar_esplendida = iWhet(34, 13, '#5f7f9c', '#cfe6f7');
+  ITEM_ICONS.lingote_oricalco = '<path d="M8 36 L14 22 H34 L40 36 Z" fill="#c8743a" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M14 22 L17 17 H31 L34 22" fill="#e39a55" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M15 31 H25" stroke="#f3c08a" stroke-width="1.8" stroke-linecap="round"/>';
+  ITEM_ICONS.rubi = '<path d="M14 18 L20 11 H28 L34 18 L24 39 Z" fill="#b3202e" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/><path d="M14 18 H34 M20 11 L22 18 L24 39 M28 11 L26 18" fill="none" stroke="#6e0f19" stroke-width="1.2"/><path d="M18 16 L21 13" stroke="#f3a3aa" stroke-width="1.6" stroke-linecap="round"/>';
+  ITEM_ICONS.perola = '<circle cx="24" cy="26" r="11" fill="#ece6da" ' + K + ' stroke-width="2.2"/><circle cx="20.5" cy="22" r="3.2" fill="#ffffff"/><path d="M29 32 C31 30 32 28 32 26" fill="none" stroke="#c2b9a8" stroke-width="1.6" stroke-linecap="round"/>';
   // do mato, do curral e da lavoura
   function iPelt(cloth, line, marks) {
     return '<path d="M16 7 L20 13 H28 L32 7 L35 15 C35 20 37 23 41 25 L36 29 C36 34 37 37 40 41 L31 39 L24 43 L17 39 L8 41 C11 37 12 34 12 29 L7 25 C11 23 13 20 13 15 Z" fill="' + cloth + '" ' + K + ' stroke-width="2.2" stroke-linejoin="round"/>' +
@@ -2112,7 +2163,7 @@
   // o mesmo tabuleiro serve para vender (s.type 'sell') e para colocar material no baú (s.type 'deliver')
   function boardItems(s) {
     if (s.type === 'deliver') { return sim.dailyItems(st); }
-    var pecas = Object.keys(st.player.inv).filter(function (k) { var d = G.items[k]; return d && d.base && s.items.indexOf(d.base) >= 0; });
+    var pecas = Object.keys(st.player.inv).filter(function (k) { var d = G.items[k]; return d && d.base && !d.quebrada && s.items.indexOf(d.base) >= 0; }); // quebrada não se vende
     return s.items.concat(pecas);
   }
   function boardMax(s, k) { return s.type === 'deliver' ? sim.dailyMax(st, k) : sim.sellable(st, k); }

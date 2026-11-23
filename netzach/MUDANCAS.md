@@ -14,12 +14,21 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
   logo à frente, que se pega de volta como o saque dos bichos e some depois de 5 minutos.
 - As conversas provisórias dos moradores saíram: por enquanto eles só cumprimentam com a frase da loja ou um "Bom dia."
   e ainda não têm assuntos. As falas de verdade virão aos poucos.
-- Equipamento agora tem **qualidade** e **raridade**. A qualidade (enferrujada, velha, usada, boa, ideal, radiante, celestial)
-  diz a chance de a peça quebrar: a arma pode quebrar a cada golpe e a roupa a cada golpe recebido. Quanto mais você usa
-  um tipo de arma (ou apanha de armadura), mais **maestria** ganha, e menos as peças quebram. A raridade (comum, incomum,
-  rara, épica, lendária) aumenta o dano, a defesa e os bônus da peça, e aparece na cor do nome e da borda na bolsa.
-- As lojas sorteiam a qualidade e a raridade de cada peça comprada. Lobos às vezes deixam peças de couro, e trolls
-  deixam armas e roupas, muitas vezes melhores. A ficha do personagem mostra a chance de quebrar da arma e a maestria.
+- Equipamento agora tem **qualidade** e **raridade**. A raridade (comum, incomum, rara, épica, lendária) aumenta o dano, a
+  defesa e os bônus da peça e o preço, e aparece na cor do nome e da borda na bolsa. A qualidade (enferrujada, velha, usada,
+  boa, ideal, radiante, celestial) diz quanto a peça aguenta.
+- **Armas podem quebrar** a cada golpe; quanto melhor a qualidade e quanto mais **maestria** você tem com aquele tipo de arma
+  (espada, machado, arco), menor a chance. A arma quebrada vai para a bolsa (com a bolsa cheia, cai no chão).
+- **Armaduras têm durabilidade:** cada golpe recebido gasta um pouco de todas as peças vestidas. A proteção é a mesma até a
+  peça quebrar; quebrada, ela continua vestida, mas não protege mais.
+- **Ferreiro e Alfaiate reparam** armaduras gastas ou quebradas, e **o Ferreiro restaura** armas quebradas, peça por peça. A peça
+  volta inteira, com a mesma qualidade e raridade. Peça quebrada não se vende.
+- **As lojas agora têm estoque do dia:** as peças simples (espada de ferro, machado de trabalho, arco curto, roupas de lã e
+  sapatos) estão sempre lá, uma de cada; as outras aparecem sorteadas todo dia, de 0 a 5, com qualidade até boa. De vez em
+  quando o Ferreiro tem um lingote de oricalco ou um rubi, e o Alfaiate uma pérola (caros, uma unidade só).
+- **Pedra de amolar:** afia a espada ou o machado da mão, +30% de dano nos 5 golpes seguintes. A normal tem 5 usos e a grande
+  10 (no Ferreiro); a esplêndida, com 15, só o troll deixa. Use pela Bolsa.
+- Lobos às vezes deixam peças de couro, e trolls deixam armas e roupas, muitas vezes melhores.
 
 ## Por dentro
 - Mapa de região de 4 km com relevo, para teste (`?mapa=regiao`): vem do editor de mapas do roteirizador por `tools/importar_mapa.py`, com chão em blocos, água, muralha, peças e saves à parte.
@@ -28,4 +37,4 @@ a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, 
 - Saiu o sistema de briga com a vila (vila em armas, golpe nas pessoas, fuga, multa, morte e substitutos), sem uso desde
   que a opção Atacar saiu; `aldeoes` e `papel` saíram do `game.json`. Em save antigo, quem tinha morrido volta.
 - Sim.solta: o monte solto (st.saque, com solto: true) fica 2,4 m à frente; soltar de novo no mesmo lugar junta no mesmo monte. Teste novo.
-- Raridade e qualidade: a peça é guardada pelo id `base~qualidade~raridade` (o id puro = boa e comum), e a ficha é montada em `G.items` quando aparece (`variante`, em `js/sim.js`); o save não mudou de formato. Maestria em `st.player.maestria`. 10 testes novos.
+- Raridade, qualidade e durabilidade: a peça é guardada pelo id `base~qualidade~raridade`, mais `~g<gasto em décimos>` (defesa gasta) ou `~x` (quebrada); o id puro = boa, comum e inteira. A ficha é montada em `G.items` quando aparece (`variante`, em `js/sim.js`); o save não mudou de formato. Novos no save: `st.player.maestria`, `st.player.afiada` e `st.lojas` (estoque do dia). 18 testes novos.
