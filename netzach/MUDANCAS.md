@@ -6,6 +6,4 @@ desta lista, montada com `node netzach/tools/montar_noticias.mjs`, a lista é ze
 
 ## Para o jogador
 
-- Site: o Netzach ganhou a aba Loja, ao lado do Campo de treinamento, no lugar da seção Preços.
-
 ## Por dentro
