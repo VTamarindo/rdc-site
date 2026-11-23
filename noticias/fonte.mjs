@@ -17,6 +17,43 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export default (G) => [
   {
+    slug: 'tambores-no-mato', jogo: 'Netzach', data: '2026-11-23', simbolo: '♫', tom: 'sangue',
+    titulo: 'Tambores no mato',
+    resumo: 'Música de combate quando um bicho bravo persegue você, sons de armamento quebrando e a comparação de atributos na Bolsa.',
+    abre: 'Primeiro o mato fica quieto. Depois vêm os tambores, e aí já é tarde para fingir que você não viu o lobo.',
+    cena: ['lobo', 'soldado_lanca', 'troll', 'serpente'],
+    partes: [
+      {
+        icone: '♫', titulo: 'Música de combate',
+        texto: 'Quando um bicho bravo começa a perseguir você, a música entra.',
+        itens: [
+          'Taikos, cordas rápidas e metais curtos, em **69 segundos** que se repetem sem emenda.',
+          'O **motivo do Netzach**, da trilha do menu, está escondido no meio.',
+          'Tocam: lobo, escorpião, serpente e troll. Coelho e veado não.',
+          'Ela apaga 4 segundos depois que o último bicho cai ou desiste.'
+        ],
+        nota: 'A música é feita por código e gravada quando o jogo abre. Num aparelho mais lento, ela pode demorar alguns segundos para entrar no primeiro combate.'
+      },
+      {
+        icone: '⚔', titulo: 'O som de quebrar',
+        texto: 'Cada tipo de peça quebra com o seu som.',
+        tabela: { cabeca: ['Peça', 'O que se ouve'], linhas: [['Espada', 'O aço partindo e os cacos caindo'], ['Machado', 'O cabo rachando e o ferro no chão'], ['Arco', 'A madeira estalando e a corda solta'], ['Roupa', 'Pano e couro rasgando']] }
+      },
+      {
+        icone: '⚖', titulo: 'Comparação na Bolsa',
+        texto: 'Clique numa arma ou roupa da Bolsa: cada atributo aparece ao lado da diferença para a peça que você está usando.',
+        itens: ['Em **verde**, o que é melhor; em **vermelho**, o que é pior.', 'Entre golpes e chance de quebrar, menos é melhor, e a cor acompanha.', 'O que só a peça equipada tem aparece como perda.'],
+        antes: 'Era preciso decorar os números de uma para comparar com a outra.', agora: 'A resposta está na janela do item.'
+      },
+      { icone: '⚙', titulo: 'A macro e a arma quebrada', itens: ['Se a arma quebra com a macro ligada, ela para e o personagem volta à praça mais próxima.'], antes: 'Ela seguia lutando de mãos nuas.', agora: 'Ele volta para a praça e avisa.' }
+    ],
+    aberto: [
+      { titulo: 'Os sons', texto: 'Todos são provisórios, feitos por código. A música está alta ou baixa demais? Algum som incomoda?' },
+      { titulo: 'No celular', texto: 'A música de combate ainda não foi ouvida em muitos aparelhos. Conte como ficou no seu.' },
+      { titulo: 'Arma quebrada com a bolsa cheia', texto: 'Hoje ela cai no chão e some em 5 minutos, e a macro leva o personagem embora. O que você prefere que aconteça?' }
+    ]
+  },
+  {
     slug: 'ferro-ferrugem-e-fortuna', jogo: 'Netzach', data: '2026-11-23', simbolo: '⚔', tom: 'ferro',
     titulo: 'Ferro, ferrugem e fortuna',
     resumo: 'Equipamento com qualidade e raridade, armas que quebram, armaduras que se gastam, oficina, lojas com estoque do dia e pedras de amolar.',
