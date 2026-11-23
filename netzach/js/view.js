@@ -179,116 +179,209 @@
   Node.prototype.add = function (n) { n.parent = this; this.children.push(n); return n; };
   Node.prototype.at = function (x, y, z) { this.pos = [x, y, z]; return this; };
 
+  // Três programas, do mais barato ao mais caro: 'b' (quase tudo), 'm' (chão com máscara de terreno ou pintado) e 'd' (dentro das
+  // casas). Sem placa de vídeo é o processador que pinta cada pixel, então a conta por pixel é a menor possível: a luz das peças de
+  // fora sai pronta do vértice (as faces são planas, o resultado é o mesmo).
   // vento no trigo (vf = 1 nas malhas do trigal): a ponta da planta balança mais que o pé, com rajadas que correm pelo campo.
   // vt = segundos do relógio da tela. É só desenho: o clique e a colheita usam o retalho, que não se mexe
-  var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;uniform float vt;uniform float vf;varying vec3 vn;varying vec3 vw;varying vec2 vu;' +
+  var VS = 'attribute vec3 p;attribute vec3 n;attribute vec2 uv;uniform mat4 VP;uniform mat4 M;uniform mat3 N;uniform float vt;uniform float vf;varying vec3 vw;varying vec2 vu;\n' +
+    '#ifdef DENTRO\nvarying vec3 vn;\n#else\nvarying vec3 vl;uniform vec3 col;uniform float unlit;uniform vec3 tint;uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;\n#endif\n' +
     'void main(){vec4 w=M*vec4(p,1.0);if(vf>0.5&&vf<1.5){float h=max(w.y,0.0);float k=h*h;float g=0.55+0.45*sin(vt*0.7-w.x*0.11+w.z*0.05);' +
     'w.x+=k*(0.075*g+0.05*sin(vt*2.1+w.x*0.9+w.z*0.4));w.z+=k*0.04*sin(vt*1.6+w.z*0.8-w.x*0.3);}' +
-    'vn=N*n;vw=w.xyz;vu=uv;if(vf>1.5){vu-=vec2(0.02,0.09)*vt;}gl_Position=VP*w;}'; // vf = 2: a água do rio corre para o sul
-  var FS = 'precision highp float;varying vec3 vn;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 col;uniform vec3 emi;uniform float alpha;uniform float unlit;uniform vec3 tint;' +
-    'uniform vec3 sky;uniform vec3 gnd;uniform vec3 sunDir;uniform vec3 sunCol;uniform vec3 fogCol;uniform vec2 fog;' +
+    'vw=w.xyz;vu=uv;if(vf>1.5){vu-=vec2(0.02,0.09)*vt;}\n' + // vf = 2: a água do rio corre para o sul
+    '#ifdef DENTRO\nvn=N*n;\n#else\nvec3 nn=normalize(N*n);vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vl=col*mix(l,tint,unlit);\n#endif\n' +
+    'gl_Position=VP*w;}';
+  var FS = 'precision highp float;varying vec3 vw;varying vec2 vu;uniform vec3 eye;uniform sampler2D tex;uniform vec3 emi;uniform float alpha;uniform vec3 fogCol;uniform vec2 fog;\n' +
     // dentro: peça de interior, iluminada pela luz da casa (ambiente + lareira/velas), não pelo céu, que à noite apagaria a sala
-    'uniform float dentro;uniform vec3 amb;uniform vec4 l1;uniform vec3 c1;uniform vec4 l2;uniform vec3 c2;' +
+    '#ifdef DENTRO\nvarying vec3 vn;uniform vec3 col;uniform float unlit;uniform vec3 tint;uniform vec3 amb;uniform vec4 l1;uniform vec3 c1;uniform vec4 l2;uniform vec3 c2;' +
+    'vec3 lp(vec4 L,vec3 C,vec3 nn){vec3 d=L.xyz-vw;float r=max(length(d),0.01);float a=clamp(1.0-r/L.w,0.0,1.0);return C*a*a*(0.4+0.6*max(dot(nn,d/r),0.0));}\n' +
+    '#else\nvarying vec3 vl;\n#endif\n' +
     // chão de um terreno (mch != 0): a máscara (msk, um canal por terreno) diz quanto dele há ali; o degradê vira pontilhado,
     // um ponto por pixel da textura do chão (64 px a cada 3 m), como os pontinhos do rascunho
-    'uniform sampler2D msk;uniform vec4 mch;uniform vec4 mxf;uniform float pin;' +
-    'vec3 lp(vec4 L,vec3 C,vec3 nn){vec3 d=L.xyz-vw;float r=max(length(d),0.01);float a=clamp(1.0-r/L.w,0.0,1.0);return C*a*a*(0.4+0.6*max(dot(nn,d/r),0.0));}' +
-    'void main(){vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;' +
-    'if(dot(mch,mch)>0.0){float m=dot(texture2D(msk,vw.xz*mxf.xy+mxf.zw),mch);vec2 q=mod(floor(vw.xz*21.333),256.0);' +
-    'if(m<=fract(sin(dot(q,vec2(12.9898,78.233)))*43758.5453))discard;}' +
-    'vec3 nn=normalize(vn);' +
-    'vec3 l=mix(gnd,sky,nn.y*0.5+0.5)*0.75+max(dot(nn,sunDir),0.0)*sunCol*0.7;vec3 b=col*t.rgb;' +
+    '#ifdef MASCARA\nuniform sampler2D msk;uniform vec4 mch;uniform vec4 mxf;uniform float pin;\n#endif\n' +
+    'void main(){\n' +
+    '#ifdef MASCARA\nvec4 mk=texture2D(msk,vw.xz*mxf.xy+mxf.zw);if(pin<0.5){float m=dot(mk,mch);if(m<=0.0)discard;vec2 q=mod(floor(vw.xz*21.333),256.0);' +
+    'if(m<=fract(sin(dot(q,vec2(12.9898,78.233)))*43758.5453))discard;}\n#endif\n' +
+    'vec4 t=texture2D(tex,vu);if(t.a<0.5)discard;\n' +
+    '#ifdef DENTRO\nvec3 nn=normalize(vn);vec3 l=amb*(0.82+0.18*nn.y)+lp(l1,c1,nn)+lp(l2,c2,nn);vec3 c=col*t.rgb*mix(l,tint,unlit)+emi;\n#else\nvec3 c=t.rgb*vl+emi;\n#endif\n' +
     // pin = 1: chão do relevo; a cor é a da pintura do mapa (na unidade da máscara) e a textura só dá o grão
-    'if(pin>0.5){b*=texture2D(msk,vw.xz*mxf.xy+mxf.zw).rgb*1.2;}' +
-    'if(dentro>0.5){l=amb*(0.82+0.18*nn.y)+lp(l1,c1,nn)+lp(l2,c2,nn);}' +
-    'vec3 c=mix(b*l,b*tint,unlit)+emi;float vd=distance(vw,eye);float f=clamp((vd-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
+    '#ifdef MASCARA\nif(pin>0.5){c*=mk.rgb*1.2;}\n#endif\n' +
+    'float f=clamp((distance(vw,eye)-fog.x)/(fog.y-fog.x),0.0,1.0);gl_FragColor=vec4(mix(c,fogCol,f),alpha);}';
+  var PROGRAMAS = { b: '', m: '#define MASCARA\n', d: '#define DENTRO\n' };
+  var UNIFORMES = ['VP', 'M', 'N', 'vt', 'vf', 'eye', 'tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'amb', 'l1', 'c1', 'l2', 'c2', 'msk', 'mch', 'mxf', 'pin'];
 
   function Renderer(canvas) {
-    var gl = this.gl = canvas.getContext('webgl', { antialias: false, alpha: false }) || canvas.getContext('experimental-webgl');
+    var self = this, gl = this.gl = canvas.getContext('webgl', { antialias: false, alpha: false }) || canvas.getContext('experimental-webgl');
     if (!gl) { throw new Error('WebGL indisponível'); }
-    this.canvas = canvas; this.tex = {};
-    function sh(t, s) { var o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { throw new Error(gl.getShaderInfoLog(o)); } return o; }
-    var pr = gl.createProgram();
-    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
-    var u = this.u = {};
-    ['VP', 'M', 'N', 'vt', 'vf', 'eye','tex', 'col', 'emi', 'alpha', 'unlit', 'tint', 'sky', 'gnd', 'sunDir', 'sunCol', 'fogCol', 'fog', 'dentro', 'amb', 'l1', 'c1', 'l2', 'c2', 'msk', 'mch', 'mxf', 'pin'].forEach(function (k) { u[k] = gl.getUniformLocation(pr, k); });
-    this.aP = gl.getAttribLocation(pr, 'p'); this.aN = gl.getAttribLocation(pr, 'n'); this.aU = gl.getAttribLocation(pr, 'uv');
-    gl.enableVertexAttribArray(this.aP); gl.enableVertexAttribArray(this.aN); gl.enableVertexAttribArray(this.aU);
-    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.uniform1i(u.tex, 0);
-    gl.uniform1i(u.msk, 1); gl.uniform4fv(u.mch, SEM_MASCARA); this.mchAgora = SEM_MASCARA;
+    this.canvas = canvas;
+    this.src = {};      // nome da textura -> { c: canvas ou função que o pinta, rep }: vai para a placa na primeira vez que aparece
+    this.ger = 0;       // geração do contexto: muda quando ele cai e volta, e tudo o que estava na placa é mandado de novo
+    this.perdido = false;
+    // o navegador pode derrubar o contexto (reinício da parte gráfica, computador suspenso, memória): sem isto a tela ficava
+    // preta até recarregar a página
+    canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); self.perdido = true; if (self.aoCair) { self.aoCair(true); } });
+    canvas.addEventListener('webglcontextrestored', function () { self.monta(); if (!self.perdido && self.aoCair) { self.aoCair(false); } });
     var white = document.createElement('canvas'); white.width = white.height = 1;
     var wc = white.getContext('2d'); wc.fillStyle = '#fff'; wc.fillRect(0, 0, 1, 1);
     this.addTexture('_branco', white, false);
+    this.monta();
   }
-  Renderer.prototype.addTexture = function (name, canvas, repeat) {
-    var gl = this.gl, t = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, t);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    var w = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w);
-    this.tex[name] = t;
+  Renderer.prototype.monta = function () {
+    var gl = this.gl, self = this;
+    this.ger++; this.tex = {}; this.mskTex = null; this.prog = null; this.bufAgora = null; this.progs = {}; this.perdido = false;
+    function sh(t, s) { var o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { throw new Error(gl.getShaderInfoLog(o) || 'shader'); } return o; }
+    try {
+      Object.keys(PROGRAMAS).forEach(function (k) {
+        var pr = gl.createProgram(), P = { pr: pr, u: {}, v: 0, c: {} };
+        gl.attachShader(pr, sh(gl.VERTEX_SHADER, PROGRAMAS[k] + VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, PROGRAMAS[k] + FS));
+        gl.bindAttribLocation(pr, 0, 'p'); gl.bindAttribLocation(pr, 1, 'n'); gl.bindAttribLocation(pr, 2, 'uv');
+        gl.linkProgram(pr); gl.useProgram(pr);
+        UNIFORMES.forEach(function (n) { P.u[n] = gl.getUniformLocation(pr, n); });
+        gl.uniform1i(P.u.tex, 0); gl.uniform1i(P.u.msk, 1);
+        self.progs[k] = P;
+      });
+    } catch (e) { if (gl.isContextLost()) { this.perdido = true; return; } throw e; } // caiu no meio: o 'restored' monta de novo
+    [0, 1, 2].forEach(function (i) { gl.enableVertexAttribArray(i); });
+    gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   };
-  // máscara dos terrenos (canvas: um canal por terreno), na unidade 1, esticada sem degraus (LINEAR) sobre o quadrado de
-  // lado 'lado' m que começa em (x0, z0); fora dele vale a borda (CLAMP), então o chão além do limite continua o terreno
+  // a textura fica registrada e só é pintada (se for função) e mandada para a placa quando aparece, ou em aquece()
+  Renderer.prototype.addTexture = function (name, canvas, repeat) { this.src[name] = { c: canvas, rep: repeat }; if (this.tex) { delete this.tex[name]; } };
+  Renderer.prototype.textura = function (name) {
+    if (this.tex[name]) { return this.tex[name]; }
+    var s = this.src[name]; if (!s) { return name === '_branco' ? null : this.textura('_branco'); }
+    var gl = this.gl, t = gl.createTexture(), w = s.rep ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+    if (typeof s.c === 'function') { s.c = s.c(); }
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s.c);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, w); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, w);
+    return (this.tex[name] = t);
+  };
+  // pinta e manda o que ainda falta, um pouco por vez (ms), para a tela inicial não esperar; devolve false quando acabou
+  Renderer.prototype.aquece = function (ms) {
+    if (this.perdido) { return true; }
+    var t0 = performance.now(), nomes = Object.keys(this.src);
+    if (this.mskSrc && !this.mskTex) { this.mascaraPronta(); return true; }
+    for (var i = 0; i < nomes.length; i++) {
+      if (this.tex[nomes[i]]) { continue; }
+      this.textura(nomes[i]);
+      if (performance.now() - t0 > ms) { return true; }
+    }
+    return false;
+  };
+  // máscara dos terrenos (canvas: um canal por terreno, ou a função que o pinta), na unidade 1, esticada sem degraus (LINEAR) sobre
+  // o quadrado de lado 'lado' m que começa em (x0, z0); fora dele vale a borda (CLAMP), então o chão além do limite continua o terreno
   Renderer.prototype.mascara = function (canvas, x0, z0, lado) {
-    var gl = this.gl, t = gl.createTexture();
+    this.mskSrc = canvas; this.mskTex = null; this.mxf = [1 / lado, 1 / lado, -x0 / lado, -z0 / lado];
+  };
+  Renderer.prototype.mascaraPronta = function () {
+    if (this.mskTex || !this.mskSrc) { return; }
+    var gl = this.gl, t = this.mskTex = gl.createTexture();
+    if (typeof this.mskSrc === 'function') { this.mskSrc = this.mskSrc(); }
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, t);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.mskSrc);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.activeTexture(gl.TEXTURE0);
-    gl.uniform4fv(this.u.mxf, [1 / lado, 1 / lado, -x0 / lado, -z0 / lado]);
   };
+  // os vértices repetidos de triângulos vizinhos (os dois de cada face dividem dois) vão uma vez só, com índices: menos conta
+  function indexa(geo) {
+    var d = geo.data, n = geo.count, ix = new Uint16Array(n), at = new Int32Array(n), out = [], m = 0, i, j, k;
+    for (i = 0; i < n; i++) {
+      for (j = i - 1; j >= 0 && j >= i - 5; j--) { for (k = 0; k < 8 && d[i * 8 + k] === d[j * 8 + k]; k++) { /* compara */ } if (k === 8) { break; } }
+      if (j >= 0 && j >= i - 5) { at[i] = at[j]; } else { if (m > 65535) { return null; } at[i] = m++; out.push(i); }
+      ix[i] = at[i];
+    }
+    if (m > n * 0.85) { return null; } // quase nada repetido: não vale
+    var u = new Float32Array(m * 8);
+    for (i = 0; i < m; i++) { for (k = 0; k < 8; k++) { u[i * 8 + k] = d[out[i] * 8 + k]; } }
+    return { ix: ix, data: u };
+  }
   Renderer.prototype.buffer = function (geo) {
-    if (!geo.buf) { var gl = this.gl; geo.buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, geo.buf); gl.bufferData(gl.ARRAY_BUFFER, geo.data, gl.STATIC_DRAW); }
-    return geo.buf;
+    var gl = this.gl;
+    if (geo.ger === this.ger) { return; }
+    geo.ger = this.ger;
+    var I = geo.count > 300 ? indexa(geo) : null;
+    geo.buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, geo.buf); gl.bufferData(gl.ARRAY_BUFFER, I ? I.data : geo.data, gl.STATIC_DRAW);
+    geo.ibuf = null; this.bufAgora = null;
+    if (I) { geo.ibuf = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geo.ibuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, I.ix, gl.STATIC_DRAW); }
   };
   Renderer.prototype.setSize = function (w, h) { this.canvas.width = w; this.canvas.height = h; };
+  // o que vale para o quadro inteiro (g: câmera, névoa, luz); cada programa recebe quando entra em uso e quando muda
+  Renderer.prototype.geral = function (g) { for (var k in g) { this.g[k] = g[k]; } this.gv = (this.gv || 0) + 1; };
+  Renderer.prototype.usa = function (k) {
+    var gl = this.gl, P = this.progs[k], u = P.u, g = this.g;
+    if (this.prog !== P) { gl.useProgram(P.pr); this.prog = P; }
+    if (P.v === this.gv) { return P; }
+    P.v = this.gv;
+    gl.uniformMatrix4fv(u.VP, false, g.VP); gl.uniform3fv(u.eye, g.eye); gl.uniform1f(u.vt, g.vt);
+    gl.uniform3fv(u.fogCol, g.fogCol); gl.uniform2fv(u.fog, g.fog);
+    if (k === 'd') { gl.uniform3fv(u.amb, g.amb); return P; }
+    gl.uniform3fv(u.tint, g.tint); gl.uniform3fv(u.sky, g.sky); gl.uniform3fv(u.gnd, g.gnd); gl.uniform3fv(u.sunDir, g.sunDir); gl.uniform3fv(u.sunCol, g.sunCol);
+    if (k === 'm') { this.mascaraPronta(); gl.uniform4fv(u.mxf, this.mxf || SEM_MASCARA); }
+    return P;
+  };
+  // de perto para longe: o que fica tapado nem é pintado. O chão (plano) vem depois das peças, da camada de cima para a de baixo,
+  // e o céu por último, só onde sobrou: antes cada pixel era pintado muitas vezes, e sem placa de vídeo isso travava o jogo
+  function chato(g) {
+    if (g.chato === undefined) {
+      if (!g.bc) { bound(g); }
+      var d = g.data, i = 9; while (i < d.length && Math.abs(d[i] - d[1]) < 1e-4) { i += 8; }
+      g.chato = i >= d.length;
+    }
+    return g.chato;
+  }
+  // perto primeiro, em faixas; dentro da faixa, por textura (menos trocas)
+  function ordem(a, b) { return a.ord - b.ord || (a.tex < b.tex ? -1 : a.tex > b.tex ? 1 : 0); }
   Renderer.prototype.draw = function (root, cam, env) {
-    var gl = this.gl, u = this.u, self = this;
+    if (this.perdido) { return; }
+    var gl = this.gl, self = this;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(env.fogCol[0], env.fogCol[1], env.fogCol[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.uniform3fv(u.amb, env.amb || BRANCO); gl.uniform1f(u.dentro, 0); this.envTint = env.tint; this.inT = false;
-    gl.uniform1f(u.vt, (performance.now() / 1000) % 3600); gl.uniform1f(u.vf, 0); this.vfAgora = 0;
-    gl.uniform3fv(u.fogCol, env.fogCol);
-    if (env.ceu) { this.ceu(env.ceu, cam); }
-    gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.vp)); gl.uniform3fv(u.eye, cam.eye); gl.uniform3fv(u.tint, env.tint);
-    gl.uniform3fv(u.sky, env.sky); gl.uniform3fv(u.gnd, env.gnd); gl.uniform3fv(u.sunDir, env.sunDir); gl.uniform3fv(u.sunCol, env.sunCol);
-    gl.uniform2fv(u.fog, env.fog);
-    var late = [], pl = frustum(cam.vp);
+    var mundo = { VP: new Float32Array(cam.vp), eye: cam.eye, tint: env.tint, fog: env.fog };
+    this.g = { vt: (performance.now() / 1000) % 3600, fogCol: env.fogCol, amb: env.amb || BRANCO, sky: env.sky, gnd: env.gnd, sunDir: env.sunDir, sunCol: env.sunCol };
+    this.geral(mundo);
+    var cheias = [], late = [], pl = frustum(cam.vp);
     (function walk(n, parentM) {
       if (!n.visible) { return; }
       if (n.sprite) { n.rotY = Math.atan2(cam.eye[0] - n.pos[0], cam.eye[2] - n.pos[2]); } // sempre de frente para a câmera
       var m = parentM ? mul(parentM, local(n)) : local(n);
       n.world = m;
-      if (n.geo && seen(n.geo, m, pl, cam.eye, env.fog[1])) { if (n.alpha < 1) { late.push(n); } else { self.mesh(n); } }
+      if (n.geo && seen(n.geo, m, pl, cam.eye, env.fog[1])) {
+        if (n.alpha < 1) { late.push(n); } else {
+          if (!n.pinta && !n.sprite && chato(n.geo)) { n.ord = 1e6 - m[13] * 1e3; } // plano no chão: o mais alto primeiro
+          else { var c = xform(m, n.geo.bc[0], n.geo.bc[1], n.geo.bc[2]); n.ord = Math.max(0, Math.round((Math.hypot(c[0] - cam.eye[0], c[1] - cam.eye[1], c[2] - cam.eye[2]) - n.geo.br) / 10)); }
+          cheias.push(n);
+        }
+      }
       for (var i = 0; i < n.children.length; i++) { walk(n.children[i], m); }
     })(root, null);
+    cheias.sort(ordem);
+    for (var i = 0; i < cheias.length; i++) { self.mesh(cheias[i]); }
+    if (env.ceu) { this.ceu(env.ceu, cam); this.geral(mundo); }
     if (late.length) { gl.enable(gl.BLEND); gl.depthMask(false); late.forEach(function (n) { self.mesh(n); }); gl.depthMask(true); gl.disable(gl.BLEND); }
   };
-  // fundo: desenhado antes do mundo, sem profundidade, por uma câmera parada na origem; tudo o que vem depois passa por cima
-  var SEM_NEVOA = [1e6, 2e6], BRANCO = [1, 1, 1], SEM_MASCARA = [0, 0, 0, 0];
+  // fundo: por uma câmera parada na origem, colado no fim da profundidade (depthRange): só aparece onde o mundo não pintou
+  var SEM_NEVOA = [1e6, 2e6], BRANCO = [1, 1, 1], SEM_MASCARA = [0, 0, 0, 0], ORIGEM = [0, 0, 0];
   Renderer.prototype.ceu = function (nodes, cam) {
-    var gl = this.gl, u = this.u, self = this;
-    gl.disable(gl.DEPTH_TEST); gl.uniformMatrix4fv(u.VP, false, new Float32Array(cam.skyVp));
-    gl.uniform3fv(u.eye, [0, 0, 0]); gl.uniform3fv(u.tint, BRANCO);
+    var gl = this.gl, self = this, vp = new Float32Array(cam.skyVp);
+    gl.depthRange(1, 1); gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
     nodes.forEach(function (n) {
       if (!n.visible) { return; }
-      gl.uniform2fv(u.fog, n.userData.fog || SEM_NEVOA);
+      self.geral({ VP: vp, eye: ORIGEM, tint: BRANCO, fog: n.userData.fog || SEM_NEVOA });
       if (n.alpha < 1) { gl.enable(gl.BLEND); }
       self.mesh(n);
       if (n.alpha < 1) { gl.disable(gl.BLEND); }
     });
-    gl.enable(gl.DEPTH_TEST);
+    gl.depthRange(0, 1); gl.depthFunc(gl.LESS); gl.depthMask(true);
   };
   // sobreposição em espaço de tela (espada em primeira pessoa): sem profundidade, sem neblina, recorte por alfa
   var ID4 = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
   Renderer.prototype.overlay = function (nodes) {
-    var gl = this.gl, u = this.u, self = this;
-    gl.disable(gl.DEPTH_TEST); gl.uniformMatrix4fv(u.VP, false, ID4); gl.uniform2fv(u.fog, [1e6, 2e6]);
+    if (this.perdido) { return; }
+    var gl = this.gl, self = this;
+    gl.disable(gl.DEPTH_TEST); this.geral({ VP: ID4, fog: SEM_NEVOA });
     nodes.forEach(function (n) {
       if (n.alpha < 1) { gl.enable(gl.BLEND); }
       self.mesh(n);
@@ -296,25 +389,39 @@
     });
     gl.enable(gl.DEPTH_TEST);
   };
+  // cada valor só vai para a placa quando muda: com centenas de peças por quadro, mandar tudo de novo custava mais que desenhar
+  function muda(P, k, v) {
+    var a = P.c[k], i, n = v.length;
+    if (!a) { P.c[k] = Array.prototype.slice.call(v); return true; }
+    for (i = 0; i < n; i++) { if (a[i] !== v[i]) { for (; i < n; i++) { a[i] = v[i]; } return true; } }
+    return false;
+  }
+  function muda1(P, k, v) { if (P.c[k] === v) { return false; } P.c[k] = v; return true; }
+  var M4 = new Float32Array(16), M3 = new Float32Array(9);
   Renderer.prototype.mesh = function (n) {
-    var gl = this.gl, u = this.u;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer(n.geo));
-    gl.vertexAttribPointer(this.aP, 3, gl.FLOAT, false, 32, 0); gl.vertexAttribPointer(this.aN, 3, gl.FLOAT, false, 32, 12); gl.vertexAttribPointer(this.aU, 2, gl.FLOAT, false, 32, 24);
-    gl.bindTexture(gl.TEXTURE_2D, this.tex[n.tex] || this.tex._branco);
-    gl.uniformMatrix4fv(u.M, false, new Float32Array(n.world)); gl.uniformMatrix3fv(u.N, false, new Float32Array(normalMat(n.world)));
-    gl.uniform3fv(u.col, n.color); gl.uniform3fv(u.emi, n.emissive);
-    var vf = n.agua ? 2 : n.vento ? 1 : 0; if (vf !== this.vfAgora) { gl.uniform1f(u.vf, vf); this.vfAgora = vf; }
-    var pn = n.pinta ? 1 : 0; if (pn !== this.pinAgora) { gl.uniform1f(u.pin, pn); this.pinAgora = pn; }
-    var mc = n.mask || SEM_MASCARA; if (mc !== this.mchAgora) { gl.uniform4fv(u.mch, mc); this.mchAgora = mc; }
-    gl.uniform1f(u.alpha, n.alpha); gl.uniform1f(u.unlit, n.unlit ? 1 : 0);
+    var gl = this.gl, tx = this.textura(n.tex || '_branco'), k = n.dentro ? 'd' : (n.mask || n.pinta) ? 'm' : 'b', P = this.usa(k), u = P.u, g = n.geo;
+    this.buffer(g);
+    if (this.bufAgora !== g.buf) {
+      this.bufAgora = g.buf; gl.bindBuffer(gl.ARRAY_BUFFER, g.buf);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, tx);
+    if (muda(P, 'M', n.world)) { M4.set(n.world); M3.set(normalMat(n.world)); gl.uniformMatrix4fv(u.M, false, M4); gl.uniformMatrix3fv(u.N, false, M3); }
+    if (muda(P, 'col', n.color)) { gl.uniform3fv(u.col, n.color); }
+    if (muda(P, 'emi', n.emissive)) { gl.uniform3fv(u.emi, n.emissive); }
+    var vf = n.agua ? 2 : n.vento ? 1 : 0; if (muda1(P, 'vf', vf)) { gl.uniform1f(u.vf, vf); }
+    if (k === 'm') { gl.uniform1f(u.pin, n.pinta ? 1 : 0); gl.uniform4fv(u.mch, n.mask || SEM_MASCARA); }
+    if (muda1(P, 'alpha', n.alpha)) { gl.uniform1f(u.alpha, n.alpha); }
+    var un = n.unlit ? 1 : 0; if (muda1(P, 'unlit', un)) { gl.uniform1f(u.unlit, un); }
     // peça de interior: as luzes da sala e, nas sem sombra (chamas, figuras), o brilho próprio no lugar da tinta do céu
-    if (n.dentro) {
-      var S = n.dentro; gl.uniform1f(u.dentro, 1); gl.uniform4fv(u.l1, S.l1); gl.uniform3fv(u.c1, S.c1); gl.uniform4fv(u.l2, S.l2); gl.uniform3fv(u.c2, S.c2);
-      gl.uniform3fv(u.tint, n.brilho || BRANCO); this.inT = true;
-    } else if (this.inT) { gl.uniform1f(u.dentro, 0); gl.uniform3fv(u.tint, this.envTint || BRANCO); this.inT = false; }
+    if (k === 'd') {
+      var S = n.dentro, br = n.brilho || BRANCO;
+      if (muda1(P, 'sala', S)) { gl.uniform4fv(u.l1, S.l1); gl.uniform3fv(u.c1, S.c1); gl.uniform4fv(u.l2, S.l2); gl.uniform3fv(u.c2, S.c2); }
+      if (muda(P, 'tint', br)) { gl.uniform3fv(u.tint, br); }
+    }
     var noCull = n.alpha < 1 || n.unlit;
     if (noCull) { gl.disable(gl.CULL_FACE); }
-    gl.drawArrays(gl.TRIANGLES, 0, n.geo.count);
+    if (g.ibuf) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.ibuf); gl.drawElements(gl.TRIANGLES, g.count, gl.UNSIGNED_SHORT, 0); } else { gl.drawArrays(gl.TRIANGLES, 0, g.count); }
     if (noCull) { gl.enable(gl.CULL_FACE); }
   };
 
@@ -1099,7 +1206,7 @@
     var self = this;
     if (!art.walls.placa_alfaiate && art.walls.tabuas) { art.walls.placa_alfaiate = placaTesoura(art.walls.tabuas); }
     Object.keys(art.walls).forEach(function (k) { self.r.addTexture(k, art.walls[k], true); });
-    this.r.addTexture('rocha', texRocha(), true); this.r.addTexture('agua', texAgua(), true);
+    this.r.addTexture('rocha', texRocha, true); this.r.addTexture('agua', texAgua, true);
     Object.keys(art.sprites).forEach(function (k) { self.r.addTexture('s:' + k, art.sprites[k], false); });
     this.root = new Node(); this.pick = []; this.objs = {}; this.flash = {}; this.npcO = {}; this.held = null;
     this.env = { sky: hex(0xe6ecf5), gnd: hex(0x5a4a32), sunDir: norm([0.45, 0.75, 0.35]), sunCol: hex(0xfff1d6), fogCol: hex(0xa9b9c4), fog: [45, 150], tint: [1, 1, 1], amb: [0.6, 0.57, 0.52] };
@@ -1130,7 +1237,7 @@
     if (key in R) { return R[key]; }
     var img = name;
     while (this.art && !this.art.sprites[img] && SUBSTITUTA[img]) { img = SUBSTITUTA[img]; }
-    var src = this.art && this.art.sprites[img], A = this.art && this.art.alpha[img];
+    var src = this.art && this.art.sprites[img], A = this.art && this.mascara(img);
     if (!src || !A) { return (R[key] = null); }
     var w = A.w, h = A.h, x0 = Math.round(w * 0.22), x1 = Math.round(w * 0.78), top = -1, x, y;
     for (y = 0; y < h && top < 0; y++) { for (x = x0; x < x1; x++) { if (A.data[y * w + x]) { top = y; break; } } }
@@ -1421,7 +1528,7 @@
     T.no.children = T.no.children.filter(function (nd) {
       var b = nd.userData.b;
       if (Math.hypot((b[0] + 0.5 - ci) * lado, (b[1] + 0.5 - cj) * lado) <= raio + 2 * lado) { return true; }
-      if (nd.geo.buf) { gl.deleteBuffer(nd.geo.buf); }
+      if (nd.geo.buf) { gl.deleteBuffer(nd.geo.buf); if (nd.geo.ibuf) { gl.deleteBuffer(nd.geo.ibuf); } nd.geo.ger = 0; }
       delete T.blocos[b[0] + ',' + b[1]];
       return false;
     });
@@ -1549,7 +1656,7 @@
       // num plano só, no nível da água: onde o chão fica abaixo dele aparece o rio, o lago e o charco
       self.r.addTexture('_grao', texGrao(), true);
       var lad = (RL.n - 1) * RL.passo;
-      self.r.mascara(texTerreno(RL), RL.x0, RL.z0, lad);
+      self.r.mascara(function () { return texTerreno(RL); }, RL.x0, RL.z0, lad);
       self.chaoT = { no: R.add(new Node()), blocos: {}, primeiro: true };
       var ag = new Node(planeGeo(lad, lad, 4), 0xffffff, { tex: 'agua' }).at(RL.x0 + lad / 2, RL.nivel, RL.z0 + lad / 2);
       ag.agua = true; R.add(ag);
@@ -1558,7 +1665,7 @@
       R.add(new Node(planeGeo(S, S, 3), CHAO.vila[1], { tex: CHAO.vila[0] }));
     }
     if (!RL && V.regions && V.regions.some(function (r) { return r.poly; })) {
-      this.r.mascara(mascaraTerrenos(V), -MASCARA.lado / 2, -MASCARA.lado / 2, MASCARA.lado);
+      this.r.mascara(function () { return mascaraTerrenos(V); }, -MASCARA.lado / 2, -MASCARA.lado / 2, MASCARA.lado);
       CAMADAS.forEach(function (k, i) {
         var c = CHAO[k[0]], o = new Node(planeGeo(S, S, 3), c[1], { tex: c[0] }).at(0, 0.004 + i * 0.002, 0);
         o.mask = k[1]; R.add(o);
@@ -1875,7 +1982,7 @@
     return { data: new Float32Array(v), count: v.length / 8 };
   }
   View.prototype.buildCeu = function () {
-    var self = this, P = NZ.ceu.pinturas(), L = [];
+    var self = this, P = NZ.ceu.pinturas, L = [];
     Object.keys(P).forEach(function (k) { self.r.addTexture('c:' + k, P[k], true); });
     function poe(geo, tex, fog) { var o = new Node(geo, 0xffffff, { tex: 'c:' + tex, unlit: true }); o.userData.fog = fog; L.push(o); return o; }
     var domo = poe(cupula(2000, 6), 'degrade'), est = poe(cupula(1900, 2), 'estrelas');
@@ -2092,7 +2199,7 @@
     var t = ((o.pos[0] - e[0]) * n[0] + (o.pos[2] - e[2]) * n[2]) / den; if (t <= 0) { return null; }
     var hx = e[0] + d[0] * t, hy = e[1] + d[1] * t, hz = e[2] + d[2] * t;
     var lu = ((hx - o.pos[0]) * co - (hz - o.pos[2]) * s) * (o.scale[0] < 0 ? -1 : 1), lv = hy - o.pos[1];
-    var g = o.geo, a = this.mascara(o.tex && o.tex.indexOf('s:') === 0 ? o.tex.slice(2) : o.userData.img) || this.art.alpha[o.userData.img];
+    var g = o.geo, a = this.mascara(o.tex && o.tex.indexOf('s:') === 0 ? o.tex.slice(2) : o.userData.img) || this.mascara(o.userData.img);
     if (!a) { return Math.abs(lu) <= g.w / 2 && lv >= 0 && lv <= g.h ? t : null; }
     var W = a.w, H = a.h, px = Math.floor((lu / g.w + 0.5) * W), py = Math.floor((1 - lv / g.h) * H);
     var tol = Math.max(2, Math.round(H / g.h * 0.08)); // folga de ~8 cm em volta dos pixels desenhados
@@ -2126,10 +2233,6 @@
         atlas.sprites.forEach(function (sp) {
           var c = cut(ims[1], sp.x, sp.y, sp.w, sp.h);
           art.sprites[sp.name] = c; art.dims[sp.name] = { w: sp.w, h: sp.h };
-          if (sp.name.indexOf('@') >= 0) { return; } // quadro de animação ou rosto: o clique usa a máscara da figura de base
-          var d = c.getContext('2d').getImageData(0, 0, sp.w, sp.h).data, a = new Uint8Array(sp.w * sp.h);
-          for (var k = 0; k < a.length; k++) { a[k] = d[k * 4 + 3] > 127 ? 1 : 0; }
-          art.alpha[sp.name] = { w: sp.w, h: sp.h, data: a };
         });
         art.anims = atlas.anims || {}; // animações (tools/montar_atlas.py): figura -> direção -> parado/andar -> quadros
         return art;

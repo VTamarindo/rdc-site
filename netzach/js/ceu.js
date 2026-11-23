@@ -105,14 +105,13 @@
     });
   }
 
-  function pinturas() {
-    return {
-      degrade: degrade(), estrelas: estrelas(), sol: sol(), lua: lua(), nuvens: nuvens(), nevoa: nevoa(),
-      serra1: serra({ seed: 11, base: 22, amp: 58, picos: 2, fundo: 0.25, copas: 0, neve: 56, tons: [0x56606e, 0x6e7a8a, 0x8a96a6] }),
-      serra2: serra({ seed: 23, base: 18, amp: 42, picos: 3, fundo: 0.5, copas: 0, neve: 0, tons: [0x3e5a4c, 0x4e6e5a, 0x64846c] }),
-      serra3: serra({ seed: 37, base: 14, amp: 26, picos: 2, fundo: 0.8, copas: 3, neve: 0, tons: [0x2c5230, 0x3a663a, 0x4c7c46] })
-    };
-  }
+  // cada textura do céu é uma função, chamada só quando a textura vai para a placa (view.js, textura e aquece)
+  var pinturas = {
+    degrade: degrade, estrelas: estrelas, sol: sol, lua: lua, nuvens: nuvens, nevoa: nevoa,
+    serra1: function () { return serra({ seed: 11, base: 22, amp: 58, picos: 2, fundo: 0.25, copas: 0, neve: 56, tons: [0x56606e, 0x6e7a8a, 0x8a96a6] }); },
+    serra2: function () { return serra({ seed: 23, base: 18, amp: 42, picos: 3, fundo: 0.5, copas: 0, neve: 0, tons: [0x3e5a4c, 0x4e6e5a, 0x64846c] }); },
+    serra3: function () { return serra({ seed: 37, base: 14, amp: 26, picos: 2, fundo: 0.8, copas: 3, neve: 0, tons: [0x2c5230, 0x3a663a, 0x4c7c46] }); }
+  };
 
   // ---------- as cores de cada hora: entre duas linhas a cor muda aos poucos ----------
   var NOITE = [0x0a1030, 0x1c2a4e, 0x5a6a98, 0x6e80b0, 0x2a2c40, 0x3a4660, 0x2c3658, 1];

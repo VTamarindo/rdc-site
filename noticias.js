@@ -3,6 +3,21 @@ window.NOTICIAS = [
  {
   "jogo": "Netzach",
   "data": "2026-11-23",
+  "titulo": "Mochila leve",
+  "texto": "A tela preta foi corrigida, e o jogo roda em torno do dobro da velocidade em computador sem placa de vídeo.",
+  "simbolo": "✧",
+  "tom": "ceu",
+  "imagem": "",
+  "cena": [
+   "soldado_lanca",
+   "lobo"
+  ],
+  "link": "noticias/mochila-leve.html",
+  "botao": "Ler a notícia"
+ },
+ {
+  "jogo": "Netzach",
+  "data": "2026-11-23",
   "titulo": "Tambores no mato",
   "texto": "Música de combate quando um bicho bravo persegue você, sons de armamento quebrando e a comparação de atributos na Bolsa.",
   "simbolo": "♫",
