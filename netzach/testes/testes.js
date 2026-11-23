@@ -230,10 +230,12 @@
         confere(loja, 'nenhuma loja nos dados');
         var st = novo(), p = st.player, it = loja.items.filter(function (k) { return !G.items[k].tool; })[0] || loja.items[0];
         p.inv.moeda = 100000;
-        var lot = (loja.lots && loja.lots[it]) || 1, preco = NZ.calc.buyPrice(world, p, it, lot), tinha = p.inv[it] || 0;
+        // equipamento sai com qualidade e raridade sorteadas: conta as peças do mesmo item base
+        function conta() { return Object.keys(p.inv).reduce(function (n, k) { return n + (k === it || (world.game.items[k] || {}).base === it ? p.inv[k] : 0); }, 0); }
+        var lot = (loja.lots && loja.lots[it]) || 1, preco = NZ.calc.buyPrice(world, p, it, lot), tinha = conta();
         var msg = sim.buyItem(st, loja, it, 1);
         confere(p.inv.moeda === 100000 - preco, dono + '/' + it + ': moedas ' + p.inv.moeda + ' (' + msg + ')');
-        confere(p.inv[it] === tinha + lot, 'item ' + p.inv[it]);
+        confere(conta() === tinha + lot, 'item ' + conta());
       });
       teste('sem moedas não compra', function () {
         var loja = null;
@@ -362,6 +364,101 @@
         var st = novo(); sim.advance(st, 600);
         var kb = JSON.stringify(st).length / 1024;
         confere(kb < 60, Math.round(kb) + ' KB');
+      });
+    });
+
+    // ---------------------------------------------------------------- raridade e qualidade
+    parte('Raridade e qualidade', function () {
+      var GI = world.game.items, C = NZ.calc, QQ = world.game.qualidade, RR = world.game.raridade;
+      // QUALIDADE (até 5 testes)
+      teste('qualidade: o nome concorda com o gênero e a quebra vem da tabela', function () {
+        var e = C.variante(world.game, 'espada_ferro~0~2'), m = C.variante(world.game, 'machado_guerra~1~0'), l = C.variante(world.game, 'luvas_couro~6~4');
+        confere(e && e.name === 'Espada de ferro enferrujada rara', e && e.name);
+        confere(m && m.name === 'Machado de guerra velho', m && m.name);
+        confere(l && l.name === 'Luvas de couro celestiais lendárias', l && l.name);
+        var st = novo();
+        confere(Math.abs(C.chanceQuebra(world, st.player, 'espada_ferro~0~2', 'espada') - QQ.niveis[0].quebra) < 1e-12, 'quebra sem maestria');
+        confere(C.varId(world.game, 'espada_ferro', QQ.padrao, 0) === 'espada_ferro', 'a peça padrão e comum não é o id puro');
+      });
+      teste('qualidade: a maestria tira chance de quebrar', function () {
+        var st = novo(), p = st.player, base = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
+        p.maestria.espada = world.game.maestria.meio; // metade do caminho
+        var meio = C.chanceQuebra(world, p, 'espada_ferro', 'espada');
+        confere(Math.abs(meio - base * (1 - world.game.maestria.corte * 0.5)) < 1e-12, base + ' → ' + meio);
+        confere(C.chanceQuebra(world, p, 'espada_ferro', 'machado') === base, 'a maestria de outra classe valeu');
+      });
+      teste('qualidade: a arma quebra no golpe, sai da mão e o golpe conta maestria', function () {
+        var st = novo(), p = st.player, Q0 = QQ.niveis[0].quebra, m = st.mobs.filter(function (x) { return x.alive; })[0];
+        C.variante(world.game, 'espada_ferro~0~0'); p.equip.arma = 'espada_ferro~0~0';
+        QQ.niveis[0].quebra = 2; // certeza
+        try { sim.swing(st, m); } finally { QQ.niveis[0].quebra = Q0; }
+        confere(p.equip.arma === null, 'não quebrou: ' + p.equip.arma);
+        confere(p.maestria.espada === 1, 'maestria ' + p.maestria.espada);
+        confere(st.log.some(function (l) { return /quebrou/.test(l.text || l); }), 'sem aviso no registro');
+      });
+      teste('qualidade: a roupa se gasta com o golpe recebido (maestria de armadura)', function () {
+        var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive && world.game.monsters[x.kind].dmg; })[0];
+        p.equip.peito = 'gambeson'; p.hp = 1e6;
+        for (var i = 0; i < 20; i++) { sim.hitPlayer(st, m, world.game.monsters[m.kind]); p.hp = 1e6; }
+        confere(p.maestria.armadura === 20 || (p.equip.peito === null && p.maestria.armadura >= 1), 'maestria de armadura ' + p.maestria.armadura);
+        var nu = novo(); nu.player.hp = 1e6; sim.hitPlayer(nu, m, world.game.monsters[m.kind]);
+        confere(!nu.player.maestria.armadura, 'sem roupa contou armadura');
+      });
+      teste('qualidade: a peça e a maestria sobrevivem ao save, num jogo recém-aberto', function () {
+        var st = novo(), p = st.player;
+        C.variante(world.game, 'arco_longo~5~3'); p.equip.arma = 'arco_longo~5~3'; p.inv['coifa_couro~4~1'] = 1; C.variante(world.game, 'coifa_couro~4~1');
+        p.maestria.arco = 42;
+        var w2 = new NZ.World(copia(G), copia(V)), st2 = NZ.settle(w2, NZ.migrate(JSON.parse(JSON.stringify(st))));
+        confere(st2.player.equip.arma === 'arco_longo~5~3', 'arma ' + st2.player.equip.arma);
+        confere(w2.game.items['coifa_couro~4~1'] && w2.game.items['coifa_couro~4~1'].name === 'Coifa de couro ideal incomum', 'coifa sem ficha');
+        confere(st2.player.maestria.arco === 42, 'maestria ' + st2.player.maestria.arco);
+      });
+      // RARIDADE (até 5 testes)
+      teste('raridade: multiplica dano, defesa, bônus e preço', function () {
+        var b = GI.espada_ostanita, R = RR.niveis[4], v = C.variante(world.game, 'espada_ostanita~3~4'), t = C.variante(world.game, 'gambeson~3~2');
+        confere(Math.abs(v.dmg[0] - b.dmg[0] * R.mult) < 0.01 && Math.abs(v.dmg[1] - b.dmg[1] * R.mult) < 0.01, 'dano ' + v.dmg);
+        confere(Math.abs(v.bonus.crit - b.bonus.crit * R.mult) < 0.001, 'crítico ' + v.bonus.crit);
+        confere(Math.abs(t.def - GI.gambeson.def * RR.niveis[2].mult) < 0.01 && Math.abs(t.bonus.hp - GI.gambeson.bonus.hp * RR.niveis[2].mult) < 0.01, 'gambeson ' + t.def + ' ' + t.bonus.hp);
+        confere(v.price > b.price && v.buy > b.buy, 'preço ' + v.price + '/' + v.buy);
+        confere(v.interval === b.interval && v.reach === b.reach, 'mexeu no ritmo ou no alcance');
+      });
+      teste('raridade: a loja sorteia peças do item comprado, mais de um tipo', function () {
+        var loja = null;
+        keys(G.npcs).some(function (id) { return (G.npcs[id].services || []).some(function (s) { if (s.type === 'shop' && s.items.some(function (k) { return C.ehPeca(GI[k]); })) { loja = s; return true; } }); });
+        confere(loja, 'nenhuma loja de equipamento');
+        var it = loja.items.filter(function (k) { return C.ehPeca(GI[k]); })[0], st = novo(), p = st.player, ids = {};
+        p.inv.moeda = 1e7; world.game.settings.bagCapacity += 100;
+        try { for (var i = 0; i < 60; i++) { sim.buyItem(st, loja, it, 1); } } finally { world.game.settings.bagCapacity -= 100; }
+        Object.keys(p.inv).forEach(function (k) { if (k === it || (GI[k] || {}).base === it) { ids[k] = p.inv[k]; } });
+        var n = Object.keys(ids).reduce(function (a, k) { return a + ids[k]; }, 0);
+        confere(n === 60, 'comprou ' + n);
+        confere(Object.keys(ids).length > 2, 'sempre a mesma peça: ' + Object.keys(ids));
+      });
+      teste('raridade: bicho com equipamento na lista deixa uma peça no chão', function () {
+        var kind = keys(world.game.monsters).filter(function (k) { return (world.game.monsters[k].drops || []).some(function (d) { return d.equip; }); })[0];
+        confere(kind, 'nenhum bicho deixa equipamento');
+        var def = copia(world.game.monsters[kind]); def.drops = def.drops.filter(function (d) { return d.equip; }); def.drops[0].chance = 1;
+        var st = novo(), m = st.mobs[0], s = sim.deixaSaque(st, m, def);
+        var ks = s ? Object.keys(s.itens) : [];
+        confere(ks.length === 1 && def.drops[0].equip.indexOf(GI[ks[0]].base || ks[0]) >= 0, 'saque ' + ks);
+      });
+      teste('raridade: a peça se vende a quem compra o item base, pelo preço dela', function () {
+        var s = null;
+        keys(G.npcs).some(function (id) { return (G.npcs[id].services || []).some(function (x) { if (x.type === 'sell' && (x.items || []).some(function (k) { return C.ehPeca(GI[k]); })) { s = x; return true; } }); });
+        if (!s) { return; } // ninguém compra equipamento
+        var base = s.items.filter(function (k) { return C.ehPeca(GI[k]); })[0], id = base + '~6~4', st = novo(), p = st.player;
+        C.variante(world.game, id); p.inv[id] = 1; p.inv.moeda = 0;
+        var msg = sim.sellItem(st, s, id, 1);
+        confere(!p.inv[id] && p.inv.moeda === C.sellPrice(world, p, id, 1) && p.inv.moeda > C.sellPrice(world, p, base, 1), msg);
+      });
+      teste('raridade: a macro deixa no chão a peça marcada como Deixar (pelo item base)', function () {
+        var st = novo(), id = 'tunica_couro~2~3'; C.variante(world.game, id);
+        st.saque = [{ id: 'sqx', x: st.player.x, z: st.player.z, itens: {}, ate: 1e9 }]; st.saque[0].itens[id] = 1;
+        st.saqueDeixa = { tunica_couro: true };
+        sim.macroSaque(st, st.saque[0]);
+        confere(!st.player.inv[id] && st.saque[0].itens[id] === 1, 'a macro pegou');
+        st.saqueDeixa = {}; sim.macroSaque(st, st.saque[0]);
+        confere(st.player.inv[id] === 1, 'a macro não pegou com Pegar');
       });
     });
 

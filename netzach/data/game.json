@@ -154,26 +154,26 @@
       "noBag": true,
       "plural": "moedas"
     },
-    "_equip": "Equipamento: price = o que o mercador paga, buy = o que ele cobra (os dois antes do carisma). slot = tipo de casa (equipSlots). Armas: class (weaponClasses), dmg [mín, máx], interval em s, reach em m, sprite = figura em primeira pessoa. def = armadura. bonus soma aos mesmos efeitos dos atributos (hp, crit, move, haste, melee, ranged, gather...); gather por recurso em 'gather'.",
-    "espada_ferro": { "name": "Espada de ferro", "plural": "espadas de ferro", "slot": "arma", "class": "espada", "dmg": [4, 6], "interval": 0.9, "reach": 1.7, "price": 8, "buy": 20, "sprite": "espada" },
-    "espada_aco": { "name": "Espada de aço", "plural": "espadas de aço", "slot": "arma", "class": "espada", "dmg": [6, 8], "interval": 0.9, "reach": 1.7, "price": 16, "buy": 40, "sprite": "espada_afiada" },
-    "espada_ostanita": { "name": "Espada de ostanita", "plural": "espadas de ostanita", "slot": "arma", "class": "espada", "dmg": [8, 11], "interval": 0.85, "reach": 1.8, "price": 44, "buy": 110, "bonus": { "crit": 0.03 }, "sprite": "espada_temperada" },
-    "machado_trabalho": { "name": "Machado de trabalho", "plural": "machados de trabalho", "slot": "arma", "class": "machado", "dmg": [5, 8], "interval": 1.25, "reach": 1.6, "price": 10, "buy": 25, "gather": { "arvore": 0.5 }, "sprite": "machado_trabalho" },
-    "machado_guerra": { "name": "Machado de guerra", "plural": "machados de guerra", "slot": "arma", "class": "machado", "dmg": [8, 12], "interval": 1.25, "reach": 1.7, "price": 28, "buy": 70, "sprite": "machado_guerra" },
-    "machado_duas_faces": { "name": "Machado de duas faces", "plural": "machados de duas faces", "slot": "arma", "class": "machado", "dmg": [11, 16], "interval": 1.35, "reach": 1.7, "price": 56, "buy": 140, "bonus": { "critMult": 0.25 }, "sprite": "machado_duas_faces" },
-    "arco_curto": { "name": "Arco curto", "plural": "arcos curtos", "slot": "arma", "class": "arco", "dmg": [3, 5], "interval": 1, "reach": 7, "price": 12, "buy": 30, "sprite": "arco_curto" },
-    "arco_longo": { "name": "Arco longo", "plural": "arcos longos", "slot": "arma", "class": "arco", "dmg": [7, 11], "interval": 1.5, "reach": 11, "price": 36, "buy": 90, "sprite": "arco_longo" },
+    "_equip": "Equipamento: price = o que o mercador paga, buy = o que ele cobra (os dois antes do carisma). slot = tipo de casa (equipSlots). Armas: class (weaponClasses), dmg [mín, máx], interval em s, reach em m, sprite = figura em primeira pessoa. def = armadura. bonus soma aos mesmos efeitos dos atributos (hp, crit, move, haste, melee, ranged, gather...); gather por recurso em 'gather'. g = gênero do nome (m, f, mp, fp), para a qualidade e a raridade concordarem. Cada peça tem qualidade e raridade (ver qualidade e raridade, abaixo): o id puro é a qualidade padrão e comum; as outras são o id com ~qualidade~raridade (espada_ferro~5~2).",
+    "espada_ferro": { "g": "f", "name": "Espada de ferro", "plural": "espadas de ferro", "slot": "arma", "class": "espada", "dmg": [4, 6], "interval": 0.9, "reach": 1.7, "price": 8, "buy": 20, "sprite": "espada" },
+    "espada_aco": { "g": "f", "name": "Espada de aço", "plural": "espadas de aço", "slot": "arma", "class": "espada", "dmg": [6, 8], "interval": 0.9, "reach": 1.7, "price": 16, "buy": 40, "sprite": "espada_afiada" },
+    "espada_ostanita": { "g": "f", "name": "Espada de ostanita", "plural": "espadas de ostanita", "slot": "arma", "class": "espada", "dmg": [8, 11], "interval": 0.85, "reach": 1.8, "price": 44, "buy": 110, "bonus": { "crit": 0.03 }, "sprite": "espada_temperada" },
+    "machado_trabalho": { "g": "m", "name": "Machado de trabalho", "plural": "machados de trabalho", "slot": "arma", "class": "machado", "dmg": [5, 8], "interval": 1.25, "reach": 1.6, "price": 10, "buy": 25, "gather": { "arvore": 0.5 }, "sprite": "machado_trabalho" },
+    "machado_guerra": { "g": "m", "name": "Machado de guerra", "plural": "machados de guerra", "slot": "arma", "class": "machado", "dmg": [8, 12], "interval": 1.25, "reach": 1.7, "price": 28, "buy": 70, "sprite": "machado_guerra" },
+    "machado_duas_faces": { "g": "m", "name": "Machado de duas faces", "plural": "machados de duas faces", "slot": "arma", "class": "machado", "dmg": [11, 16], "interval": 1.35, "reach": 1.7, "price": 56, "buy": 140, "bonus": { "critMult": 0.25 }, "sprite": "machado_duas_faces" },
+    "arco_curto": { "g": "m", "name": "Arco curto", "plural": "arcos curtos", "slot": "arma", "class": "arco", "dmg": [3, 5], "interval": 1, "reach": 7, "price": 12, "buy": 30, "sprite": "arco_curto" },
+    "arco_longo": { "g": "m", "name": "Arco longo", "plural": "arcos longos", "slot": "arma", "class": "arco", "dmg": [7, 11], "interval": 1.5, "reach": 11, "price": 36, "buy": 90, "sprite": "arco_longo" },
     "flecha": { "name": "Flecha", "plural": "flechas", "slot": "municao", "stack": true, "noBag": true, "price": 0, "buy": 0.6 },
-    "capuz_la": { "name": "Capuz de lã", "plural": "capuzes de lã", "slot": "cabeca", "def": 1, "price": 4, "buy": 10 },
-    "coifa_couro": { "name": "Coifa de couro", "plural": "coifas de couro", "slot": "cabeca", "def": 2, "price": 11, "buy": 28 },
-    "gambeson": { "name": "Gambeson", "plural": "gambesons", "slot": "peito", "def": 3, "bonus": { "hp": 6 }, "price": 14, "buy": 35 },
-    "tunica_couro": { "name": "Túnica de couro", "plural": "túnicas de couro", "slot": "peito", "def": 4, "price": 24, "buy": 60 },
-    "sapatos_couro": { "name": "Sapatos de couro", "plural": "sapatos de couro", "slot": "botas", "def": 1, "price": 4, "buy": 10 },
-    "botas_cano_alto": { "name": "Botas de cano alto", "plural": "botas de cano alto", "slot": "botas", "def": 1, "bonus": { "move": 0.06 }, "price": 12, "buy": 30 },
-    "calcas_la": { "name": "Calças de lã", "plural": "calças de lã", "slot": "calcas", "def": 1, "price": 4, "buy": 10 },
-    "perneiras_couro": { "name": "Perneiras de couro", "plural": "perneiras de couro", "slot": "calcas", "def": 2, "price": 10, "buy": 26 },
-    "luvas_la": { "name": "Luvas de lã", "plural": "luvas de lã", "slot": "luvas", "def": 1, "price": 3, "buy": 8 },
-    "luvas_couro": { "name": "Luvas de couro", "plural": "luvas de couro", "slot": "luvas", "def": 1, "bonus": { "crit": 0.03 }, "price": 9, "buy": 22 }
+    "capuz_la": { "g": "m", "name": "Capuz de lã", "plural": "capuzes de lã", "slot": "cabeca", "def": 1, "price": 4, "buy": 10 },
+    "coifa_couro": { "g": "f", "name": "Coifa de couro", "plural": "coifas de couro", "slot": "cabeca", "def": 2, "price": 11, "buy": 28 },
+    "gambeson": { "g": "m", "name": "Gambeson", "plural": "gambesons", "slot": "peito", "def": 3, "bonus": { "hp": 6 }, "price": 14, "buy": 35 },
+    "tunica_couro": { "g": "f", "name": "Túnica de couro", "plural": "túnicas de couro", "slot": "peito", "def": 4, "price": 24, "buy": 60 },
+    "sapatos_couro": { "g": "mp", "name": "Sapatos de couro", "plural": "sapatos de couro", "slot": "botas", "def": 1, "price": 4, "buy": 10 },
+    "botas_cano_alto": { "g": "fp", "name": "Botas de cano alto", "plural": "botas de cano alto", "slot": "botas", "def": 1, "bonus": { "move": 0.06 }, "price": 12, "buy": 30 },
+    "calcas_la": { "g": "fp", "name": "Calças de lã", "plural": "calças de lã", "slot": "calcas", "def": 1, "price": 4, "buy": 10 },
+    "perneiras_couro": { "g": "fp", "name": "Perneiras de couro", "plural": "perneiras de couro", "slot": "calcas", "def": 2, "price": 10, "buy": 26 },
+    "luvas_la": { "g": "fp", "name": "Luvas de lã", "plural": "luvas de lã", "slot": "luvas", "def": 1, "price": 3, "buy": 8 },
+    "luvas_couro": { "g": "fp", "name": "Luvas de couro", "plural": "luvas de couro", "slot": "luvas", "def": 1, "bonus": { "crit": 0.03 }, "price": 9, "buy": 22 }
   },
   "weaponClasses": {
     "espada": { "name": "Espada", "scale": "melee", "about": "Equilibrada: golpe médio, ritmo constante." },
@@ -208,6 +208,39 @@
     "armorK": 20
   },
   "legacyWeapons": ["espada_ferro", "espada_aco", "espada_ostanita"],
+  "qualidade": {
+    "_nota": "Qualidade de uma peça de equipamento (js/sim.js, seção 'raridade e qualidade'). nome = as formas pelo gênero do item (g em items: m, f, mp, fp). quebra = chance de quebrar a cada uso (arma: cada golpe; roupa: cada golpe recebido, numa peça sorteada), antes da maestria. preco multiplica price e buy. padrao = a qualidade do id puro de game.json (o que já existia, missões e itens iniciais). loja e saque = pesos do sorteio, na ordem de niveis.",
+    "niveis": [
+      { "nome": { "m": "enferrujado", "f": "enferrujada", "mp": "enferrujados", "fp": "enferrujadas" }, "quebra": 0.03, "preco": 0.4 },
+      { "nome": { "m": "velho", "f": "velha", "mp": "velhos", "fp": "velhas" }, "quebra": 0.02, "preco": 0.6 },
+      { "nome": { "m": "usado", "f": "usada", "mp": "usados", "fp": "usadas" }, "quebra": 0.013, "preco": 0.8 },
+      { "nome": { "m": "bom", "f": "boa", "mp": "bons", "fp": "boas" }, "quebra": 0.008, "preco": 1 },
+      { "nome": { "m": "ideal", "f": "ideal", "mp": "ideais", "fp": "ideais" }, "quebra": 0.004, "preco": 1.5 },
+      { "nome": { "m": "radiante", "f": "radiante", "mp": "radiantes", "fp": "radiantes" }, "quebra": 0.0015, "preco": 2.5 },
+      { "nome": { "m": "celestial", "f": "celestial", "mp": "celestiais", "fp": "celestiais" }, "quebra": 0.0004, "preco": 4 }
+    ],
+    "padrao": 3,
+    "loja": [5, 20, 35, 30, 9, 1, 0],
+    "saque": [20, 25, 25, 18, 8, 3, 1]
+  },
+  "raridade": {
+    "_nota": "Raridade: mult multiplica os modificadores da peça (dano, defesa, bônus e coleta); preco multiplica price e buy; cor = a cor do nome; nome pelo gênero do item, como na qualidade. loja e saque = pesos do sorteio. Um drop de equipamento (monsters → drops com 'equip') pode trazer pesos próprios em 'qualidade' e 'raridade'.",
+    "niveis": [
+      { "nome": { "m": "comum", "f": "comum", "mp": "comuns", "fp": "comuns" }, "mult": 1, "preco": 1, "cor": "#4a4136" },
+      { "nome": { "m": "incomum", "f": "incomum", "mp": "incomuns", "fp": "incomuns" }, "mult": 1.15, "preco": 1.5, "cor": "#3d7a33" },
+      { "nome": { "m": "raro", "f": "rara", "mp": "raros", "fp": "raras" }, "mult": 1.3, "preco": 2.5, "cor": "#2f5f9e" },
+      { "nome": { "m": "épico", "f": "épica", "mp": "épicos", "fp": "épicas" }, "mult": 1.5, "preco": 4, "cor": "#7a3d9e" },
+      { "nome": { "m": "lendário", "f": "lendária", "mp": "lendários", "fp": "lendárias" }, "mult": 1.8, "preco": 7, "cor": "#b0701c" }
+    ],
+    "loja": [85, 12, 3, 0, 0],
+    "saque": [60, 25, 10, 4, 1]
+  },
+  "maestria": {
+    "_nota": "Maestria: o personagem aprende com o uso. Cada golpe com uma classe de arma (weaponClasses) soma 1 nela; cada golpe recebido soma 1 em 'armadura'. A maestria vai de 0 a 1: usos / (usos + meio). A chance de quebrar é qualidade.quebra x (1 - corte x maestria).",
+    "meio": 300,
+    "corte": 0.9,
+    "armadura": "Armadura"
+  },
   "saque": { "_nota": "O que os bichos deixam fica no chão (js/sim.js, deixaSaque): dura = segundos até o monte sumir; max = quantos montes no máximo (o mais velho some).", "dura": 300, "max": 30 },
   "monsters": {
     "coelho": {
@@ -238,13 +271,13 @@
     },
     "_fauna": "Bichos das regiões: spot = tipo do ponto marcado em vila.json (regions.spots.kind), count = quantos nascem em cada ponto. aggro = raio (m) em que atacam quem chega; leash = até onde perseguem a partir de casa. poison = veneno { dps, sec } a cada picada (a armadura não corta; poção e padre curam). flee = raio em que a presa foge; stamina = segundos de corrida até cansar, tiredSpeed = velocidade cansada, rest = fôlego recuperado por segundo longe do caçador.",
     "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 1.3, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
-      "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }] },
+      "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }, { "equip": ["luvas_couro", "coifa_couro", "perneiras_couro", "sapatos_couro"], "chance": 0.08 }] },
     "escorpiao": { "name": "Escorpião", "spot": "escorpioes", "count": 4, "hp": 22, "dmg": [4, 6], "def": 8, "speed": 1.9, "wanderSpeed": 0.5, "interval": 1.5, "reach": 1.1, "aggro": 4.5, "poison": { "dps": 1, "sec": 6 }, "xp": 14, "respawn": 150, "leash": 14, "wanderRadius": 5,
       "drops": [{ "item": "ferrao", "n": 1, "chance": 0.7 }] },
     "troll": { "name": "Troll", "spot": "trolls", "count": 1, "hp": 240, "dmg": [8, 12], "def": 8, "crit": 0.04, "speed": 2.4, "wanderSpeed": 0.6,
       "interval": 2.5, "reach": 2.1, "aggro": 8, "xp": 180, "respawn": 1200, "leash": 22, "wanderRadius": 5,
       "_nota": "chefe da floresta (desenho do usuário): lento e forte, para nível 6 ou mais com poções; foge-se dele andando",
-      "drops": [{ "item": "presa_troll", "n": 1, "chance": 1 }, { "item": "couro_troll", "n": 1, "chance": 1 }, { "item": "carne", "n": 2, "chance": 0.6 }] },
+      "drops": [{ "item": "presa_troll", "n": 1, "chance": 1 }, { "item": "couro_troll", "n": 1, "chance": 1 }, { "item": "carne", "n": 2, "chance": 0.6 }, { "equip": ["machado_guerra", "espada_aco", "tunica_couro", "botas_cano_alto"], "chance": 0.35, "qualidade": [5, 10, 20, 30, 20, 10, 5], "raridade": [30, 35, 20, 11, 4] }] },
     "serpente": { "name": "Serpente", "spot": "cobras", "count": 4, "hp": 22, "dmg": [4, 6], "def": 0, "speed": 2.6, "wanderSpeed": 0.4, "interval": 1.3, "reach": 1.2, "aggro": 3.5, "poison": { "dps": 1.5, "sec": 6 }, "xp": 12, "respawn": 150, "leash": 12, "wanderRadius": 4,
       "drops": [{ "item": "pele_serpente", "n": 1, "chance": 0.6 }, { "item": "veneno", "n": 1, "chance": 0.5 }] },
     "veado": { "name": "Veado", "spot": "cervos", "count": 3, "hp": 34, "dmg": [1, 1], "def": 2, "speed": 5.6, "wanderSpeed": 0.8, "interval": 9, "reach": 0, "flee": 14, "stamina": 7, "tiredSpeed": 2.4, "rest": 0.5, "xp": 22, "respawn": 180, "leash": 30, "wanderRadius": 8,

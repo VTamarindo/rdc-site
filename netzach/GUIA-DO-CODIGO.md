@@ -72,6 +72,11 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
 - **Itens** (`items`): nome, `price` (quanto o comerciante paga), `buy` (quanto a loja cobra). Armas: `dmg` [mínimo, máximo],
   `interval` (segundos entre golpes), `reach` (alcance em metros). Roupas: `def` (defesa). `bonus` dá extras.
 - **Classes de arma** (`weaponClasses`): espada, machado, arco (arco usa flechas).
+- **Qualidade e raridade** (`qualidade`, `raridade`, `maestria`): os nomes de cada nível (pelo gênero do item, `g` em `items`),
+  a chance de quebrar por uso (`quebra`), o multiplicador dos modificadores (`mult`), o do preço (`preco`), a cor e os pesos
+  do sorteio na loja e no saque. A maestria (`meio`, `corte`) diz quanto o uso tira da chance de quebrar. Um bicho deixa
+  equipamento com uma entrada `{ "equip": [itens], "chance" }` em `drops` (pode trazer pesos próprios `qualidade` e `raridade`).
+  Uma missão pode dar uma peça certa com o id `item~qualidade~raridade` em `reward.items` (ex.: `espada_aco~5~2`).
 - **Atributos** (`attributes`): o efeito de cada ponto (`per`), o limite (`cap`) e a descrição mostrada no jogo (`desc`).
 - **Combate** (`combat.armorK`): quanto a defesa reduz o dano. **Posturas** (`stances`): ofensiva e defensiva.
 - **Monstros e animais** (`monsters`): vida, dano, velocidade, XP, o que deixam cair (`drops`), tempo para renascer
@@ -160,6 +165,10 @@ Coordenadas em metros: `x` cresce para o leste, `z` para o sul; o centro da pra�
 - **Céu e horários:** `js/ceu.js`, tabela `HORAS` (cores por hora do dia); montanhas em `serra`.
 - **Distância da névoa:** `js/view.js`, `fog: [45, 150]` (começa a 45 m e fecha em 150 m).
 - **Combate:** `js/sim.js`, `Sim.prototype.strike` (um golpe) e `swing`; contas do personagem em `stats`.
+- **Qualidade, raridade e quebra:** `js/sim.js`, seção "raridade e qualidade" (`variante` monta a ficha da peça `id~q~r`
+  em `G.items`; `registraVariantes` faz isso ao abrir um save; `novaPeca` sorteia; `chanceQuebra` e `maestria`) e
+  `Sim.prototype.usaPeca` (rola a quebra e soma a maestria; chamado em `swing` e `hitPlayer`). Na tela: `itemLines`,
+  `corRar` e `rarStyle` em `js/ui.js`; a borda colorida é `.sell-cell.rar` no `css/netzach.css`.
 - **Saque no chão:** `js/sim.js`, `deixaSaque`, `pegaSaque` e `macroSaque` (o que a macro pega: `st.saqueDeixa`); tempo e
   limite em `game.json` → `saque`. Janela e botão Saque da macro em `js/ui.js` (`openSaque`, `renderSaqueCfg`); o
   saquinho no mundo em `View.prototype.saqueQuadro` (`js/view.js`).

@@ -63,6 +63,7 @@
   // ---------- mundo estático (montado a partir de vila.json) ----------
   function World(game, vila) {
     this.game = game; this.vila = vila;
+    preparaPecas(game);
     var B = this.B = vila.bounds, N = this.N = B * 2;
     this.grid = new Uint8Array(N * N);
     var self = this, i;
@@ -415,7 +416,7 @@
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), stance: 'ofensiva',
-        equip: newEquip(G, G.player.startEquip), attr: newAttr(G), pts: 0, // pts: pontos de atributo ainda por gastar
+        equip: newEquip(G, G.player.startEquip), attr: newAttr(G), pts: 0, maestria: {}, // pts: pontos de atributo ainda por gastar
         potCd: 0, atkCd: 0, combatT: 99, action: null, goto: null,
         mode: 'manual', mapNav: 'caminhada', // mapNav: o que o clique no mapa faz por padrão ('caminhada' ou 'macro')
         macro: { area: null, on: false, phase: 'idle', stop: '', path: null, goal: null, repath: 0 }
@@ -495,6 +496,70 @@
   function buyPrice(w, p, item, n) { var it = w.game.items[item]; return Math.max(1, Math.round((it.buy || it.price) * (n || 1) * stats(w, p).buy + 1e-9)); }
   function sellPrice(w, p, item, n) { return Math.round(w.game.items[item].price * (n || 1) * stats(w, p).sell + 1e-9); }
 
+  // ---------- raridade e qualidade ----------
+  // Cada peça de equipamento (item com slot que não é munição) tem uma qualidade (game.json → qualidade: de enferrujada a
+  // celestial; diz a chance de quebrar a cada uso) e uma raridade (game.json → raridade: de comum a lendária; multiplica os
+  // modificadores). A peça é guardada pelo id: o id puro (espada_ferro) é a qualidade padrão e comum; as outras são
+  // id~q~r (espada_ferro~5~2 = radiante e rara). variante() monta a ficha dessas no próprio G.items na primeira vez que
+  // aparecem, então bolsa, casas, saque, lojas e save usam o id como qualquer item. Quem abre um save chama
+  // registraVariantes antes de tudo (NZ.settle já faz)
+  function ehPeca(def) { return !!(def && def.slot && !def.stack); }
+  function preparaPecas(G) {
+    if (!G.qualidade) { return; }
+    keys(G.items).forEach(function (k) { var d = G.items[k]; if (ehPeca(d) && !d.base && d.q === undefined) { d.q = G.qualidade.padrao; d.r = 0; } });
+  }
+  function varId(G, base, q, r) { return q === G.qualidade.padrao && !r ? base : base + '~' + q + '~' + r; }
+  function forma(nivel, g) { return nivel.nome[g] || nivel.nome.m; }
+  function arred(v) { return Math.round(v * 1000) / 1000; }
+  function variante(G, id) {
+    if (typeof id !== 'string') { return null; }
+    if (G.items[id]) { return G.items[id]; }
+    var m = /^([^~]+)~(\d+)~(\d+)$/.exec(id), b = m && G.items[m[1]];
+    if (!ehPeca(b) || b.base) { return null; }
+    var q = +m[2], r = +m[3], Q = G.qualidade.niveis[q], R = G.raridade.niveis[r], k;
+    if (!Q || !R) { return null; }
+    var d = JSON.parse(JSON.stringify(b)), mul = R.mult, g = b.g || 'm';
+    d.base = m[1]; d.q = q; d.r = r;
+    if (d.dmg) { d.dmg = [arred(d.dmg[0] * mul), arred(d.dmg[1] * mul)]; }
+    if (d.def) { d.def = arred(d.def * mul); }
+    for (k in (d.bonus || {})) { d.bonus[k] = arred(d.bonus[k] * mul); }
+    for (k in (d.gather || {})) { d.gather[k] = arred(d.gather[k] * mul); }
+    if (b.price) { d.price = Math.max(1, Math.round(b.price * Q.preco * R.preco)); }
+    if (b.buy) { d.buy = Math.max(1, Math.round(b.buy * Q.preco * R.preco)); }
+    var gp = g.length > 1 ? g : g + 'p';
+    d.name = b.name + ' ' + forma(Q, g) + (r ? ' ' + forma(R, g) : '');
+    d.plural = (b.plural || b.name) + ' ' + forma(Q, gp) + (r ? ' ' + forma(R, gp) : '');
+    G.items[id] = d;
+    return d;
+  }
+  // todo id de peça que o save cita ganha a ficha (bolsa, casas, saque no chão)
+  function registraVariantes(G, st) {
+    var p = st.player || {}, k;
+    for (k in (p.inv || {})) { variante(G, k); }
+    for (k in (p.equip || {})) { variante(G, p.equip[k]); }
+    (st.saque || []).forEach(function (s) { for (var i in (s.itens || {})) { variante(G, i); } });
+  }
+  // índice sorteado pelos pesos
+  function sorteia(st, pesos) {
+    var t = 0, i; for (i = 0; i < pesos.length; i++) { t += pesos[i]; }
+    var x = rnd(st) * t;
+    for (i = 0; i < pesos.length; i++) { x -= pesos[i]; if (x < 0 && pesos[i] > 0) { return i; } }
+    return pesos.length - 1;
+  }
+  // uma peça nova do item base, com qualidade e raridade sorteadas (pesos de game.json → qualidade/raridade, ou os do drop)
+  function novaPeca(G, st, base, pq, pr) {
+    var q = sorteia(st, pq || G.qualidade.saque), r = sorteia(st, pr || G.raridade.saque), id = varId(G, base, q, r);
+    variante(G, id);
+    return id;
+  }
+  // maestria de 0 a 1 numa classe de arma (ou 'armadura'): aprende com o uso
+  function maestria(w, p, cls) { var M = w.game.maestria, n = (p.maestria && p.maestria[cls]) || 0; return n / (n + M.meio); }
+  function chanceQuebra(w, p, id, cls) {
+    var G = w.game, d = G.items[id];
+    if (!ehPeca(d) || d.q === undefined) { return 0; }
+    return G.qualidade.niveis[d.q].quebra * (1 - G.maestria.corte * maestria(w, p, cls));
+  }
+
   // ---------- simulação ----------
   function Sim(world) { this.w = world; this.events = []; this.quiet = false; }
 
@@ -522,7 +587,12 @@
   // Saque) e o resto fica no chão. Cada monte some depois de game.json → saque.dura segundos; no máximo saque.max montes
   Sim.prototype.deixaSaque = function (st, m, def) {
     var G = this.w.game, C = G.saque || {}, it = {}, n = 0;
-    (def.drops || []).forEach(function (d) { if (rnd(st) < d.chance) { it[d.item] = (it[d.item] || 0) + d.n; n++; } });
+    (def.drops || []).forEach(function (d) {
+      if (!(rnd(st) < d.chance)) { return; }
+      // equipamento: uma peça de um dos itens da lista, com qualidade e raridade sorteadas
+      var id = d.equip ? novaPeca(G, st, d.equip[Math.floor(rnd(st) * d.equip.length)], d.qualidade, d.raridade) : d.item;
+      it[id] = (it[id] || 0) + (d.n || 1); n++;
+    });
     if (!n) { return null; }
     st.saque = st.saque || [];
     st.saqueN = (st.saqueN || 0) + 1;
@@ -562,7 +632,7 @@
   Sim.prototype.saqueDe = function (st, id) { return (st.saque || []).filter(function (s) { return s.id === id; })[0] || null; };
   Sim.prototype.macroSaque = function (st, s) {
     var deixa = st.saqueDeixa || {};
-    for (var k in s.itens) { if (!deixa[k]) { this.pegaSaque(st, s.id, k, s.itens[k], true); } }
+    for (var k in s.itens) { var b = (this.w.game.items[k] || {}).base || k; if (!deixa[b]) { this.pegaSaque(st, s.id, k, s.itens[k], true); } } // peça: vale a marca do item base
   };
   // pega n de um item do monte (n vazio = tudo o que houver), até onde a bolsa deixa; devolve o texto para o jogador.
   // longe = já vale a distância (a macro, ao lado do bicho que acabou de abater)
@@ -652,6 +722,9 @@
     var w = this.w, G = w.game, p = st.player;
     var h = this.strike(st, mobStats(def), stats(w, p), G.stances[p.stance].taken);
     p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval;
+    // a roupa também se gasta: uma peça vestida, sorteada, rola a quebra
+    var roupa = keys(G.equipSlots).filter(function (s) { var d = p.equip[s] && G.items[p.equip[s]]; return ehPeca(d) && d.def; });
+    if (roupa.length) { this.usaPeca(st, roupa[Math.floor(rnd(st) * roupa.length)], 'armadura'); }
     // veneno: dano por segundo que a armadura não corta; a picada nova renova o tempo, não soma
     if (def.poison && !(p.poison && p.poison.t > def.poison.sec)) {
       if (!p.poison) { this.log(st, 'Envenenado! A poção ou o padre curam.'); }
@@ -660,6 +733,22 @@
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
     this.emit(st, { type: 'hit', who: 'player', n: h.n, crit: h.crit });
     if (p.hp <= 0) { this.faint(st); }
+  };
+  // usou a peça da casa (golpe dado ou recebido): rola a quebra com a maestria de agora e depois aprende com o uso
+  Sim.prototype.usaPeca = function (st, slot, cls) {
+    var w = this.w, G = w.game, p = st.player, id = p.equip[slot], d = id && G.items[id];
+    if (!d) { return false; }
+    var quebrou = rnd(st) < chanceQuebra(w, p, id, cls);
+    p.maestria = p.maestria || {}; p.maestria[cls] = (p.maestria[cls] || 0) + 1;
+    if (!quebrou) { return false; }
+    p.equip[slot] = null;
+    p.hp = Math.min(p.hp, maxHp(w, p));
+    var g = d.g || 'm', art = { m: 'O ', f: 'A ', mp: 'Os ', fp: 'As ' }[g] || 'O ';
+    var msg = art + d.name.toLowerCase() + (g.length > 1 ? ' quebraram.' : ' quebrou.');
+    this.log(st, msg);
+    this.emit(st, { type: 'alert', text: msg });
+    this.emit(st, { type: 'quebrou', item: id, slot: slot });
+    return true;
   };
   // persegue e bate. smart: sem linha livre até o jogador, segue o A* (refeito a cada 1,5 s), para contornar as casas
   Sim.prototype.chase = function (st, e, def, dt, smart) {
@@ -719,6 +808,7 @@
     var w = this.w, p = st.player, G = w.game, def = G.monsters[m.kind], s = stats(w, p);
     var h = this.strike(st, s, mobStats(def), G.stances[p.stance].dmg);
     this.useAmmo(st, s);
+    if (s.weapon && s.cls) { this.usaPeca(st, 'arma', s.cls); }
     m.hp -= h.n; m.fight = true; p.atkCd = s.interval; p.combatT = 0;
     this.emit(st, { type: 'hit', who: 'mob', id: m.id, x: m.x, z: m.z, n: h.n, crit: h.crit, ranged: s.ranged });
     if (m.hp <= 0) {
@@ -1154,11 +1244,23 @@
     var slot = equip ? this.slotFor(st, item) : null, swap = slot && p.equip[slot] && !G.items[p.equip[slot]].stack ? 1 : 0;
     var room = def.noBag ? 1e9 : bagCap(w, p) - bagCount(w, p) - swap + (equip ? 1 : 0);
     if (units > room) { return 'Bolsa cheia: libere espaço antes de comprar.'; }
-    p.inv.moeda -= cost; p.inv[item] = (p.inv[item] || 0) + units;
-    var msg = 'Comprou ' + (units === 1 ? def.name : units + ' ' + (def.plural || def.name)).toLowerCase() + ' por ' + cost + ' moeda' + (cost === 1 ? '' : 's') + '.';
+    p.inv.moeda -= cost;
+    var msg, comprou = null;
+    if (ehPeca(def)) {
+      // cada peça da loja sai com a sua qualidade e raridade (o preço é o da peça padrão)
+      var novas = [];
+      for (var u = 0; u < units; u++) {
+        var nid = novaPeca(G, st, item, G.qualidade.loja, G.raridade.loja);
+        novas.push(G.items[nid].name.toLowerCase()); p.inv[nid] = (p.inv[nid] || 0) + 1; comprou = comprou || nid;
+      }
+      msg = 'Comprou ' + novas.join(', ') + ' por ' + cost + ' moeda' + (cost === 1 ? '' : 's') + '.';
+    } else {
+      p.inv[item] = (p.inv[item] || 0) + units;
+      msg = 'Comprou ' + (units === 1 ? def.name : units + ' ' + (def.plural || def.name)).toLowerCase() + ' por ' + cost + ' moeda' + (cost === 1 ? '' : 's') + '.';
+    }
     // munição comprada com o arco na mão e a casa vazia já vai para a aljava
     if (def.stack && !p.equip[def.slot] && p.equip.arma && (G.weaponClasses[G.items[p.equip.arma].class] || {}).ammo === item) { p.equip[def.slot] = item; }
-    if (equip) { msg += ' ' + this.equip(st, item); }
+    if (equip) { msg += ' ' + this.equip(st, comprou || item); }
     return msg;
   };
 
@@ -1306,7 +1408,7 @@
   // vende exatamente n unidades de um item que este serviço compra
   Sim.prototype.sellItem = function (st, s, item, n) {
     var G = this.w.game, p = st.player, def = G.items[item];
-    if (!def || s.items.indexOf(item) < 0) { return 'Isso não se vende aqui.'; }
+    if (!def || s.items.indexOf(def.base || item) < 0) { return 'Isso não se vende aqui.'; }
     n = Math.floor(+n || 0);
     if (n < 1) { return 'Escolha quantas unidades vender.'; }
     var can = this.sellable(st, item);
@@ -1347,7 +1449,7 @@
     q.objectives.forEach(function (o) { if (o.type === 'collect') { p.inv[o.item] -= o.n; } });
     st.quests[id] = 'done'; delete st.qkills[id];
     var r = q.reward || {};
-    for (var k in (r.items || {})) { p.inv[k] = (p.inv[k] || 0) + r.items[k]; }
+    for (var k in (r.items || {})) { variante(G, k); p.inv[k] = (p.inv[k] || 0) + r.items[k]; } // pode ser uma peça com marca (espada_aco~5~2)
     if (r.xp) { this.gainXp(st, r.xp); }
     this.log(st, 'Missão concluída: ' + q.title + '.');
     this.emit(st, { type: 'quest', id: id });
@@ -1404,6 +1506,8 @@
   // e os níveis já ganhos dão os pontos de atributo que teriam dado. Precisa de game.json, por isso roda em settle
   NZ.migrateGear = function (G, st) {
     var p = st.player, k;
+    registraVariantes(G, st); // as peças com qualidade e raridade precisam da ficha antes de conferir as casas
+    if (!p.maestria || typeof p.maestria !== 'object') { p.maestria = {}; } // maestria: usos por classe de arma e 'armadura'
     if (!p.equip) {
       var L = G.legacyWeapons, i = Math.max(0, Math.min(L.length - 1, p.weapon | 0));
       p.equip = newEquip(G, { arma: L[i] });
@@ -1486,5 +1590,6 @@
   NZ.Sim = Sim;
   NZ.newState = newState;
   NZ.calc = { maxHp: maxHp, stats: stats, mobStats: mobStats, armorCut: armorCut, bagCount: bagCount, bagCap: bagCap, buyPrice: buyPrice, sellPrice: sellPrice,
-    potionHeal: potionHeal, gatherSec: gatherSec, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
+    potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
+    novaPeca: novaPeca, maestria: maestria, chanceQuebra: chanceQuebra, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
 })(window.NZ = window.NZ || {});
