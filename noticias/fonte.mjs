@@ -117,9 +117,9 @@ export default (G) => [
       { titulo: 'Cravejar', texto: 'Oricalco, rubi e pérola vão servir para cravejar equipamento. Hoje só se compram e se vendem.' },
       { titulo: 'Mercadores ambulantes e comitivas', texto: 'A ideia é que eles vendam as peças raras, bem caras. Ainda não existem.' },
       { titulo: 'Lojas especiais', texto: 'Alguns ferreiros escolhidos vão vender até a qualidade ideal e a raridade incomum. Nenhum da vila é um deles ainda.' },
-      { titulo: 'Onde achar o que é raro', texto: 'Faltam os bandidos, os orcs, os goblins, as masmorras e as missões que dão equipamento.' },
-      { titulo: 'A macro e as armas que quebram', texto: 'Se a arma quebra com a macro ligada, ela continua lutando de mãos nuas. Ela deveria parar e avisar?' }
-    ]
+      { titulo: 'Onde achar o que é raro', texto: 'Faltam os bandidos, os orcs, os goblins, as masmorras e as missões que dão equipamento.' }
+    ],
+    depois: [['2026-11-23', 'Se a arma quebra com a macro ligada, o personagem para e volta à praça, em vez de seguir lutando de mãos nuas.']]
   },
   {
     slug: 'musica-epica-no-menu', jogo: 'Netzach', data: '2026-11-10', simbolo: '♫', tom: 'vinho',

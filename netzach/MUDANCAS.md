@@ -5,5 +5,6 @@ Na publicação (só quando o usuário pede), a notícia do site (uma página, e
 desta lista, montada com `node netzach/tools/montar_noticias.mjs`, a lista é zerada e roda `tools/publicar.ps1`. Mudanças só internas (código, ferramentas) vão no fim, em "Por dentro".
 
 ## Para o jogador
+- Se a arma quebra com a macro ligada, a macro para e o personagem volta à praça mais próxima.
 
 ## Por dentro

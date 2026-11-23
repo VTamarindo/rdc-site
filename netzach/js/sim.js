@@ -408,6 +408,11 @@
     return out;
   };
 
+  // a praça mais próxima: hoje só há uma (plaza); um mapa com mais de uma lista todas em vila.pracas
+  World.prototype.pracaPerto = function (x, z) {
+    return (this.vila.pracas || [this.plaza]).reduce(function (a, b) { return dist(x, z, b.x, b.z) < dist(x, z, a.x, a.z) ? b : a; });
+  };
+
   // ---------- estado ----------
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
@@ -812,6 +817,8 @@
     if (!quebrou) { return false; }
     p.equip.arma = null; p.afiada = null;
     this.quebrou(st, d, pecaId(G, d.base || id, d.q, d.r, 0, true), true);
+    // com a macro ligada: para de trabalhar e volta à praça mais próxima (macroTick, fase 'quebrou')
+    if (p.mode === 'macro' && p.macro.on) { p.macro.phase = 'quebrou'; p.macro.path = null; p.macro.goal = null; }
     return true;
   };
   // cada golpe recebido gasta todas as peças de defesa vestidas (oficina.desgaste); a que chega a zero quebra
@@ -1052,6 +1059,12 @@
       p.hp = Math.min(maxHp(w, p), p.hp + G.player.restRegenPerSec * dt);
       p.action = { type: 'rest' };
       if (p.hp >= maxHp(w, p)) { m.phase = 'run'; p.action = null; this.log(st, 'Descansado. Voltando à área.'); }
+      return;
+    }
+    if (m.phase === 'quebrou') { // a arma quebrou: volta à praça mais próxima e para
+      var pr = w.pracaPerto(p.x, p.z);
+      p.action = { type: 'travel', label: 'arma quebrada, voltando à praça' };
+      if (this.moveTo(st, pr.x, pr.z + 1.5, 1.2, dt, 'praca')) { this.stopMacro(st, 'A arma quebrou: conserte ou troque e retome a macro.'); p.action = null; }
       return;
     }
     if (m.phase === 'retreat' || m.phase === 'full') {
