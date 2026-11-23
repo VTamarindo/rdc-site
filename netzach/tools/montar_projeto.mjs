@@ -36,8 +36,9 @@ export function montaProjeto({ SITE, G, V, lista, cabeca, pe, ver, esc, rico, da
       '<dl class="pj-ficha">' + [['Situação', 'Em estágio inicial de desenvolvimento, já jogável'], ['Gênero', 'RPG medieval em primeira pessoa, com coleta automática de material (macro)'], ['Onde', 'No navegador, sem instalar nada'], ['Idioma', 'Português do Brasil'],
         ['Jogadores', 'Um'], ['Progresso', 'Salvo no navegador; com conta, também na nuvem'], ['Tempo fora', 'A macro segue juntando material por até ' + G.settings.offlineCapHours + ' horas com o jogo fechado']]
         .map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('') + '</dl><p><a href="mecanicas-do-netzach.html">Como o jogo funciona: as mecânicas</a></p>') +
-    secao('dispositivos', '▣', 'Dispositivos', '<div class="pj-disp"><article><h3>Testado</h3><ul><li><b>Computador com Windows</b>, no Brave e no Edge. Medido num Intel Core i5-2400 com 8 GB, sem usar a placa de vídeo: de 32 a 38 quadros por segundo na vila.</li></ul></article>' +
+    secao('dispositivos', '▣', 'Dispositivos', '<div class="pj-disp"><article><h3>Testado</h3><ul><li><b>Computador com Windows</b>, no Brave e no Edge.</li></ul></article>' +
       '<article><h3>Previsto, ainda sem medida</h3><ul><li><b>Celular</b>, com a tela deitada e controles de toque.</li><li><b>Controle</b> no computador.</li><li><b>Xbox</b>, pelo navegador do console.</li></ul></article></div>' +
+      '<h3 class="pj-req">Requisito mínimo no computador</h3><dl class="pj-ficha"><dt>Processador</dt><dd>Intel Core i5 de segunda geração</dd><dt>Memória</dt><dd>8 GB de RAM</dd></dl>' +
       '<p class="nt-nota">Jogou em outro aparelho? <a href="../feedback.html">Conte como foi</a>: entra nesta lista.</p>') +
     secao('noticias', '❦', 'Notícias', '<div class="pj-noticias">' + novas.slice(0, 6).map((n) => `<a href="../noticias/${n.slug}.html"><small><time datetime="${n.data}">${data(n.data)}</time></small><b>${esc(n.titulo)}</b><span>${esc(n.resumo)}</span></a>`).join('') + '</div><p><a href="../noticias/">Ver todas as novidades</a></p>') +
     '</div></main>' + pe());
