@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261123-5', SAVE_VER = '20261105-3';
+  var VERSION = '20261123-6', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -706,9 +706,9 @@
     var s = saqueOpen && sim.saqueDe(st, saqueOpen);
     if (!s || calc.dist(st.player.x, st.player.z, s.x, s.z) > G.settings.interactRange + 1) { saqueOpen = null; hide(); }
   }
-  // o que a macro pega sozinha: tudo o que algum bicho pode deixar, cada um com Pegar ou Deixar (st.saqueDeixa)
+  // o que a macro pega sozinha: tudo o que algum animal manso pode deixar (ela não luta com bicho bravo), cada um com Pegar ou Deixar (st.saqueDeixa)
   function saquePossivel() {
-    var k = {}; Object.keys(G.monsters).forEach(function (m) { (G.monsters[m].drops || []).forEach(function (d) { (d.equip || [d.item]).forEach(function (i) { k[i] = 1; }); }); });
+    var k = {}; Object.keys(G.monsters).forEach(function (m) { if (G.monsters[m].aggro > 0) { return; } (G.monsters[m].drops || []).forEach(function (d) { (d.equip || [d.item]).forEach(function (i) { k[i] = 1; }); }); });
     return Object.keys(k).filter(function (i) { return G.items[i]; }).sort(function (a, b) { return G.items[a].name.localeCompare(G.items[b].name); });
   }
   function renderSaqueCfg() {
