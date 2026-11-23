@@ -5,7 +5,8 @@
   function $(id) { return document.getElementById(id); }
 
   // endereços do config.js (os botões que não existirem na página são ignorados)
-  var z = window.SITE && window.SITE.netzachUrl;
+  var z = window.SITE && window.SITE.netzachUrl, eu = document.currentScript && document.currentScript.src;
+  if (typeof z === 'string' && z && eu) { z = new URL(z, eu).href; } // relativo à raiz do site, também nas páginas de noticias/
   if (typeof z === 'string' && z) {
     ['netzach-btn', 'netzach-top'].forEach(function (id) { if ($(id)) { $(id).href = z; } });
   }

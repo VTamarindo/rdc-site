@@ -5,8 +5,8 @@ recarregou o navegador. Textos e comentários em português.
 
 ## Regras de ouro
 1. **O dia a dia vai no ramo `dev`**; a `main` é o que está no site. Commit e push no `dev` não mudam o site.
-2. **Publicar** (só quando o dono do jogo pedir): rode os testes (abaixo), monte a notícia em `noticias.js` (na raiz) a partir
-   de `MUDANCAS.md`, zere o `MUDANCAS.md`, commite no `dev` e rode
+2. **Publicar** (só quando o dono do jogo pedir): rode os testes (abaixo), escreva a notícia em `noticias/fonte.mjs` (na raiz do site) a partir
+   de `MUDANCAS.md`, rode `node netzach/tools/montar_noticias.mjs` (monta uma página por notícia e o carrossel), zere o `MUDANCAS.md`, commite no `dev` e rode
    `powershell -ExecutionPolicy Bypass -File netzach\tools\publicar.ps1` na pasta do site (com `-Testar` ele só mostra o que iria).
    Ele troca a versão, junta o `dev` na `main` e envia. Espere uns 2 minutos e confira a versão no Menu do jogo.
 3. **Toda publicação troca a versão** (o `publicar.ps1` já faz, com `tools/versao.ps1`), senão quem já jogou fica com arquivos
@@ -38,6 +38,13 @@ instalado em 10/11 (com Pillow, numpy e scipy).
 
 **Erros dos jogadores:** `js/erros.js` manda cada erro de código que acontece no jogo de alguém para a tabela `erros` do
 Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. A tabela é criada por `supabase/erros.sql`.
+
+## As páginas do site
+- **Notícias:** o texto fica só em `noticias/fonte.mjs` (os campos estão explicados no topo): seções, tabelas, antes e agora,
+  pontos em aberto e o que mudou depois. `node netzach/tools/montar_noticias.mjs` gera `noticias/<slug>.html`,
+  `noticias/index.html` e `noticias.js`; não edite esses à mão. Figuras do topo: `noticias/img/` (recortes do atlas).
+- **Feedback e Quem somos:** `feedback.html` e `quem-somos.html`. O envio (`feedback.js`) vai para a tabela `feedback` do
+  Supabase; o que vem de uma notícia começa com `[Notícia: título]`. Estilo em `noticia.css`, junto de `portal.css`.
 
 ## Os arquivos
 | Arquivo | O que tem |

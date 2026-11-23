@@ -1623,9 +1623,12 @@
   // formato n para o n + 1, e os saves velhos passam por todas, em ordem, ao abrir. Assim ninguém perde o progresso.
   // Campo novo com valor padrão não precisa de formato novo: basta o padrão em NZ.migrate (abaixo) ou em NZ.settle.
   // (O recomeço do zero por SAVE_VER, em js/ui.js, só vale com game.json → settings.resetSaveOnNewVersion, para emergência.)
-  var FORMATO_SAVE = 1;
+  var FORMATO_SAVE = 2;
   var MIGRACOES = {
     // exemplo: 1: function (st) { st.player.bolsa = st.player.inv; delete st.player.inv; }
+    // 2: peças com qualidade, raridade e desgaste no id (espada_aco~5~3). Nada a converter: o formato novo só impede que uma
+    // versão velha do jogo, em outro aparelho, abra o save e apague as peças que não conhece
+    1: function () {}
   };
   NZ.FORMATO_SAVE = FORMATO_SAVE;
   // saves antigos ganham os campos novos

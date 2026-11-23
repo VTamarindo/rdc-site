@@ -1,5 +1,6 @@
 ﻿# Netzach · publica o que está no ramo dev: o dev entra na main, e a main é o que vai para o site
-# Só quando o usuário pedir. Antes de rodar: a notícia nova em noticias.js (montada a partir de netzach/MUDANCAS.md) e o
+# Só quando o usuário pedir. Antes de rodar: a notícia nova em noticias/fonte.mjs (escrita a partir de netzach/MUDANCAS.md),
+# as páginas montadas (node netzach/tools/montar_noticias.mjs) e o
 # MUDANCAS.md zerado, os dois commitados no dev.
 # Uso (na pasta do site):  powershell -ExecutionPolicy Bypass -File netzach\tools\publicar.ps1
 #   -Testar   mostra o que seria publicado e para (não muda nada)

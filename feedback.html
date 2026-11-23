@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback · Romance de Cavalaria</title>
+<meta name="description" content="Conte o que achou dos jogos do Romance de Cavalaria: ideias, bugs e elogios. Lemos tudo.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="portal.css?v=20261123-1">
+<link rel="stylesheet" href="noticia.css?v=20261123-1">
+</head>
+<body>
+<header class="site-top">
+  <div class="bar">
+    <a class="marca" href="./" aria-label="Romance de Cavalaria, início">
+      <img src="favicon.svg" alt="" width="28" height="28"><span>Romance de Cavalaria</span>
+    </a>
+    <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Abrir o menu">&#9776;</button>
+    <nav id="nav" class="nav">
+      <a href="noticias/">Novidades</a>
+      <a href="projetos.html">Projetos</a>
+      <a href="quem-somos.html">Quem somos</a>
+      <a href="feedback.html" aria-current="page">Feedback</a>
+      <a class="btn" id="netzach-top" href="netzach/">Jogar Netzach</a>
+      <div class="login">
+        <button type="button" class="btn ghost" id="login-btn" aria-expanded="false" aria-controls="login-caixa">Entrar</button>
+        <!-- O formulário da conta é montado aqui por netzach/js/conta.js (Conta.painel) -->
+        <div class="login-caixa" id="login-caixa" hidden>
+          <div id="conta-portal" class="conta"></div>
+          <p class="login-breve" id="login-breve">As contas estão chegando: em breve você vai poder entrar e guardar seus saves na nuvem.</p>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main class="nt tom-ouro">
+<header class="nt-topo qs-topo fb-topo">
+<div class="nt-brilho" aria-hidden="true"></div>
+<div class="nt-cena" aria-hidden="true"><img src="noticias/img/anselmo.png" alt="" width="96" height="192" style="--w:96;--h:192"><img src="noticias/img/menino_a.png" alt="" width="96" height="128" style="--w:96;--h:128"><img src="noticias/img/taberneiro.png" alt="" width="96" height="192" style="--w:96;--h:192"></div>
+<div class="nt-tit"><h1>Feedback</h1><p class="nt-abre">Achou um bug, teve uma ideia ou quer contar o que achou? Escreva: lemos tudo.</p></div>
+</header>
+<section class="nt-fb">
+<form id="fb-form" class="fb-form">
+<label>Sobre<select name="sobre"><option>Netzach</option><option>Echad</option><option>O site</option><option>Outro</option></select></label>
+<fieldset class="fb-tipos"><legend>Tipo</legend><label><input type="radio" name="tipo" value="Ideia" checked><span><i aria-hidden="true">✦</i>Ideia</span></label><label><input type="radio" name="tipo" value="Bug"><span><i aria-hidden="true">☠</i>Bug</span></label><label><input type="radio" name="tipo" value="Elogio"><span><i aria-hidden="true">❤</i>Elogio</span></label><label><input type="radio" name="tipo" value="Outro"><span><i aria-hidden="true">…</i>Outro</span></label></fieldset>
+<label>Mensagem<textarea name="msg" rows="7" maxlength="4000" required placeholder="Conte o que aconteceu ou o que você gostaria de ver"></textarea></label>
+<label>Seu e-mail <small>(opcional, se quiser resposta)</small><input name="email" type="email" maxlength="200" autocomplete="email"></label>
+<button type="submit" class="btn">Enviar feedback</button>
+<p class="fb-msg" id="fb-msg" role="status" hidden></p>
+</form>
+</section>
+<section class="nt-aberto">
+<h2>Quer opinar sobre uma atualização?</h2><p>Cada notícia tem os seus pontos em aberto e um lugar para responder.</p>
+<a class="btn ghost" href="noticias/">Escolher uma notícia</a>
+</section>
+</main>
+
+<footer>&copy; Romance de Cavalaria</footer>
+
+<script src="config.js?v=20261110-4"></script>
+<script src="netzach/js/conta.js?v=20261110-2"></script>
+<script src="portal.js?v=20261123-1"></script>
+<script src="feedback.js?v=20261123-1"></script>
+</body>
+</html>
