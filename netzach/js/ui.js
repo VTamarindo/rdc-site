@@ -60,7 +60,7 @@
   // ?mapa=regiao: o mapa de região (4 km, com relevo) que vem do editor por tools/importar_mapa.py, para teste
   var MAPA = /[?&]mapa=regiao\b/.test(location.search) ? 'data/regiao.json' : 'data/vila.json';
   Promise.all([getJSON('data/game.json?v=' + VERSION), getJSON(MAPA + '?v=' + VERSION), NZ.loadArt('art/', VERSION), campanhaJSON, clockSync()]).then(function (d) { start(d[0], d[1], d[2], d[3]); })
-    .catch(function (e) { $('loading').textContent = 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
+    .catch(function (e) { $('loading').textContent = /WebGL/.test(e.message) ? 'Este navegador está sem WebGL, que o jogo usa para desenhar. Feche o navegador inteiro e abra de novo, ou tente outro.' : 'Não foi possível carregar os dados (' + e.message + '). Abra por um servidor, não direto do arquivo.'; });
 
   function start(game, vila, art, campanha) {
     G = game; V = vila; campDados = campanha;
@@ -69,6 +69,14 @@
     slotsMigrate();
 
     view = new NZ.View($('view'), world, art);
+    // o navegador derrubou a parte gráfica: o aviso aparece e some quando ela volta (view.js, Renderer)
+    view.r.aoCair = function (caiu) {
+      clearTimeout(view.caiuT); $('loading').hidden = !caiu;
+      $('loading').textContent = caiu ? 'O navegador reiniciou a parte gráfica. Trazendo a imagem de volta…' : 'Carregando…';
+      if (caiu) { view.caiuT = setTimeout(function () { if (st) { save(); } $('loading').textContent = 'A imagem não voltou. Recarregue a página: o progresso está salvo.'; }, 8000); }
+    };
+    // o céu e as texturas são pintados depois que a tela inicial aparece, um pouco por vez
+    (function aquece() { setTimeout(function () { try { if (view.r.aquece(12)) { aquece(); } } catch (e) { /* ficam para quando aparecerem */ } }, 30); })();
     // atrás da tela inicial: o céu visto de dentro do trigo, deitado, como no começo da campanha; não é de nenhum save
     vitrine = NZ.newState(world, 1);
     vitrine.player.x = G.campanha.inicio.x; vitrine.player.z = G.campanha.inicio.z;

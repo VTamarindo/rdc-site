@@ -54,7 +54,7 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
 | `data/game.json` | **Regras e números do jogo** (o mais fácil de mexer). Detalhes abaixo. |
 | `data/vila.json` | **Planta do mundo**: posições de tudo. Detalhes abaixo. |
 | `js/sim.js` | A simulação: combate, coleta, macro, missões, lojas, equipamento, atributos, conversão de saves antigos. Não desenha nada. |
-| `js/view.js` | O desenho 3D: construções, chão, plantações, figuras, céu, espada na mão, clique nas coisas. |
+| `js/view.js` | O desenho 3D: construções, chão, plantações, figuras, céu, espada na mão, clique nas coisas. O jogo tem de rodar sem placa de vídeo (o navegador desenha pelo processador): no `Renderer`, peças de perto para longe e o céu por último, conta de luz no vértice, três programas. Se o contexto WebGL cai, `monta` refaz tudo. |
 | `js/ui.js` | Interface: tela inicial e saves, laço do jogo, HUD, mapa, janelas, lojas, teclado, mouse e toque. |
 | `js/controle.js` | Controle (Xbox/gamepad): botões, foco nas janelas, cursor do mapa, câmera invertida. |
 | `js/campanha.js` | **Campanha** (modo história): lê `data/campanha.json`, mostra falas e escolhas, aplica os efeitos e conduz o que cada cena faz no mundo (tabela `ROTEIRO`, pelo id da cena). |
