@@ -7,5 +7,3 @@ desta lista, montada com `node netzach/tools/montar_noticias.mjs`, a lista é ze
 ## Para o jogador
 
 ## Por dentro
-
-- Site: os textos falam só do que o jogador pode usar; saíram as ressalvas do tipo "vale para x e y, não para w" e as propostas internas.
