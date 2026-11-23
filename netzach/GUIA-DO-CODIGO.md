@@ -77,12 +77,15 @@ Supabase (painel → Table Editor → erros), com versão, aparelho e onde foi. 
 - **Jogador** (`player`): vida inicial e por nível (`hpBase`, `hpPerLv`), velocidade (`walkSpeed`), poção (`potionHeal`),
   XP por nível (`xpPerLevel`), pontos por nível (`pointsPerLevel`), itens e arma iniciais (`startItems`, `startEquip`).
 - **Itens** (`items`): nome, `price` (quanto o comerciante paga), `buy` (quanto a loja cobra). Armas: `dmg` [mínimo, máximo],
-  `interval` (segundos entre golpes), `reach` (alcance em metros). Roupas: `def` (defesa). `bonus` dá extras.
+  `reach` (alcance em metros). Roupas: `def` (defesa). `bonus` dá extras.
 - **Classes de arma** (`weaponClasses`): espada, machado, arco (arco usa flechas).
 - **Qualidade e raridade** (`qualidade`, `raridade`, `maestria`): os nomes de cada nível (pelo gênero do item, `g` em `items`),
   a chance de a arma quebrar por golpe (`quebra`), a durabilidade da defesa (`dur`), o multiplicador dos modificadores
-  (`mult`), o do preço (`preco`), a cor e os pesos do sorteio no saque. A maestria (`meio`, `corte`) diz quanto o uso tira da
-  chance de quebrar (só armas). Um bicho deixa equipamento com `{ "equip": [itens], "chance" }` em `drops` (pode trazer pesos
+  (`mult`), o do preço (`preco`), a cor e os pesos do sorteio no saque. A maestria tem `niveis` por classe de arma (o primeiro custa `golpes`, cada um
+  `cresce` vezes o anterior; na macro o ataque vale `macro`); no último, tira `corte` da chance de quebrar e soma `critico` (`criticoMacro`
+  com a macro) ao crítico. O ritmo de cada classe e o acerto do arco ficam em `weaponClasses`. Bicho com `prepara` para antes do golpe (a finta).
+- **Magias de teste** (`magias`): mana, espera, acerto e a lista; só com `st.magias.on` (Menu → Testes, no modo desenvolvedor). Contas em
+  `js/sim.js`, `lanca`. A proficiência usa a escada da maestria. Um bicho deixa equipamento com `{ "equip": [itens], "chance" }` em `drops` (pode trazer pesos
   `qualidade` e `raridade`). Uma missão pode dar uma peça certa com `item~qualidade~raridade` em `reward.items`.
 - **Durabilidade e conserto** (`oficina`): o desgaste por golpe recebido, os tipos de casa cuja peça quebrada vai para a bolsa
   (`paraBolsa`), e os preços de reparar, restaurar e revender. Um NPC conserta com o serviço `{ "type": "oficina", "reparar":

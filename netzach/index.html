@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Netzach">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="stylesheet" href="css/netzach.css?v=20261123-3">
+<link rel="stylesheet" href="css/netzach.css?v=20261123-4">
 </head>
 <body>
 <div id="app">
@@ -24,6 +24,7 @@
     <section id="status" aria-label="Status">
       <div class="row"><b id="pname"></b><span id="lv">Nível 1</span></div>
       <div class="bar hp"><i id="hp-bar"></i><span id="hp-t"></span></div>
+      <div class="bar mana" id="mana" hidden><i id="mana-bar"></i><span id="mana-t"></span></div>
       <div class="bar xp"><i id="xp-bar"></i></div>
       <div class="row small"><span id="pots"></span><span id="coins"></span><span id="bag"></span></div>
       <button id="q-toggle" type="button" aria-controls="quests" aria-expanded="true" hidden><span>Missões (<span id="q-count">0</span>)</span></button>
@@ -36,6 +37,7 @@
 
     <div id="cross"></div>
     <div id="prog" hidden><i></i></div>
+    <div id="golpe" hidden><i></i></div><!-- barra de ação: quanto falta para o próximo ataque do jogador -->
     <div id="hover" hidden></div>
     <div id="macro-line" aria-live="polite"></div>
     <div id="toast" hidden></div>
@@ -44,6 +46,7 @@
     <div id="marks"></div>
     <div id="seta-obj" hidden aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 30 L20 23 L5 30 Z"/></svg><small></small></div>
 
+    <nav id="magias" aria-label="Magias" hidden></nav>
     <nav id="bar" aria-label="Ações">
       <button type="button" class="icon" data-cmd="char" aria-label="Personagem" title="Personagem (I equipamento · B bolsa)">
         <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
@@ -331,6 +334,10 @@
             <button type="button" data-dbg="away600">Simular 10 h fora (teto de 4 h)</button>
             <button type="button" data-dbg="hurt">Perder 15 de vida</button>
             <button type="button" data-dbg="coins">Ganhar 50 moedas</button>
+            <button type="button" data-dbg="magias">Magias de teste: desligadas</button>
+            <button type="button" data-dbg="limite">Magia limitada por: mana</button>
+            <button type="button" data-dbg="maestria">Subir 1 nível de maestria (arma da mão)</button>
+            <button type="button" data-dbg="prof">Subir 1 nível nas duas magias</button>
             <button type="button" data-dbg="reset" class="danger">Recomeçar do zero</button>
           </div>
         </div>
@@ -340,14 +347,14 @@
   </section>
 </div>
 
-<script src="js/erros.js?v=20261123-3"></script>
-<script src="js/conta.js?v=20261123-3"></script>
-<script src="js/sim.js?v=20261123-3"></script>
-<script src="js/ceu.js?v=20261123-3"></script>
-<script src="js/view.js?v=20261123-3"></script>
-<script src="js/controle.js?v=20261123-3"></script>
-<script src="js/som.js?v=20261123-3"></script>
-<script src="js/campanha.js?v=20261123-3"></script>
-<script src="js/ui.js?v=20261123-3"></script>
+<script src="js/erros.js?v=20261123-4"></script>
+<script src="js/conta.js?v=20261123-4"></script>
+<script src="js/sim.js?v=20261123-4"></script>
+<script src="js/ceu.js?v=20261123-4"></script>
+<script src="js/view.js?v=20261123-4"></script>
+<script src="js/controle.js?v=20261123-4"></script>
+<script src="js/som.js?v=20261123-4"></script>
+<script src="js/campanha.js?v=20261123-4"></script>
+<script src="js/ui.js?v=20261123-4"></script>
 </body>
 </html>

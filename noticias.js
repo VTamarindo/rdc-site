@@ -3,6 +3,23 @@ window.NOTICIAS = [
  {
   "jogo": "Netzach",
   "data": "2026-11-23",
+  "titulo": "A medida do golpe",
+  "texto": "Combate mais lento e punitivo, bichos que armam o bote, 15 níveis de maestria, arco que precisa de treino e o Campo de treinamento no site.",
+  "simbolo": "⚔",
+  "tom": "ferro",
+  "imagem": "",
+  "cena": [
+   "serpente",
+   "soldado_escudo",
+   "lobo",
+   "troll"
+  ],
+  "link": "noticias/a-medida-do-golpe.html",
+  "botao": "Ler a notícia"
+ },
+ {
+  "jogo": "Netzach",
+  "data": "2026-11-23",
   "titulo": "Mochila leve",
   "texto": "A tela preta foi corrigida, e o jogo roda em torno do dobro da velocidade em computador sem placa de vídeo.",
   "simbolo": "✧",

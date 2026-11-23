@@ -1,0 +1,43 @@
+/* Romance de Cavalaria · páginas do projeto Netzach (projetos/). Carregue depois de portal.css e noticia.css */
+.pj-topo { min-height: 340px; }
+.pj-abas { display: flex; flex-wrap: wrap; gap: 4px; margin: 18px 0 0; border-bottom: 1px solid var(--line); }
+.pj-abas a { padding: 10px 18px; text-decoration: none; color: var(--mute); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pj-abas a:hover { color: var(--txt); }
+.pj-abas a[aria-current] { color: var(--tom); border-color: var(--tom); }
+.pj-acao { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 4px; }
+.pj-ficha { display: grid; grid-template-columns: max-content 1fr; gap: 0 20px; margin: 0 0 16px; }
+.pj-ficha dt, .pj-ficha dd { margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
+.pj-ficha dt { color: var(--tom); }
+.pj-ficha dd { color: #c8c6bf; }
+.pj-loja h3, .pj-disp h3 { margin: 0 0 6px; font-weight: normal; font-size: 18px; color: var(--tom); }
+.pj-loja { padding: 16px 18px; border: 1px dashed var(--line); border-radius: 10px; }
+.pj-loja p { margin: 0; color: var(--mute); }
+.pj-itens { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.pj-itens article { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.pj-itens img { width: 100%; image-rendering: pixelated; }
+.pj-itens .btn { margin-top: auto; }
+.pj-disp { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+.pj-noticias { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.pj-noticias a { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: #c8c6bf; }
+.pj-noticias a:hover { border-color: var(--tom); }
+.pj-noticias b { font-weight: normal; font-size: 18px; }
+.pj-noticias small { color: var(--mute); }
+
+/* campo de treinamento */
+.ct { padding: 28px 0 8px; }
+.ct label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--mute); }
+.ct select, .ct input { font: inherit; font-size: 16px; min-height: 42px; padding: 6px 10px; color: var(--txt); background: #14161e; border: 1px solid var(--line); border-radius: 8px; width: 100%; box-sizing: border-box; }
+.ct select:focus-visible, .ct input:focus-visible { outline: 2px solid var(--tom); outline-offset: 1px; }
+.ct-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.ct-res { margin: 16px 0 22px; padding: 12px 16px; border-left: 2px solid var(--tom); background: var(--fundo); color: #d5d1c4; }
+.ct-cartas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.ct-cartas article { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: #12141b; }
+.ct-cartas h2 { margin: 0; }
+.ct-cartas h2 small { font-size: 14px; color: var(--mute); }
+#ct-peca { display: flex; flex-direction: column; gap: 12px; }
+#ct-peca[hidden] { display: none; }
+.ct-saida { padding-top: 12px; border-top: 1px solid var(--line); }
+.ct-saida b { display: block; font-weight: normal; font-size: 38px; line-height: 1.1; color: var(--tom); font-variant-numeric: tabular-nums; }
+.ct-saida small { display: block; color: var(--mute); margin-bottom: 8px; font-size: 15px; }
+.ct-saida p { margin: 4px 0; color: #c8c6bf; font-size: 15px; }
+@media (max-width: 600px) { .pj-ficha { grid-template-columns: 1fr; gap: 0; } .pj-ficha dd { border-top: 0; padding-top: 0; } }

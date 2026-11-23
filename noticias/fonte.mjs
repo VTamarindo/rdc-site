@@ -17,6 +17,56 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export default (G) => [
   {
+    slug: 'a-medida-do-golpe', jogo: 'Netzach', data: '2026-11-23', simbolo: '⚔', tom: 'ferro',
+    titulo: 'A medida do golpe',
+    resumo: 'Combate mais lento e punitivo, bichos que armam o bote, 15 níveis de maestria, arco que precisa de treino e o Campo de treinamento no site.',
+    abre: 'O aprendiz bate muitas vezes. O mestre espera o lobo se abaixar, dá um passo para trás e bate uma.',
+    cena: ['serpente', 'soldado_escudo', 'lobo', 'troll'],
+    partes: [
+      {
+        icone: '⏳', titulo: 'Cada golpe pesa',
+        texto: 'O combate ficou mais lento e mais punitivo no começo, para que cada evolução tenha gosto de conquista. Uma **barra de ação** abaixo da mira mostra quando sai o seu próximo ataque.',
+        tabela: { cabeca: ['Arma', 'Sem maestria', 'No nível 15'], linhas: Object.keys(G.weaponClasses).filter((k) => k[0] !== '_').map((k) => [G.weaponClasses[k].name, 'um ataque a cada ' + num(G.weaponClasses[k].ritmo[0]) + ' s', 'a cada ' + num(G.weaponClasses[k].ritmo[1]) + ' s']) },
+        nota: 'O ritmo é o mesmo para todas as armas da classe. O dano da espada de ostanita, do machado de duas faces e do arco longo foi acertado para compensar. De mãos nuas, um ataque a cada 4 s.'
+      },
+      {
+        icone: '☠', titulo: 'A finta',
+        texto: 'Lobo, serpente, escorpião e troll agora atacam a cada 3 segundos e **param um instante, abaixados**, antes do golpe. Saia do alcance nesse momento e você escapa.',
+        antes: 'Eles batiam assim que chegavam perto, sem aviso.', agora: 'Dá para ler o golpe e esquivar. A macro não esquiva.'
+      },
+      {
+        icone: '✦', titulo: 'Quinze níveis de maestria',
+        texto: 'A maestria virou uma escada de 15 níveis para cada classe de arma. O primeiro nível pede ' + num(G.maestria.golpes) + ' ataques, e cada um custa 60% a mais que o anterior.',
+        itens: [
+          'Todo ataque conta, mesmo errando. **Na macro, vale metade.**',
+          'O efeito só muda quando o nível sobe, e os últimos níveis dão mais que os primeiros.',
+          'No nível 15, a arma quebra 25% menos e o crítico ganha 7% em uso, ou 4% na macro.',
+          'A maestria de quem já jogava **recomeça do zero**, para todos.'
+        ],
+        antes: 'Com 300 golpes, a maestria já chegava a 50%.', agora: 'O começo é rápido; o fim é para quem dedicou a vida à arma.'
+      },
+      {
+        icone: '➹', titulo: 'O arco precisa de mão',
+        texto: 'O tiro pode acertar em cheio, de raspão (um terço do dano) ou errar. A maestria muda as chances.',
+        tabela: { cabeca: ['Maestria', 'Em cheio', 'De raspão', 'Erra'], linhas: [0, 1].map((i) => { const A = G.weaponClasses.arco.acerto; return [i ? 'Nível 15' : 'Nível 0', pct(A.cheio[i]), pct(A.raspao[i]), pct(1 - A.cheio[i] - A.raspao[i])]; }) }
+      },
+      {
+        icone: '⌂', titulo: 'O Netzach ganhou uma casa no site',
+        texto: 'Em Projetos, o Netzach agora tem a própria página, com informações, preços, dispositivos e notícias.',
+        itens: [
+          '**Mecânicas:** como o jogo funciona, explicado em palavras.',
+          '**Campo de treinamento:** diga a arma, a criatura e o nível de maestria, e ele estima quanto tempo leva para conseguir um item raro ou subir de nível.',
+          'A seção de preços está pronta para o futuro. Hoje nada é vendido.'
+        ]
+      }
+    ],
+    aberto: [
+      { titulo: 'O equilíbrio', texto: 'O combate novo ainda foi pouco jogado. Está difícil demais, ou no ponto? Conte com que arma, contra quem e em que nível.' },
+      { titulo: 'O caminho até o 15', texto: 'O último nível de maestria pede uma dedicação enorme. É longe demais?' },
+      { titulo: 'A finta no celular', texto: 'Dá tempo de ver o bicho se abaixar e sair do alcance no seu aparelho?' }
+    ]
+  },
+  {
     slug: 'mochila-leve', jogo: 'Netzach', data: '2026-11-23', simbolo: '✧', tom: 'ceu',
     titulo: 'Mochila leve',
     resumo: 'A tela preta foi corrigida, e o jogo roda em torno do dobro da velocidade em computador sem placa de vídeo.',
@@ -186,7 +236,8 @@ export default (G) => [
       { titulo: 'Lojas especiais', texto: 'Alguns ferreiros escolhidos vão vender até a qualidade ideal e a raridade incomum. Nenhum da vila é um deles ainda.' },
       { titulo: 'Onde achar o que é raro', texto: 'Faltam os bandidos, os orcs, os goblins, as masmorras e as missões que dão equipamento.' }
     ],
-    depois: [['2026-11-23', 'Se a arma quebra com a macro ligada, o personagem para e volta à praça, em vez de seguir lutando de mãos nuas.']]
+    depois: [['2026-11-23', 'Se a arma quebra com a macro ligada, o personagem para e volta à praça, em vez de seguir lutando de mãos nuas.'],
+      ['2026-11-23', 'A maestria virou 15 níveis por classe de arma, recomeçou do zero para todos e reduz a quebra em até um quarto. A forja desta página guarda as contas da época.']]
   },
   {
     slug: 'musica-epica-no-menu', jogo: 'Netzach', data: '2026-11-10', simbolo: '♫', tom: 'vinho',

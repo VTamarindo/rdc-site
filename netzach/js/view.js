@@ -2125,6 +2125,7 @@
       o.at(x, self.chao(x, z) + (moving ? Math.abs(Math.sin(t / 110)) * (PULO[mb.kind] || 0) : 0), z);
       if (self.art.anims && self.art.anims[o.userData.img]) { self.anima(o, mb.face, moving, dt); } // desenhado no Aseprite
       else if (DE_LADO[mb.kind]) { var fc = Math.sin(mb.face) * rx + Math.cos(mb.face) * rz; if (Math.abs(fc) > 0.05) { o.scale[0] = fc > 0 ? -1 : 1; } }
+      o.scale[1] = mb.prep > 0 ? 0.86 : 1; // a finta: abaixa antes de dar o bote
       var f = self.flash[mb.id] || 0;
       o.emissive = f > 0 ? [0.7, 0.05, 0.02] : [0, 0, 0];
       if (f > 0) { self.flash[mb.id] = f - dt; }

@@ -421,7 +421,7 @@
       player: {
         name: '', x: sp.x, z: sp.z, yaw: Math.PI, hp: G.player.hpBase, lv: 1, xp: 0, rep: 0,
         inv: JSON.parse(JSON.stringify(G.player.startItems)), stance: 'ofensiva',
-        equip: newEquip(G, G.player.startEquip), attr: newAttr(G), pts: 0, maestria: {}, afiada: null, // afiada: a pedra de amolar na arma da mão { arma, n golpes, mult } // pts: pontos de atributo ainda por gastar
+        equip: newEquip(G, G.player.startEquip), attr: newAttr(G), pts: 0, maestria: {}, prof: {}, mana: null, magCd: {}, afiada: null, // prof: tentativas por magia; mana null = cheia; afiada: a pedra de amolar na arma da mão { arma, n golpes, mult } // pts: pontos de atributo ainda por gastar
         potCd: 0, atkCd: 0, combatT: 99, action: null, goto: null,
         mode: 'manual', mapNav: 'caminhada', // mapNav: o que o clique no mapa faz por padrão ('caminhada' ou 'macro')
         macro: { area: null, on: false, phase: 'idle', stop: '', path: null, goal: null, repath: 0 }
@@ -430,6 +430,7 @@
       nodes: {}, mobs: [], farm: {},
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
+      magias: { on: false, limite: G.magias.limite }, // magias de teste (modo desenvolvedor)
       saque: [], saqueDeixa: {}, // saque no chão e o que a macro deixa de pegar (ver deixaSaque)
       nomes: {}, // nomes[id]: nome de quem substituiu a pessoa (só em saves da época em que dava para atacar a vila)
       log: []
@@ -475,9 +476,9 @@
     return {
       hp: P.hpBase + (p.lv - 1) * P.hpPerLv + Math.round(b.hp || 0),
       weapon: W === wp ? p.equip.arma : null, cls: C ? wp.class : null, noAmmo: noAmmo,
-      min: W.dmg[0] * mul, max: W.dmg[1] * mul, interval: W.interval / (1 + (b.haste || 0)), reach: W.reach,
+      min: W.dmg[0] * mul, max: W.dmg[1] * mul, interval: (C ? ritmo(w, p, wp.class) : W.interval) / (1 + (b.haste || 0)), reach: W.reach,
       ranged: ranged, ammo: C && C.ammo ? C.ammo : null,
-      crit: Math.min(1, P.critBase + (b.crit || 0)), critMult: P.critMult + (b.critMult || 0), def: P.defBase + (b.def || 0),
+      crit: Math.min(1, P.critBase + (b.crit || 0) + (C ? critMaestria(w, p, wp.class, naMacro(p)) : 0)), critMult: P.critMult + (b.critMult || 0), def: P.defBase + (b.def || 0),
       move: 1 + (b.move || 0), regen: 1 + (b.regen || 0), xp: 1 + (b.xp || 0), potion: 1 + (b.potion || 0),
       gather: gby, buy: 1 - (b.discount || 0), sell: 1 + (b.markup || 0), rep: 1 + (b.rep || 0),
       bag: G.settings.bagCapacity + Math.floor((b.bag || 0) + 1e-9)
@@ -597,8 +598,30 @@
     variante(G, id);
     return id;
   }
-  // maestria de 0 a 1 numa classe de arma: aprende com o uso
-  function maestria(w, p, cls) { var M = w.game.maestria, n = (p.maestria && p.maestria[cls]) || 0; return n / (n + M.meio); }
+  // maestria numa classe de arma: aprende com o uso, em níveis que custam cada vez mais (game.json → maestria).
+  // { lv, tem e falta (golpes dentro do nível atual), usos }; no último nível, falta = 0
+  function custoMaestria(G, lv) { return Math.round(G.maestria.golpes * Math.pow(G.maestria.cresce, lv - 1)); }
+  function nivelMaestria(w, p, cls) { return nivelDe(w.game, (p.maestria && p.maestria[cls]) || 0); }
+  function nivelDe(G, n) {
+    var usos = n, lv = 0, c;
+    while (lv < G.maestria.niveis && n >= (c = custoMaestria(G, lv + 1))) { n -= c; lv++; }
+    return { lv: lv, usos: usos, tem: n, falta: lv < G.maestria.niveis ? custoMaestria(G, lv + 1) - n : 0 };
+  }
+  // quanto do efeito o nível dá, de 0 a 1: cada nível dá mais que o anterior
+  function efeitoMaestria(G, lv) { var N = G.maestria.niveis; return lv * (lv + 1) / (N * (N + 1)); }
+  function maestria(w, p, cls) { return efeitoMaestria(w.game, nivelMaestria(w, p, cls).lv); }
+  function naMacro(p) { return p.mode === 'macro' && !!(p.macro && p.macro.on); }
+  function treino(w, p) { return naMacro(p) ? w.game.maestria.macro : 1; } // quanto uma tentativa treina
+  function entre(v, e) { return v[0] + (v[1] - v[0]) * e; } // do primeiro ao último nível, pelo efeito e
+  // segundos entre ataques com a classe (sem o bônus de velocidade, que divide)
+  function ritmo(w, p, cls) { return entre(w.game.weaponClasses[cls].ritmo, maestria(w, p, cls)); }
+  // { cheio, raspao, erra } de uma tabela de acerto, com o efeito e
+  function chances(A, e) { var c = entre(A.cheio, e), r = entre(A.raspao, e); return { cheio: c, raspao: r, erra: Math.max(0, 1 - c - r) }; }
+  function sorteAcerto(st, A, e, fraco) { var c = chances(A, e), q = rnd(st); return q < c.cheio ? 1 : q < c.cheio + c.raspao ? fraco : 0; }
+  function nivelMagia(w, p, id) { return nivelDe(w.game, (p.prof && p.prof[id]) || 0); }
+  function proficiencia(w, p, id) { return efeitoMaestria(w.game, nivelMagia(w, p, id).lv); }
+  function manaMax(w, p) { var M = w.game.magias.mana; return M.base + (p.lv - 1) * M.porNivel; }
+  function critMaestria(w, p, cls, macro) { var M = w.game.maestria; return (macro ? M.criticoMacro : M.critico) * maestria(w, p, cls); }
   // chance de a arma quebrar no próximo golpe (peça de defesa não rola dado: se gasta)
   function chanceQuebra(w, p, id, cls) {
     var G = w.game, d = G.items[id];
@@ -769,7 +792,7 @@
     var w = this.w, p = st.player, pl = w.plaza;
     p.x = pl.x; p.z = pl.z + 1; p.hp = Math.round(maxHp(w, p) * w.game.player.faintHpFrac);
     p.action = null; p.goto = null; p.poison = null; st.stats.faints++;
-    st.mobs.forEach(function (m) { m.fight = false; });
+    st.mobs.forEach(function (m) { m.fight = false; m.prep = 0; });
     this.stopMacro(st, 'Você desmaiou e foi levado à praça.');
     this.log(st, 'Você desmaiou e acordou na praça.');
     this.emit(st, { type: 'faint' });
@@ -815,13 +838,23 @@
     var w = this.w, G = w.game, p = st.player, id = p.equip.arma, d = id && G.items[id];
     if (!d || d.quebrada) { return false; }
     var quebrou = rnd(st) < chanceQuebra(w, p, id, cls);
-    p.maestria = p.maestria || {}; p.maestria[cls] = (p.maestria[cls] || 0) + 1;
+    var lv = nivelMaestria(w, p, cls).lv;
+    p.maestria = p.maestria || {}; p.maestria[cls] = (p.maestria[cls] || 0) + treino(w, p);
+    if (nivelMaestria(w, p, cls).lv > lv) { this.subiuMaestria(st, cls, lv + 1); }
     if (!quebrou) { return false; }
     p.equip.arma = null; p.afiada = null;
     this.quebrou(st, d, pecaId(G, d.base || id, d.q, d.r, 0, true), true);
     // com a macro ligada: para de trabalhar e volta à praça mais próxima (macroTick, fase 'quebrou')
     if (p.mode === 'macro' && p.macro.on) { p.macro.phase = 'quebrou'; p.macro.path = null; p.macro.goal = null; }
     return true;
+  };
+  Sim.prototype.subiuMaestria = function (st, cls, lv) {
+    var G = this.w.game, M = G.maestria, e = efeitoMaestria(G, lv);
+    function pc(v) { return (Math.round(v * 10000) / 100).toLocaleString('pt-BR') + '%'; }
+    function num1(v) { return (Math.round(v * 100) / 100).toLocaleString('pt-BR'); }
+    this.log(st, 'Maestria de ' + G.weaponClasses[cls].name.toLowerCase() + ': nível ' + lv + ' de ' + M.niveis + '. A arma quebra ' + pc(M.corte * e) +
+      ' menos, o ritmo é de ' + num1(entre(G.weaponClasses[cls].ritmo, e)) + ' s e o crítico ganha ' + pc(M.critico * e) + ' (' + pc(M.criticoMacro * e) + ' na macro).');
+    this.emit(st, { type: 'maestria', cls: cls, lv: lv });
   };
   // cada golpe recebido gasta todas as peças de defesa vestidas (oficina.desgaste); a que chega a zero quebra
   Sim.prototype.gastaDefesa = function (st) {
@@ -856,7 +889,20 @@
   // persegue e bate. smart: sem linha livre até o jogador, segue o A* (refeito a cada 1,5 s), para contornar as casas
   Sim.prototype.chase = function (st, e, def, dt, smart) {
     var w = this.w, p = st.player, d = dist(e.x, e.z, p.x, p.z);
-    if (d <= def.reach) { e.path = null; if (e.atkCd <= 0) { this.hitPlayer(st, e, def); } return; }
+    // finta: quem tem 'prepara' para esse tempo antes do golpe; quem sair do alcance nesse meio-tempo escapa
+    if (e.prep > 0) {
+      e.prep -= dt; e.face = Math.atan2(p.x - e.x, p.z - e.z);
+      if (e.prep > 1e-6) { return; }
+      var sobra = e.prep; e.prep = 0;
+      if (d <= def.reach) { this.hitPlayer(st, e, def); if (e.fight) { e.atkCd = def.interval - def.prepara + sobra; } }
+      else { e.atkCd = def.interval - def.prepara + sobra; this.emit(st, { type: 'esquiva', id: e.id }); }
+      return;
+    }
+    if (d <= def.reach) {
+      e.path = null;
+      if (e.atkCd <= 0) { if (def.prepara) { e.prep = def.prepara; } else { this.hitPlayer(st, e, def); } }
+      return;
+    }
     var tx = p.x, tz = p.z, direct = true;
     if (smart && !w.los(e.x, e.z, p.x, p.z)) {
       e.repath = (e.repath || 0) - dt;
@@ -911,12 +957,22 @@
     var w = this.w, p = st.player, G = w.game, def = G.monsters[m.kind], s = stats(w, p);
     var af = p.afiada && p.afiada.n > 0 && p.afiada.arma === s.weapon ? p.afiada : null; // pedra de amolar
     var h = this.strike(st, s, mobStats(def), G.stances[p.stance].dmg * (af ? 1 + af.mult : 1));
+    // arco: pode errar ou raspar (weaponClasses → acerto); o ataque gasta e treina do mesmo jeito
+    var WC = s.weapon && s.cls ? G.weaponClasses[s.cls] : null, acerto = WC && WC.acerto ? sorteAcerto(st, WC.acerto, maestria(w, p, s.cls), WC.fraco) : 1;
+    if (acerto < 1) { h.n = acerto ? Math.max(1, Math.round(h.n * acerto)) : 0; h.crit = h.crit && acerto > 0; }
     if (af) { af.n--; if (!af.n) { p.afiada = null; this.log(st, 'O fio da pedra de amolar acabou.'); } }
     this.useAmmo(st, s);
     if (s.weapon && s.cls) { this.usaArma(st, s.cls); }
-    m.hp -= h.n; m.fight = true; p.atkCd = s.interval; p.combatT = 0;
-    this.emit(st, { type: 'hit', who: 'mob', id: m.id, x: m.x, z: m.z, n: h.n, crit: h.crit, ranged: s.ranged });
+    m.fight = true; p.atkCd = p.atkMax = s.interval; p.combatT = 0;
+    this.emit(st, { type: 'hit', who: 'mob', id: m.id, x: m.x, z: m.z, n: h.n, crit: h.crit, ranged: s.ranged, raspao: acerto > 0 && acerto < 1, errou: !acerto });
+    this.fere(st, m, h.n);
+  };
+  // tira n de vida do bicho (arma ou magia) e, se ele cair, dá o que é de dar
+  Sim.prototype.fere = function (st, m, n) {
+    var G = this.w.game, p = st.player, def = G.monsters[m.kind];
+    m.hp -= n; m.fight = true;
     if (m.hp <= 0) {
+      m.prep = 0;
       m.alive = false; m.fight = false; m.left = def.respawn;
       st.stats.kills++;
       for (var q in st.quests) { if (st.quests[q] === 'active') { st.qkills[q] = st.qkills[q] || {}; st.qkills[q][m.kind] = (st.qkills[q][m.kind] || 0) + 1; } }
@@ -926,6 +982,54 @@
       this.deixaSaque(st, m, def); // fica no chão; a macro pega sozinha o que estiver marcado
       if (p.action && p.action.id === m.id) { p.action = null; }
     }
+  };
+
+  // ---------- magias (teste, só no modo desenvolvedor) ----------
+  // o que impede a magia agora ('' = nada). O alvo vem de alvoMagia
+  Sim.prototype.impedeMagia = function (st, id) {
+    var w = this.w, p = st.player, M = w.game.magias, d = M.lista[id], S = st.magias;
+    if (!d || !S || !S.on) { return 'As magias ainda não existem neste mundo.'; }
+    if (S.limite !== 'mana' && p.magCd[id] > 0) { return d.name + ': espere ' + fmtLeft(p.magCd[id]) + '.'; }
+    if (S.limite !== 'espera' && (typeof p.mana === 'number' ? p.mana : manaMax(w, p)) < d.mana) { return 'Mana insuficiente.'; }
+    return '';
+  };
+  // quem recebe: na magia de dano, o bicho marcado; sem marca, o que está lutando mais perto ou o que está à frente
+  Sim.prototype.alvoMagia = function (st, id) {
+    var w = this.w, p = st.player, d = w.game.magias.lista[id], best = null, bd = 1e9;
+    if (d.tipo === 'cura') { return p.hp < maxHp(w, p) ? p : null; }
+    function vale(m) { return m && m.alive && dist(p.x, p.z, m.x, m.z) <= d.alcance && w.los(p.x, p.z, m.x, m.z); }
+    var marcado = p.action && p.action.type === 'attack' ? this.mobById(st, p.action.id) : null;
+    if (vale(marcado)) { return marcado; }
+    if (naMacro(p)) { return null; }
+    st.mobs.forEach(function (m) {
+      if (!vale(m)) { return; }
+      var q = dist(p.x, p.z, m.x, m.z), ang = Math.abs(Math.atan2(Math.sin(Math.atan2(m.x - p.x, m.z - p.z) - p.yaw), Math.cos(Math.atan2(m.x - p.x, m.z - p.z) - p.yaw)));
+      if (!m.fight && ang > 0.45) { return; }
+      if (q < bd) { bd = q; best = m; }
+    });
+    return best;
+  };
+  // lança: devolve '' se saiu (inteira, fraca ou falhada) ou o motivo de não ter tentado. A tentativa gasta e treina sempre
+  Sim.prototype.lanca = function (st, id) {
+    var w = this.w, p = st.player, G = w.game, M = G.magias, d = M.lista[id], motivo = this.impedeMagia(st, id);
+    if (motivo) { return motivo; }
+    var alvo = this.alvoMagia(st, id);
+    if (!alvo) { return d.tipo === 'cura' ? 'Você já está com a vida cheia.' : 'Nenhum alvo à vista.'; }
+    if (typeof p.mana !== 'number') { p.mana = manaMax(w, p); }
+    if (st.magias.limite !== 'espera') { p.mana -= d.mana; }
+    if (st.magias.limite !== 'mana') { p.magCd[id] = d.espera; }
+    var f = sorteAcerto(st, M.acerto, proficiencia(w, p, id), M.fraco), lv = nivelMagia(w, p, id).lv, v = d.dmg || d.cura, n = 0;
+    p.prof[id] = (p.prof[id] || 0) + treino(w, p);
+    if (f) { n = Math.max(1, Math.round(entre(v, rnd(st)) * f * (d.tipo === 'dano' ? 1 - armorCut(w, mobStats(G.monsters[alvo.kind]).def) : 1))); }
+    if (d.tipo === 'cura') { n = Math.min(n, Math.max(0, Math.ceil(maxHp(w, p) - p.hp))); p.hp = Math.min(maxHp(w, p), p.hp + n); }
+    this.emit(st, { type: 'magia', id: id, alvo: d.tipo === 'dano' ? alvo.id : null, x: alvo.x, z: alvo.z, n: n, fraca: f > 0 && f < 1, falhou: !f });
+    if (nivelMagia(w, p, id).lv > lv) {
+      var c = chances(M.acerto, proficiencia(w, p, id));
+      this.log(st, 'Proficiência em ' + d.name.toLowerCase() + ': nível ' + (lv + 1) + ' de ' + G.maestria.niveis + '. Agora falha ' + Math.round(c.erra * 100) + '% das vezes.');
+      this.emit(st, { type: 'proficiencia', id: id, lv: lv + 1 });
+    }
+    if (d.tipo === 'dano') { p.combatT = 0; alvo.fight = true; this.fere(st, alvo, n); }
+    return '';
   };
 
   Sim.prototype.finishGather = function (st, n) {
@@ -1029,6 +1133,8 @@
           break;
         case 'hp_below': if (hpPct < r.val) { return { act: 'retreat_rest' }; } break;
         case 'bag_full': if (bagCount(w, p) >= bagCap(w, p)) { return { act: 'retreat_stop' }; } break;
+        case 'magia_cura': if (st.magias && st.magias.on && hpPct < r.val && !this.impedeMagia(st, def.magia)) { return { act: 'magia', id: def.magia }; } break;
+        case 'magia_ataque': if (st.magias && st.magias.on && !this.impedeMagia(st, def.magia) && this.alvoMagia(st, def.magia)) { return { act: 'magia', id: def.magia }; } break;
         case 'mob_in_area': {
           var cur = p.action && p.action.type === 'attack' ? this.mobById(st, p.action.id) : null;
           var mob = (cur && cur.alive) ? cur : this.nearestMob(st);
@@ -1081,6 +1187,7 @@
     var d = this.decide(st);
     switch (d.act) {
       case 'drink': this.drink(st); return;
+      case 'magia': this.lanca(st, d.id); return;
       case 'retreat_rest':
         m.phase = 'retreat'; st.stats.retreats++; this.log(st, 'Vida baixa: recuando para a praça.'); return;
       case 'retreat_stop':
@@ -1175,7 +1282,7 @@
     if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = true; m.wait = 0; }
     if (m.fight) {
       if (dist(m.x, m.z, sp.x, sp.z) > def.leash || dist(m.x, m.z, p.x, p.z) > def.leash) {
-        m.fight = false; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
+        m.fight = false; m.prep = 0; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
       }
       this.chase(st, m, def, dt, false);
       return;
@@ -1261,6 +1368,10 @@
     p.potCd = Math.max(0, p.potCd - dt);
     p.atkCd = Math.max(0, p.atkCd - dt);
     p.combatT += dt;
+    if (st.magias && st.magias.on) {
+      var mm = manaMax(w, p); p.mana = Math.min(mm, (typeof p.mana === 'number' ? p.mana : mm) + G.magias.mana.porSeg * dt);
+      for (var mg in p.magCd) { if (p.magCd[mg] > 0) { p.magCd[mg] = Math.max(0, p.magCd[mg] - dt); } }
+    }
     if (p.poison) { // envenenado não se recupera sozinho
       p.hp -= p.poison.dps * dt; p.poison.t -= dt; p.combatT = 0;
       if (p.poison.t <= 0) { p.poison = null; this.log(st, 'O veneno passou.'); }
@@ -1638,12 +1749,14 @@
   // formato n para o n + 1, e os saves velhos passam por todas, em ordem, ao abrir. Assim ninguém perde o progresso.
   // Campo novo com valor padrão não precisa de formato novo: basta o padrão em NZ.migrate (abaixo) ou em NZ.settle.
   // (O recomeço do zero por SAVE_VER, em js/ui.js, só vale com game.json → settings.resetSaveOnNewVersion, para emergência.)
-  var FORMATO_SAVE = 2;
+  var FORMATO_SAVE = 3;
   var MIGRACOES = {
     // exemplo: 1: function (st) { st.player.bolsa = st.player.inv; delete st.player.inv; }
     // 2: peças com qualidade, raridade e desgaste no id (espada_aco~5~3). Nada a converter: o formato novo só impede que uma
     // versão velha do jogo, em outro aparelho, abra o save e apague as peças que não conhece
-    1: function () {}
+    1: function () {},
+    // 3: a maestria virou níveis e recomeça do zero para todos
+    2: function (st) { if (st.player) { st.player.maestria = {}; } }
   };
   NZ.FORMATO_SAVE = FORMATO_SAVE;
   // saves antigos ganham os campos novos
@@ -1670,6 +1783,10 @@
     registraVariantes(G, st); // as peças com qualidade e raridade precisam da ficha antes de conferir as casas
     if (!p.maestria || typeof p.maestria !== 'object') { p.maestria = {}; } // maestria: usos por classe de arma
     if (p.afiada === undefined) { p.afiada = null; }
+    if (!p.prof || typeof p.prof !== 'object') { p.prof = {}; } // tentativas por magia
+    if (!p.magCd || typeof p.magCd !== 'object') { p.magCd = {}; }
+    if (p.mana === undefined) { p.mana = null; }
+    if (!st.magias || typeof st.magias !== 'object') { st.magias = { on: false, limite: G.magias.limite }; }
     if (!st.lojas || typeof st.lojas !== 'object') { st.lojas = {}; }
     if (!p.equip) {
       var L = G.legacyWeapons, i = Math.max(0, Math.min(L.length - 1, p.weapon | 0));
@@ -1705,7 +1822,10 @@
     // regra de macro nova entra no fim da lista do jogador; regra que saiu do jogo sai
     st.rules = st.rules.filter(function (r) { return G.macro.rules[r.id]; });
     G.macro.defaultOrder.forEach(function (id) {
-      if (!st.rules.some(function (r) { return r.id === id; })) { st.rules.push({ id: id, on: true, val: G.macro.rules[id].val }); }
+      if (st.rules.some(function (r) { return r.id === id; })) { return; }
+      var nova = { id: id, on: true, val: G.macro.rules[id].val }, antes = G.macro.rules[id].antes, i = -1; // 'antes': a regra nova entra antes daquela
+      st.rules.forEach(function (r, j) { if (r.id === antes) { i = j; } });
+      if (i >= 0) { st.rules.splice(i, 0, nova); } else { st.rules.push(nova); }
     });
     if (p.poison && !(p.poison.t > 0)) { p.poison = null; }
     if (!(st.mapa >= 4)) {
@@ -1754,5 +1874,5 @@
   NZ.newState = newState;
   NZ.calc = { maxHp: maxHp, stats: stats, mobStats: mobStats, armorCut: armorCut, bagCount: bagCount, bagCap: bagCap, buyPrice: buyPrice, sellPrice: sellPrice,
     perseguido: perseguido, potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
-    novaPeca: novaPeca, maestria: maestria, chanceQuebra: chanceQuebra, ehDefesa: ehDefesa, durabilidade: durabilidade, custoConserto: custoConserto, inteira: inteira, pecaId: pecaId, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
+    novaPeca: novaPeca, maestria: maestria, nivelMaestria: nivelMaestria, custoMaestria: custoMaestria, efeitoMaestria: efeitoMaestria, critMaestria: critMaestria, ritmo: ritmo, chances: chances, nivelMagia: nivelMagia, proficiencia: proficiencia, manaMax: manaMax, chanceQuebra: chanceQuebra, ehDefesa: ehDefesa, durabilidade: durabilidade, custoConserto: custoConserto, inteira: inteira, pecaId: pecaId, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
 })(window.NZ = window.NZ || {});
