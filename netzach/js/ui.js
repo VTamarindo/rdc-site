@@ -3,7 +3,7 @@
   'use strict';
   // TODA publicação troca VERSION aqui e o ?v= no index.html: o Cloudflare guarda js e css por 4 h no navegador,
   // e com o mesmo ?v= o HTML novo roda com o código velho. SAVE_VER só muda quando o jogo deve recomeçar do zero.
-  var VERSION = '20261123-4', SAVE_VER = '20261105-3';
+  var VERSION = '20261123-5', SAVE_VER = '20261105-3';
   var $ = function (id) { return document.getElementById(id); };
   // relógio do jogo: a hora do site, contada pelo relógio interno do navegador, que não muda com a data do aparelho.
   // sem resposta do site, usa a hora do aparelho; aí as diárias só aceitam datas que avançam (ver dayNum em sim.js)
@@ -812,7 +812,7 @@
 
     // barra de ação: enche até o próximo ataque; cheia e vermelha = o ataque sai assim que houver alvo ao alcance
     var gp = $('golpe'), alvo = a && a.type === 'attack', max = p.atkMax || calc.stats(world, p).interval;
-    gp.hidden = !(alvo || p.atkCd > 0);
+    gp.hidden = !(alvo || p.luta || p.atkCd > 0);
     if (!gp.hidden) { var f = Math.max(0, Math.min(1, 1 - (p.atkCd - acc) / max)); if (p.atkCd <= 0) { f = 1; } gp.firstChild.style.width = f * 100 + '%'; gp.classList.toggle('pronto', f >= 1); }
     magiaHud(p);
 
@@ -875,6 +875,7 @@
     var a = p.action, ph = p.macro.phase;
     if (ph === 'retreat') { return 'vida baixa, voltando à praça'; }
     if (ph === 'full') { return 'bolsa cheia, voltando à praça'; }
+    if (ph === 'foge') { return 'bicho bravo, fugindo para a praça'; }
     if (ph === 'rest') { return 'descansando na praça'; }
     if (!a) { return 'pensando'; }
     if (a.type === 'gather') { var n = world.nodeById[a.id]; return n.kind === 'arvore' ? 'cortando árvore' : n.kind === 'veio' ? 'minerando veio' : 'colhendo ' + G.nodes[n.kind].name.toLowerCase(); }
@@ -1564,7 +1565,7 @@
       rows.splice(3, 0, ['Acerto', pct(ch.cheio) + ' em cheio · ' + pct(ch.raspao) + ' de raspão (um terço do dano) · ' + pct(ch.erra) + ' erra']);
     }
     if (st.magias && st.magias.on) {
-      rows.push(['Magias', Object.keys(G.magias.lista).map(function (id) {
+      rows.push(['Proficiência', Object.keys(G.magias.lista).map(function (id) {
         var m = calc.nivelMagia(world, p, id), c = calc.chances(G.magias.acerto, calc.proficiencia(world, p, id));
         return G.magias.lista[id].name + ' nível ' + m.lv + ' (' + Math.floor(m.tem).toLocaleString('pt-BR') + ' de ' + (m.tem + m.falta).toLocaleString('pt-BR') + ', falha ' + pct(c.erra) + ')';
       }).join(' · ')]);
@@ -2585,7 +2586,7 @@
     }
     if (c === 'prof') {
       Object.keys(G.magias.lista).forEach(function (id) { var m = calc.nivelMagia(world, st.player, id); st.player.prof[id] = (st.player.prof[id] || 0) + m.falta; });
-      toast('Magias: nível ' + calc.nivelMagia(world, st.player, 'bola_de_fogo').lv); return;
+      toast('Proficiência: nível ' + calc.nivelMagia(world, st.player, 'bola_de_fogo').lv); return;
     }
     if (c === 'coins') { st.player.inv.moeda = (st.player.inv.moeda || 0) + 50; return; }
     var min = { away30: 30, away240: 240, away600: 600 }[c];

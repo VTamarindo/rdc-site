@@ -17,6 +17,45 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export default (G) => [
   {
+    slug: 'o-baile-dos-lobos', jogo: 'Netzach', data: '2026-11-23', simbolo: '❖', tom: 'mata',
+    titulo: 'O baile dos lobos',
+    resumo: 'Os bichos zanzam em volta de você antes do bote, a luta começa com as barras vazias, a macro virou ferramenta de trabalho e a maestria tem curva nova.',
+    abre: 'Dois passos, para. Três passos, para. Quem dança com o lobo aprende a hora de sair da frente.',
+    cena: ['lobo', 'soldado_lanca', 'lobo'],
+    partes: [
+      {
+        icone: '❖', titulo: 'O baile',
+        texto: 'Enquanto a barra deles enche, os bichos zanzam ao seu redor: **uns passos, uma pausa, mais uns passos**. Quando ela enche, vêm correndo, atacam e recuam, acertando ou não.',
+        itens: ['A finta do lobo, da serpente, do escorpião e do troll caiu de 0,3 para 0,18 segundo.', 'Se você correr para longe, o bicho larga o baile e vem atrás.', 'A luta começa com a **barra de ataque vazia**, para você e para eles.'],
+        antes: 'Eles ficavam parados na sua frente, batendo.', agora: 'Cada ataque é uma chance de esquivar, e cada recuo, uma chance de avançar.'
+      },
+      {
+        icone: '⚙', titulo: 'A macro é para o trabalho',
+        texto: 'Ela serve para juntar material: coelho, veado, madeira, pedra, colheita e fazenda. **Bicho bravo, não mais.**',
+        itens: ['Se um bicho bravo persegue o personagem, ele foge para a praça mais próxima, descansa e volta ao trabalho sozinho.', 'Longe dos lobos ela rende mais: marque a área fora do território deles.']
+      },
+      {
+        icone: '✦', titulo: 'Maestria com curva nova',
+        texto: 'Todos começam no **nível 1**, e o caminho até o 15 ficou mais curto.',
+        tabela: { cabeca: ['Nível', 'Ataques no total', 'Com espada, em uso'], linhas: [2, 5, 10, 13, 15].map((n) => { let t = 0; for (let i = 2; i <= n; i++) { t += Math.round(G.maestria.golpes * Math.pow(G.maestria.cresce, i - 2)); } return ['Nível ' + n, num(t), 'cerca de ' + num(Math.round(t / 400)) + ' h']; }) },
+        nota: 'Conta 400 ataques por hora, medidos com espada contra coelhos. Na macro, cada ataque vale metade. Machado e arco levam mais tempo.'
+      },
+      {
+        icone: '☄', titulo: 'Raros mais possíveis',
+        itens: ['O lobo deixa equipamento 17% das vezes; antes, 8%.', 'Uma peça rara ou melhor fica com a **melhor de duas qualidades** sorteadas.']
+      },
+      {
+        icone: '⌂', titulo: 'No site',
+        itens: ['As Mecânicas e o Campo de treinamento seguem as regras novas.', 'A maestria das magias, e depois dos milagres, agora se chama **Proficiência**.']
+      }
+    ],
+    aberto: [
+      { titulo: 'O baile', texto: 'Os bichos estão fáceis de ler, ou rápidos demais? E no celular, dá para esquivar?' },
+      { titulo: 'Itens raros', texto: 'As chances de saque ainda vão passar por um balanceamento completo. O que vale a pena ser raro, e quanto?' },
+      { titulo: 'Macro perto dos lobos', texto: 'Se a área fica ao lado deles, o personagem vai e volta da praça várias vezes. Ela deveria parar e avisar?' }
+    ]
+  },
+  {
     slug: 'a-medida-do-golpe', jogo: 'Netzach', data: '2026-11-23', simbolo: '⚔', tom: 'ferro',
     titulo: 'A medida do golpe',
     resumo: 'Combate mais lento e punitivo, bichos que armam o bote, 15 níveis de maestria, arco que precisa de treino e o Campo de treinamento no site.',
@@ -36,7 +75,7 @@ export default (G) => [
       },
       {
         icone: '✦', titulo: 'Quinze níveis de maestria',
-        texto: 'A maestria virou uma escada de 15 níveis para cada classe de arma. O primeiro nível pede ' + num(G.maestria.golpes) + ' ataques, e cada um custa 60% a mais que o anterior.',
+        texto: 'A maestria virou uma escada de 15 níveis para cada classe de arma. O primeiro nível pede 400 ataques, e cada um custa 60% a mais que o anterior.',
         itens: [
           'Todo ataque conta, mesmo errando. **Na macro, vale metade.**',
           'O efeito só muda quando o nível sobe, e os últimos níveis dão mais que os primeiros.',
@@ -64,7 +103,8 @@ export default (G) => [
       { titulo: 'O equilíbrio', texto: 'O combate novo ainda foi pouco jogado. Está difícil demais, ou no ponto? Conte com que arma, contra quem e em que nível.' },
       { titulo: 'O caminho até o 15', texto: 'O último nível de maestria pede uma dedicação enorme. É longe demais?' },
       { titulo: 'A finta no celular', texto: 'Dá tempo de ver o bicho se abaixar e sair do alcance no seu aparelho?' }
-    ]
+    ],
+    depois: [['2026-11-23', 'A maestria passou a começar no nível 1 e cada nível custa 43,5% a mais que o anterior. A finta caiu para 0,18 segundo, os bichos zanzam antes do bote, e a macro deixou de lutar com bicho bravo.']]
   },
   {
     slug: 'mochila-leve', jogo: 'Netzach', data: '2026-11-23', simbolo: '✧', tom: 'ceu',

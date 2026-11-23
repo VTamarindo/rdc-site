@@ -3,6 +3,22 @@ window.NOTICIAS = [
  {
   "jogo": "Netzach",
   "data": "2026-11-23",
+  "titulo": "O baile dos lobos",
+  "texto": "Os bichos zanzam em volta de você antes do bote, a luta começa com as barras vazias, a macro virou ferramenta de trabalho e a maestria tem curva nova.",
+  "simbolo": "❖",
+  "tom": "mata",
+  "imagem": "",
+  "cena": [
+   "lobo",
+   "soldado_lanca",
+   "lobo"
+  ],
+  "link": "noticias/o-baile-dos-lobos.html",
+  "botao": "Ler a notícia"
+ },
+ {
+  "jogo": "Netzach",
+  "data": "2026-11-23",
   "titulo": "A medida do golpe",
   "texto": "Combate mais lento e punitivo, bichos que armam o bote, 15 níveis de maestria, arco que precisa de treino e o Campo de treinamento no site.",
   "simbolo": "⚔",

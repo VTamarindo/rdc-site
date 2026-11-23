@@ -430,7 +430,7 @@
       nodes: {}, mobs: [], farm: {},
       stats: { kills: 0, items: {}, potions: 0, xp: 0, retreats: 0, faints: 0 },
       quests: {}, qkills: {}, flags: {}, daily: { day: '', q: {} },
-      magias: { on: false, limite: G.magias.limite }, // magias de teste (modo desenvolvedor)
+      magias: { on: false, limite: G.magias.limite, v: 2 }, // magias de teste (modo desenvolvedor)
       saque: [], saqueDeixa: {}, // saque no chão e o que a macro deixa de pegar (ver deixaSaque)
       nomes: {}, // nomes[id]: nome de quem substituiu a pessoa (só em saves da época em que dava para atacar a vila)
       log: []
@@ -594,21 +594,24 @@
   }
   // uma peça nova do item base, com qualidade e raridade sorteadas (pesos de game.json → qualidade/raridade, ou os dados)
   function novaPeca(G, st, base, pq, pr) {
-    var q = sorteia(st, pq || G.qualidade.saque), r = sorteia(st, pr || G.raridade.saque), id = varId(G, base, q, r);
+    var r = sorteia(st, pr || G.raridade.saque), q = sorteia(st, pq || G.qualidade.saque), id;
+    if (r >= G.raridade.qualidadeDupla) { q = Math.max(q, sorteia(st, pq || G.qualidade.saque)); } // peça rara ou melhor: vale a melhor de duas
+    id = varId(G, base, q, r);
     variante(G, id);
     return id;
   }
   // maestria numa classe de arma: aprende com o uso, em níveis que custam cada vez mais (game.json → maestria).
   // { lv, tem e falta (golpes dentro do nível atual), usos }; no último nível, falta = 0
-  function custoMaestria(G, lv) { return Math.round(G.maestria.golpes * Math.pow(G.maestria.cresce, lv - 1)); }
+  // ataques para sair do nível anterior e chegar a lv (o nível 1 é de graça)
+  function custoMaestria(G, lv) { return lv < 2 ? 0 : Math.round(G.maestria.golpes * Math.pow(G.maestria.cresce, lv - 2)); }
   function nivelMaestria(w, p, cls) { return nivelDe(w.game, (p.maestria && p.maestria[cls]) || 0); }
   function nivelDe(G, n) {
-    var usos = n, lv = 0, c;
+    var usos = n, lv = 1, c;
     while (lv < G.maestria.niveis && n >= (c = custoMaestria(G, lv + 1))) { n -= c; lv++; }
     return { lv: lv, usos: usos, tem: n, falta: lv < G.maestria.niveis ? custoMaestria(G, lv + 1) - n : 0 };
   }
   // quanto do efeito o nível dá, de 0 a 1: cada nível dá mais que o anterior
-  function efeitoMaestria(G, lv) { var N = G.maestria.niveis; return lv * (lv + 1) / (N * (N + 1)); }
+  function efeitoMaestria(G, lv) { var N = G.maestria.niveis; return lv * (lv - 1) / (N * (N - 1)); }
   function maestria(w, p, cls) { return efeitoMaestria(w.game, nivelMaestria(w, p, cls).lv); }
   function naMacro(p) { return p.mode === 'macro' && !!(p.macro && p.macro.on); }
   function treino(w, p) { return naMacro(p) ? w.game.maestria.macro : 1; } // quanto uma tentativa treina
@@ -821,7 +824,7 @@
   Sim.prototype.hitPlayer = function (st, e, def) {
     var w = this.w, G = w.game, p = st.player;
     var h = this.strike(st, mobStats(def), stats(w, p), G.stances[p.stance].taken);
-    p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval;
+    p.hp -= h.n; p.combatT = 0; e.atkCd = def.interval; this.recua(st, e);
     this.gastaDefesa(st); // a defesa vestida se gasta a cada golpe recebido
     // veneno: dano por segundo que a armadura não corta; a picada nova renova o tempo, não soma
     if (def.poison && !(p.poison && p.poison.t > def.poison.sec)) {
@@ -895,9 +898,10 @@
       if (e.prep > 1e-6) { return; }
       var sobra = e.prep; e.prep = 0;
       if (d <= def.reach) { this.hitPlayer(st, e, def); if (e.fight) { e.atkCd = def.interval - def.prepara + sobra; } }
-      else { e.atkCd = def.interval - def.prepara + sobra; this.emit(st, { type: 'esquiva', id: e.id }); }
+      else { e.atkCd = def.interval - def.prepara + sobra; this.recua(st, e); this.emit(st, { type: 'esquiva', id: e.id }); }
       return;
     }
+    if (e.atkCd > 0 && !smart && d < def.reach + 3.2) { this.rodeia(e, p, def, dt, d, st); return; }
     if (d <= def.reach) {
       e.path = null;
       if (e.atkCd <= 0) { if (def.prepara) { e.prep = def.prepara; } else { this.hitPlayer(st, e, def); } }
@@ -917,6 +921,28 @@
     }
     e.face = Math.atan2(p.x - e.x, p.z - e.z);
   };
+  // o baile, enquanto a barra dele enche: recua depois de atacar (acertando ou não), para, anda dois ou três passos para um lado
+  // qualquer em volta do jogador, para, anda de novo... Quando a barra enche, chase vem correndo e ataca
+  Sim.prototype.rodeia = function (e, p, def, dt, d, st) {
+    var B = e.baile;
+    if (!B || (B.t -= dt) < 1e-6) {
+      // depois de andar ou recuar, para; depois de parar, anda
+      if (!B || B.fase === 'para') {
+        B = { fase: 'anda', t: (rnd(st) < 0.5 ? 2 : 3) * 0.2, lado: rnd(st) < 0.5 ? -1 : 1, r: def.reach + 0.8 + rnd(st) * 1.6, v: 0.5 + rnd(st) * 0.3 };
+      } else { B = { fase: 'para', t: 0.4 + Math.floor(rnd(st) * 3) * 0.2 }; }
+      e.baile = B;
+    }
+    var a = Math.atan2(e.x - p.x, e.z - p.z);
+    if (B.fase === 'recua') {
+      this.passo(e, a + B.desvio, def.speed * 0.8 * dt, 0.15, CERCO);
+    } else if (B.fase === 'anda') {
+      var q = a + B.lado * 0.8, tx = p.x + Math.sin(q) * B.r, tz = p.z + Math.cos(q) * B.r, dd = dist(e.x, e.z, tx, tz);
+      if (dd > 0.05 && this.passo(e, Math.atan2(tx - e.x, tz - e.z), Math.min(def.speed * B.v * dt, dd), 0.15, CERCO) === null) { B.lado = -B.lado; }
+    }
+    e.face = Math.atan2(p.x - e.x, p.z - e.z); // sempre de olho no jogador
+  };
+  // terminou o ataque: recua um pouco, meio de lado
+  Sim.prototype.recua = function (st, e) { e.baile = { fase: 'recua', t: 0.6, desvio: (rnd(st) - 0.5) * 0.9 }; };
   Sim.prototype.stopMacro = function (st, reason) {
     var m = st.player.macro;
     if (st.player.mode === 'macro') { st.player.mode = 'manual'; }
@@ -1095,7 +1121,7 @@
   Sim.prototype.nearestMob = function (st) {
     var p = st.player, best = null, bd = 1e9, self = this;
     st.mobs.forEach(function (m) {
-      if (!m.alive) { return; }
+      if (!m.alive || self.w.game.monsters[m.kind].aggro > 0) { return; } // a macro não luta com bicho bravo: foge (macroTick, 'foge')
       if (!(m.fight || self.inArea(st, m.x, m.z))) { return; }
       var d = dist(p.x, p.z, m.x, m.z); if (d < bd) { bd = d; best = m; }
     });
@@ -1163,6 +1189,17 @@
   Sim.prototype.macroTick = function (st, dt) {
     var w = this.w, G = w.game, p = st.player, m = p.macro, pl = w.plaza;
 
+    // bicho bravo perseguindo: larga tudo, corre para a praça mais próxima, descansa e depois volta ao trabalho
+    if ((m.phase === 'run' || m.phase === 'rest') && perseguido(w, st)) {
+      m.phase = 'foge'; m.path = null; m.goal = null; p.action = null; st.stats.retreats++;
+      this.log(st, 'Bicho bravo por perto: fugindo para a praça.');
+    }
+    if (m.phase === 'foge') {
+      var pf = w.pracaPerto(p.x, p.z);
+      p.action = { type: 'travel', label: 'fugindo para a praça' };
+      if (this.moveTo(st, pf.x, pf.z + 1.5, 1.2, dt, 'praca')) { m.phase = 'rest'; }
+      return;
+    }
     if (m.phase === 'rest') {
       p.hp = Math.min(maxHp(w, p), p.hp + G.player.restRegenPerSec * dt);
       p.action = { type: 'rest' };
@@ -1274,12 +1311,14 @@
       return;
     }
     m.atkCd -= dt;
+    if (m.fight && !m.luta) { m.atkCd = def.interval; m.baile = null; } // entrou na luta: a barra começa vazia
+    m.luta = m.fight;
     if (m.calm > 0) { m.calm -= dt; }
     var step, d, dx, dz;
     if (def.flee && this.flee(st, m, def, sp, dt)) { return; }
     // bicho bravo (aggro = raio em m): ataca quem chega perto, mas só dentro da sua área (leash) e não logo depois de desistir,
     // senão ficaria preso entre atacar e voltar para casa
-    if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = true; m.wait = 0; }
+    if (!m.fight && def.aggro && !(m.calm > 0) && dist(m.x, m.z, p.x, p.z) <= def.aggro && dist(p.x, p.z, sp.x, sp.z) <= def.leash) { m.fight = m.luta = true; m.wait = 0; m.atkCd = def.interval; m.baile = null; }
     if (m.fight) {
       if (dist(m.x, m.z, sp.x, sp.z) > def.leash || dist(m.x, m.z, p.x, p.z) > def.leash) {
         m.fight = false; m.prep = 0; m.hp = def.hp; m.wx = sp.x; m.wz = sp.z; m.calm = 6; return;
@@ -1368,6 +1407,10 @@
     p.potCd = Math.max(0, p.potCd - dt);
     p.atkCd = Math.max(0, p.atkCd - dt);
     p.combatT += dt;
+    // a luta começa (alvo marcado ou bicho perseguindo): a barra de ação do jogador começa vazia
+    var luta = !!(p.action && p.action.type === 'attack') || st.mobs.some(function (m) { return m.alive && m.fight && !G.monsters[m.kind].flee && dist(m.x, m.z, p.x, p.z) < 16; });
+    if (luta && !p.luta) { p.atkMax = stats(w, p).interval; p.atkCd = Math.max(p.atkCd, p.atkMax); }
+    p.luta = luta;
     if (st.magias && st.magias.on) {
       var mm = manaMax(w, p); p.mana = Math.min(mm, (typeof p.mana === 'number' ? p.mana : mm) + G.magias.mana.porSeg * dt);
       for (var mg in p.magCd) { if (p.magCd[mg] > 0) { p.magCd[mg] = Math.max(0, p.magCd[mg] - dt); } }
@@ -1786,7 +1829,8 @@
     if (!p.prof || typeof p.prof !== 'object') { p.prof = {}; } // tentativas por magia
     if (!p.magCd || typeof p.magCd !== 'object') { p.magCd = {}; }
     if (p.mana === undefined) { p.mana = null; }
-    if (!st.magias || typeof st.magias !== 'object') { st.magias = { on: false, limite: G.magias.limite }; }
+    if (!st.magias || typeof st.magias !== 'object') { st.magias = { on: false }; }
+    if (st.magias.v !== 2) { st.magias.v = 2; st.magias.limite = G.magias.limite; } // por enquanto, só o tempo de espera
     if (!st.lojas || typeof st.lojas !== 'object') { st.lojas = {}; }
     if (!p.equip) {
       var L = G.legacyWeapons, i = Math.max(0, Math.min(L.length - 1, p.weapon | 0));
