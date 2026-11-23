@@ -408,6 +408,11 @@
     return out;
   };
 
+  // a praça mais próxima: hoje só há uma (plaza); um mapa com mais de uma lista todas em vila.pracas
+  World.prototype.pracaPerto = function (x, z) {
+    return (this.vila.pracas || [this.plaza]).reduce(function (a, b) { return dist(x, z, b.x, b.z) < dist(x, z, a.x, a.z) ? b : a; });
+  };
+
   // ---------- estado ----------
   function newState(world, seed) {
     var G = world.game, sp = world.vila.spawn;
@@ -485,6 +490,8 @@
   }
   // fração da armadura: def / (def + armorK); nunca chega a 100%
   function armorCut(w, def) { return def > 0 ? def / (def + w.game.combat.armorK) : 0; }
+  // algum bicho bravo (monsters → aggro) persegue o jogador agora? Coelho e veado não contam
+  function perseguido(w, st) { return st.mobs.some(function (m) { return m.alive && m.fight && w.game.monsters[m.kind].aggro > 0; }); }
   function maxHp(w, p) { return stats(w, p).hp; }
   function potionHeal(w, p) { return Math.round(w.game.player.potionHeal * stats(w, p).potion); }
   function gatherSec(w, p, kind) { return w.game.nodes[kind].gatherSec / stats(w, p).gather[kind]; }
@@ -812,6 +819,8 @@
     if (!quebrou) { return false; }
     p.equip.arma = null; p.afiada = null;
     this.quebrou(st, d, pecaId(G, d.base || id, d.q, d.r, 0, true), true);
+    // com a macro ligada: para de trabalhar e volta à praça mais próxima (macroTick, fase 'quebrou')
+    if (p.mode === 'macro' && p.macro.on) { p.macro.phase = 'quebrou'; p.macro.path = null; p.macro.goal = null; }
     return true;
   };
   // cada golpe recebido gasta todas as peças de defesa vestidas (oficina.desgaste); a que chega a zero quebra
@@ -1052,6 +1061,12 @@
       p.hp = Math.min(maxHp(w, p), p.hp + G.player.restRegenPerSec * dt);
       p.action = { type: 'rest' };
       if (p.hp >= maxHp(w, p)) { m.phase = 'run'; p.action = null; this.log(st, 'Descansado. Voltando à área.'); }
+      return;
+    }
+    if (m.phase === 'quebrou') { // a arma quebrou: volta à praça mais próxima e para
+      var pr = w.pracaPerto(p.x, p.z);
+      p.action = { type: 'travel', label: 'arma quebrada, voltando à praça' };
+      if (this.moveTo(st, pr.x, pr.z + 1.5, 1.2, dt, 'praca')) { this.stopMacro(st, 'A arma quebrou: conserte ou troque e retome a macro.'); p.action = null; }
       return;
     }
     if (m.phase === 'retreat' || m.phase === 'full') {
@@ -1738,6 +1753,6 @@
   NZ.Sim = Sim;
   NZ.newState = newState;
   NZ.calc = { maxHp: maxHp, stats: stats, mobStats: mobStats, armorCut: armorCut, bagCount: bagCount, bagCap: bagCap, buyPrice: buyPrice, sellPrice: sellPrice,
-    potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
+    perseguido: perseguido, potionHeal: potionHeal, gatherSec: gatherSec, ehPeca: ehPeca, variante: variante, varId: varId, registraVariantes: registraVariantes,
     novaPeca: novaPeca, maestria: maestria, chanceQuebra: chanceQuebra, ehDefesa: ehDefesa, durabilidade: durabilidade, custoConserto: custoConserto, inteira: inteira, pecaId: pecaId, keys: keys, dist: dist, nodePoint: nodePoint, nodeDist: nodeDist, fmtLeft: fmtLeft };
 })(window.NZ = window.NZ || {});

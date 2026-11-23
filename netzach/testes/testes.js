@@ -360,6 +360,14 @@
         var s = st.saque[0], msg = sim.pegaSaque(st, s.id, 'pele_lobo');
         confere(!(p.inv.pele_lobo > 0) && s.itens.pele_lobo === 1, 'passou do limite da bolsa (' + msg + ')');
       });
+      teste('aggro: só bicho bravo conta para a música de combate, e só enquanto persegue', function () {
+        var st = novo(), p = st.player, lobo = st.mobs.filter(function (m) { return m.kind === 'lobo'; })[0], coelho = st.mobs.filter(function (m) { return m.kind === 'coelho'; })[0];
+        confere(!NZ.calc.perseguido(world, st), 'perseguido na praça');
+        coelho.fight = true; confere(!NZ.calc.perseguido(world, st), 'coelho contou'); coelho.fight = false;
+        p.x = lobo.x + 2; p.z = lobo.z; p.hp = 1e6; sim.advance(st, 0.5);
+        confere(NZ.calc.perseguido(world, st), 'o lobo não pegou o aggro');
+        sim.faint(st); confere(!NZ.calc.perseguido(world, st), 'continuou depois do desmaio');
+      });
       teste('save de um jogo jogado cabe no armazenamento (menos de 60 KB)', function () {
         var st = novo(); sim.advance(st, 600);
         var kb = JSON.stringify(st).length / 1024;
@@ -396,6 +404,16 @@
         confere(p.inv['espada_ferro~0~0~x'] === 1, 'a quebrada não foi para a bolsa: ' + JSON.stringify(p.inv));
         confere(p.maestria.espada === 1, 'maestria ' + p.maestria.espada);
         confere(st.log.some(function (l) { return /quebrou/.test(l.text || l); }), 'sem aviso no registro');
+      });
+      teste('qualidade: a arma quebra com a macro ligada, ela volta à praça e para', function () {
+        var st = novo(), p = st.player, Q = QQ.niveis[QQ.padrao], q0 = Q.quebra, c = st.mobs.filter(function (x) { return x.kind === 'coelho'; })[0];
+        p.equip.arma = 'espada_ferro'; p.x = c.x; p.z = c.z; var livre = world.nearestFree(c.x + 2, c.z); p.x = livre.x; p.z = livre.z;
+        sim.startMacro(st, { x: c.x, z: c.z }); Q.quebra = 5; // certeza no primeiro golpe
+        try { sim.advance(st, 180); } finally { Q.quebra = q0; }
+        confere(p.equip.arma === null && p.inv['espada_ferro~' + QQ.padrao + '~0~x'] === 1, 'não quebrou: ' + p.equip.arma);
+        confere(!p.macro.on && /arma quebrou/.test(p.macro.stop), 'macro ligada: ' + p.macro.on + ' ' + p.macro.stop);
+        confere(p.maestria.espada === 1, 'golpes com a espada ' + p.maestria.espada);
+        confere(Math.hypot(p.x - world.plaza.x, p.z - world.plaza.z) < 4, 'longe da praça: ' + p.x + ', ' + p.z);
       });
       teste('qualidade: a peça e a maestria sobrevivem ao save, num jogo recém-aberto', function () {
         var st = novo(), p = st.player;

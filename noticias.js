@@ -3,6 +3,23 @@ window.NOTICIAS = [
  {
   "jogo": "Netzach",
   "data": "2026-11-23",
+  "titulo": "Tambores no mato",
+  "texto": "Música de combate quando um bicho bravo persegue você, sons de armamento quebrando e a comparação de atributos na Bolsa.",
+  "simbolo": "♫",
+  "tom": "sangue",
+  "imagem": "",
+  "cena": [
+   "lobo",
+   "soldado_lanca",
+   "troll",
+   "serpente"
+  ],
+  "link": "noticias/tambores-no-mato.html",
+  "botao": "Ler a notícia"
+ },
+ {
+  "jogo": "Netzach",
+  "data": "2026-11-23",
   "titulo": "Ferro, ferrugem e fortuna",
   "texto": "Equipamento com qualidade e raridade, armas que quebram, armaduras que se gastam, oficina, lojas com estoque do dia e pedras de amolar.",
   "simbolo": "⚔",
