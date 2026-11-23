@@ -389,10 +389,10 @@
         confere(C.varId(world.game, 'espada_ferro', QQ.padrao, 0) === 'espada_ferro', 'a peça padrão e comum não é o id puro');
       });
       function golpesAte(lv) { var t = 0; for (var i = 1; i <= lv; i++) { t += C.custoMaestria(world.game, i); } return t; }
-      teste('maestria: 400 ataques no primeiro nível, cada um 60% mais caro, 15 no total', function () {
+      teste('maestria: começa no 1, 400 ataques até o 2, cada um 43,5% mais caro, e cerca de 143 mil até o 15', function () {
         var M = world.game.maestria, p = novo().player;
-        confere(C.custoMaestria(world.game, 1) === 400 && C.custoMaestria(world.game, 2) === 640 && C.custoMaestria(world.game, 3) === 1024, 'custos');
-        [[399.5, 0], [400, 1], [1039, 1], [1040, 2], [golpesAte(15) - 1, 14], [golpesAte(15), 15], [1e7, 15]].forEach(function (c) {
+        confere(C.custoMaestria(world.game, 1) === 0 && C.custoMaestria(world.game, 2) === 400 && C.custoMaestria(world.game, 3) === 574 && Math.abs(golpesAte(15) - 143000) < 3000, 'custos');
+        [[0, 1], [399.5, 1], [400, 2], [973, 2], [974, 3], [golpesAte(15) - 1, 14], [golpesAte(15), 15], [1e7, 15]].forEach(function (c) {
           p.maestria.espada = c[0]; var m = C.nivelMaestria(world, p, 'espada');
           confere(m.lv === c[1], c[0] + ' golpes: nível ' + m.lv);
           confere(m.lv === M.niveis ? m.falta === 0 : m.falta > 0 && m.tem + m.falta === C.custoMaestria(world.game, m.lv + 1), 'falta ' + m.falta);
@@ -400,9 +400,10 @@
       });
       teste('maestria: cada nível dá mais que o anterior, e só muda ao subir', function () {
         var antes = 0, passo = 0, p = novo().player;
-        for (var lv = 1; lv <= 15; lv++) { var e = C.efeitoMaestria(world.game, lv); confere(e - antes > passo, 'nível ' + lv); passo = e - antes; antes = e; }
+        confere(C.efeitoMaestria(world.game, 1) === 0, 'o nível 1 já dá efeito');
+        for (var lv = 2; lv <= 15; lv++) { var e = C.efeitoMaestria(world.game, lv); confere(e - antes > passo, 'nível ' + lv); passo = e - antes; antes = e; }
         confere(Math.abs(antes - 1) < 1e-12, 'no fim ' + antes);
-        p.maestria.espada = 500; var a = C.maestria(world, p, 'espada'); p.maestria.espada = 1000;
+        p.maestria.espada = 450; var a = C.maestria(world, p, 'espada'); p.maestria.espada = 900;
         confere(C.maestria(world, p, 'espada') === a, 'mudou no meio do nível');
       });
       teste('maestria: crítico até +7% em uso e +4% na macro, só com a arma da classe', function () {
@@ -416,10 +417,10 @@
       teste('maestria: o golpe que completa o nível avisa', function () {
         var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], n = 0, em = sim.emit;
         p.equip.arma = 'espada_ferro'; p.maestria.espada = 399; m.hp = 1e6;
-        sim.emit = function (s, e) { if (e.type === 'maestria' && e.lv === 1) { n++; } };
+        sim.emit = function (s, e) { if (e.type === 'maestria' && e.lv === 2) { n++; } };
         try { sim.swing(st, m); if (!p.equip.arma) { p.equip.arma = 'espada_ferro'; } sim.swing(st, m); } finally { sim.emit = em; }
         confere(n === 1, 'avisos: ' + n);
-        confere(st.log.some(function (l) { return /Maestria de espada: nível 1/.test(l.text || l); }), 'sem linha no registro');
+        confere(st.log.some(function (l) { return /Maestria de espada: nível 2/.test(l.text || l); }), 'sem linha no registro');
       });
       teste('ritmo: um por classe, e a maestria acelera até o número do fim', function () {
         var p = novo().player;
@@ -439,7 +440,7 @@
           confere(p.inv.flecha === 0 && p.maestria.arco === de + N, 'flechas ' + p.inv.flecha + ', treino ' + (p.maestria.arco - de));
           return r.map(function (x) { return x / N; });
         }
-        [[0, [0.2, 0.6, 0.2]], [15, [0.35, 0.6, 0.05]]].forEach(function (c) {
+        [[1, [0.2, 0.6, 0.2]], [15, [0.35, 0.6, 0.05]]].forEach(function (c) {
           conta(c[0]).forEach(function (x, i) { confere(Math.abs(x - c[1][i]) < 0.03, 'nível ' + c[0] + ': ' + x + ' em vez de ' + c[1][i]); });
         });
       });
@@ -448,6 +449,7 @@
           function novoBicho() { var st = novo(), m = st.mobs.filter(function (x) { return x.kind === k; })[0]; st.mobs = [m]; st.player.x = m.x + 0.9; st.player.inv.pocao = 0; st.player.z = m.z; st.player.hp = 1e6; m.fight = true; return { st: st, m: m, p: st.player }; }
           var L = novoBicho(), t = [], em = sim.emit, i;
           sim.emit = function (s, e) { if (e.type === 'hit' && e.who === 'player') { t.push(s.t); } };
+          sim.tick(L.st); confere(L.m.atkCd > 2.5 && L.p.atkCd > 3.5, k + ' começou com a barra cheia: ' + L.m.atkCd + ', ' + L.p.atkCd);
           try { for (i = 0; i < 200; i++) { L.p.hp = 1e6; L.p.poison = null; sim.tick(L.st); } } finally { sim.emit = em; }
           confere(t.length >= 11 && t.length <= 14, k + ': golpes em 40 s: ' + t.length);
           L = novoBicho(); for (i = 0; i < 100 && !(L.m.prep > 0); i++) { sim.tick(L.st); }
@@ -457,17 +459,45 @@
           confere(esq === 1 && L.p.hp === hp, k + ' não esquivou: ' + esq + ', vida ' + L.p.hp);
         });
       });
+      teste('bicho: rodeia enquanto a barra enche e vem correndo quando ela enche', function () {
+        var st = novo(), m = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0], p = st.player, longe = 0, n = 0, perto = 0, lados = {}, em = sim.emit, i, a0;
+        st.mobs = [m]; p.x = m.x + 2; p.z = m.z; m.fight = true; sim.emit = function () {};
+        try {
+          for (i = 0; i < 400; i++) {
+            p.hp = 1e6; a0 = Math.atan2(m.x - p.x, m.z - p.z); sim.tick(st);
+            var d = Math.hypot(m.x - p.x, m.z - p.z), g = Math.atan2(Math.sin(Math.atan2(m.x - p.x, m.z - p.z) - a0), Math.cos(Math.atan2(m.x - p.x, m.z - p.z) - a0));
+            if (m.atkCd > 0.4 && m.atkCd < 1.6) { n++; if (d > 1.5) { longe++; } if (Math.abs(g) > 0.03) { lados[g > 0 ? 'e' : 'd'] = 1; } }
+            if (m.prep > 0 && d <= 1.5) { perto++; }
+          }
+        } finally { sim.emit = em; }
+        confere(longe / n > 0.8, 'ficou colado: ' + longe + ' de ' + n); confere(lados.e && lados.d, 'só rodeou para um lado'); confere(perto >= 8, 'botes: ' + perto);
+      });
+      teste('macro: caça só animal manso, e foge de bicho bravo sem revidar', function () {
+        var st = novo(), p = st.player, l = st.mobs.filter(function (x) { return x.kind === 'lobo'; })[0], fases = {}, i;
+        p.x = l.x + 10; p.z = l.z; var f = world.nearestFree(p.x, p.z); p.x = f.x; p.z = f.z; sim.startMacro(st, { x: l.x + 8, z: l.z });
+        for (i = 0; i < 600; i++) { p.hp = 1e4; sim.tick(st); fases[p.macro.phase] = 1; confere(!(p.action && p.action.type === 'attack'), 'atacou o lobo'); }
+        confere(fases.foge && fases.rest && fases.run && p.macro.on && l.hp === world.game.monsters.lobo.hp, 'fases ' + Object.keys(fases));
+        // e no mapa os bravos não alcançam os mansos
+        var M = world.game.monsters, br = world.spawns.filter(function (s) { return M[s.kind].aggro > 0; }), ma = world.spawns.filter(function (s) { return !(M[s.kind].aggro > 0); });
+        br.forEach(function (b) { ma.forEach(function (c) { confere(Math.hypot(b.x - c.x, b.z - c.z) > M[b.kind].leash + M[c.kind].leash, b.id + ' alcança ' + c.id); }); });
+      });
+      teste('raros: peça rara ou melhor fica com a melhor de duas qualidades', function () {
+        var st = novo(), n = 0, alta = 0, N = 6000, i, d;
+        for (i = 0; i < N; i++) { d = world.game.items[C.novaPeca(world.game, st, 'sapatos_couro', null, [0, 0, 0, 1, 0])]; if (d.q >= 5) { alta++; } n++; }
+        confere(Math.abs(alta / n - (1 - 0.96 * 0.96)) < 0.015, 'radiante ou melhor: ' + alta / n);
+      });
       teste('magia: só ligada, gasta mana ou espera, treina 1 (meio na macro) e pode falhar', function () {
         var st = novo(), p = st.player, m = st.mobs.filter(function (x) { return x.alive; })[0], M = world.game.magias;
         confere(/ainda não existem/.test(sim.lanca(st, 'bola_de_fogo')), 'saiu desligada');
         st.magias.on = true; p.x = m.x + 2; p.z = m.z; p.action = { type: 'attack', id: m.id }; m.hp = 1e6;
+        confere(st.magias.limite === 'espera', 'o limite de fábrica é ' + st.magias.limite); st.magias.limite = 'mana';
         confere(sim.lanca(st, 'bola_de_fogo') === '' && p.mana === M.mana.base - 8 && p.prof.bola_de_fogo === 1, 'mana ' + p.mana);
         p.mana = 2; confere(/Mana/.test(sim.lanca(st, 'bola_de_fogo')) && p.prof.bola_de_fogo === 1, 'sem mana e saiu');
         st.magias.limite = 'espera'; confere(sim.lanca(st, 'bola_de_fogo') === '' && p.mana === 2 && p.magCd.bola_de_fogo === 6, 'espera');
         confere(/espere/.test(sim.lanca(st, 'bola_de_fogo')), 'não esperou');
         p.magCd = {}; p.mode = 'macro'; p.macro.on = true; sim.lanca(st, 'bola_de_fogo'); confere(p.prof.bola_de_fogo === 2.5, 'treino na macro ' + p.prof.bola_de_fogo);
         p.macro.on = false; p.mode = 'manual'; confere(/cheia/.test(sim.lanca(st, 'revitalizar')), 'curou cheio'); p.hp = 5;
-        var r = [0, 0, 0], em = sim.emit, q = golpesAte(0);
+        var r = [0, 0, 0], em = sim.emit, q = golpesAte(1);
         sim.emit = function (s, e) { if (e.type === 'magia') { r[e.falhou ? 2 : e.fraca ? 1 : 0]++; } };
         try { for (var i = 0; i < 3000; i++) { p.magCd = {}; p.hp = 5; p.prof.revitalizar = q; sim.lanca(st, 'revitalizar'); } } finally { sim.emit = em; }
         [0.2, 0.6, 0.2].forEach(function (c, k) { confere(Math.abs(r[k] / 3000 - c) < 0.03, 'nível 0: ' + r); });

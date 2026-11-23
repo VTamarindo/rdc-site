@@ -232,6 +232,7 @@
     "saque": [20, 25, 25, 18, 8, 3, 1]
   },
   "raridade": {
+    "qualidadeDupla": 2,
     "_nota": "Raridade: mult multiplica os modificadores da peça (dano, defesa, bônus e coleta); preco multiplica price e buy; cor = a cor do nome; nome pelo gênero do item, como na qualidade. saque = pesos do sorteio no saque (os da loja ficam em lojas). Um drop de equipamento (monsters → drops com 'equip') pode trazer pesos próprios em 'qualidade' e 'raridade'.",
     "niveis": [
       { "nome": { "m": "comum", "f": "comum", "mp": "comuns", "fp": "comuns" }, "mult": 1, "preco": 1, "cor": "#4a4136" },
@@ -243,19 +244,19 @@
     "saque": [60, 25, 10, 4, 1]
   },
   "maestria": {
-    "_nota": "Maestria: o personagem aprende com o uso. Cada ataque com uma classe de arma (weaponClasses) soma 1 nela, ou 'macro' com a macro ligada; errar e raspar também contam (cortar árvore não conta). São 'niveis' níveis por classe: o primeiro custa 'golpes' ataques e cada um custa 'cresce' vezes o anterior. Só subir de nível muda o efeito, que é maior nos últimos: no nível n vale n(n+1) / niveis(niveis+1), de 0 a 1. A chance de a arma quebrar é qualidade.quebra x (1 - corte x efeito). A chance de crítico soma critico x efeito, ou criticoMacro x efeito com a macro. O ritmo e o acerto da classe (weaponClasses) vão do primeiro ao segundo número pelo mesmo efeito. A proficiência das magias segue a mesma escada.",
+    "_nota": "Maestria: o personagem aprende com o uso. Cada ataque com uma classe de arma (weaponClasses) soma 1 nela, ou 'macro' com a macro ligada; errar e raspar também contam (cortar árvore não conta). Todos começam no nível 1 e vão até 'niveis': chegar ao 2 custa 'golpes' ataques, e cada nível custa 'cresce' vezes o anterior. Só subir de nível muda o efeito, que é maior nos últimos: no nível n vale n(n-1) / niveis(niveis-1), de 0 a 1. A chance de a arma quebrar é qualidade.quebra x (1 - corte x efeito). A chance de crítico soma critico x efeito, ou criticoMacro x efeito com a macro. O ritmo e o acerto da classe (weaponClasses) vão do primeiro ao segundo número pelo mesmo efeito. A proficiência (magias e, depois, milagres) segue a mesma escada.",
     "niveis": 15,
     "golpes": 400,
-    "cresce": 1.6,
+    "cresce": 1.435,
     "macro": 0.5,
     "corte": 0.25,
     "critico": 0.07,
     "criticoMacro": 0.04
   },
   "magias": {
-    "_nota": "Magias de teste (só no modo desenvolvedor, st.magias.on). Números provisórios. limite (do save, st.magias.limite): 'mana', 'espera' ou 'ambos'. acerto: chance de sair inteira, fraca (fraco x o efeito) ou falhar, do nível 0 ao último de proficiência. Cada tentativa com alvo válido gasta e treina, mesmo falhando.",
+    "_nota": "Magias de teste (só no modo desenvolvedor, st.magias.on). Números provisórios. limite (do save, st.magias.limite): 'mana', 'espera' ou 'ambos'. acerto: chance de sair inteira, fraca (fraco x o efeito) ou falhar, do nível 1 ao último de proficiência. Cada tentativa com alvo válido gasta e treina, mesmo falhando.",
     "mana": { "base": 20, "porNivel": 2, "porSeg": 0.4 },
-    "limite": "mana",
+    "limite": "espera",
     "acerto": { "cheio": [0.2, 0.35], "raspao": [0.6, 0.6] },
     "fraco": 0.3333333,
     "lista": {
@@ -308,15 +309,15 @@
       ]
     },
     "_fauna": "prepara = segundos parado armando o golpe (a finta), dentro do interval; quem sair do alcance nesse tempo escapa. Bichos das regiões: spot = tipo do ponto marcado em vila.json (regions.spots.kind), count = quantos nascem em cada ponto. aggro = raio (m) em que atacam quem chega; leash = até onde perseguem a partir de casa. poison = veneno { dps, sec } a cada picada (a armadura não corta; poção e padre curam). flee = raio em que a presa foge; stamina = segundos de corrida até cansar, tiredSpeed = velocidade cansada, rest = fôlego recuperado por segundo longe do caçador.",
-    "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 3, "prepara": 0.3, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
-      "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }, { "equip": ["luvas_couro", "coifa_couro", "perneiras_couro", "sapatos_couro"], "chance": 0.08 }] },
-    "escorpiao": { "name": "Escorpião", "spot": "escorpioes", "count": 4, "hp": 22, "dmg": [4, 6], "def": 8, "speed": 1.9, "wanderSpeed": 0.5, "interval": 3, "prepara": 0.3, "reach": 1.1, "aggro": 4.5, "poison": { "dps": 1, "sec": 6 }, "xp": 14, "respawn": 150, "leash": 14, "wanderRadius": 5,
+    "lobo": { "name": "Lobo", "spot": "lobos", "count": 1, "hp": 80, "dmg": [7, 10], "def": 4, "crit": 0.05, "speed": 4, "wanderSpeed": 1.1, "interval": 3, "prepara": 0.18, "reach": 1.5, "aggro": 11, "xp": 34, "respawn": 300, "leash": 26, "wanderRadius": 6,
+      "drops": [{ "item": "pele_lobo", "n": 1, "chance": 1 }, { "item": "carne", "n": 1, "chance": 0.5 }, { "equip": ["luvas_couro", "coifa_couro", "perneiras_couro", "sapatos_couro"], "chance": 0.17 }] },
+    "escorpiao": { "name": "Escorpião", "spot": "escorpioes", "count": 4, "hp": 22, "dmg": [4, 6], "def": 8, "speed": 1.9, "wanderSpeed": 0.5, "interval": 3, "prepara": 0.18, "reach": 1.1, "aggro": 4.5, "poison": { "dps": 1, "sec": 6 }, "xp": 14, "respawn": 150, "leash": 14, "wanderRadius": 5,
       "drops": [{ "item": "ferrao", "n": 1, "chance": 0.7 }] },
     "troll": { "name": "Troll", "spot": "trolls", "count": 1, "hp": 240, "dmg": [8, 12], "def": 8, "crit": 0.04, "speed": 2.4, "wanderSpeed": 0.6,
-      "interval": 3, "prepara": 0.3, "reach": 2.1, "aggro": 8, "xp": 180, "respawn": 1200, "leash": 22, "wanderRadius": 5,
+      "interval": 3, "prepara": 0.18, "reach": 2.1, "aggro": 8, "xp": 180, "respawn": 1200, "leash": 22, "wanderRadius": 5,
       "_nota": "chefe da floresta (desenho do usuário): lento e forte, para nível 6 ou mais com poções; foge-se dele andando",
       "drops": [{ "item": "presa_troll", "n": 1, "chance": 1 }, { "item": "couro_troll", "n": 1, "chance": 1 }, { "item": "carne", "n": 2, "chance": 0.6 }, { "item": "pedra_amolar_esplendida", "n": 1, "chance": 0.3 }, { "equip": ["machado_guerra", "espada_aco", "tunica_couro", "botas_cano_alto"], "chance": 0.35, "qualidade": [5, 10, 20, 30, 20, 10, 5], "raridade": [30, 35, 20, 11, 4] }] },
-    "serpente": { "name": "Serpente", "spot": "cobras", "count": 4, "hp": 22, "dmg": [4, 6], "def": 0, "speed": 2.6, "wanderSpeed": 0.4, "interval": 3, "prepara": 0.3, "reach": 1.2, "aggro": 3.5, "poison": { "dps": 1.5, "sec": 6 }, "xp": 12, "respawn": 150, "leash": 12, "wanderRadius": 4,
+    "serpente": { "name": "Serpente", "spot": "cobras", "count": 4, "hp": 22, "dmg": [4, 6], "def": 0, "speed": 2.6, "wanderSpeed": 0.4, "interval": 3, "prepara": 0.18, "reach": 1.2, "aggro": 3.5, "poison": { "dps": 1.5, "sec": 6 }, "xp": 12, "respawn": 150, "leash": 12, "wanderRadius": 4,
       "drops": [{ "item": "pele_serpente", "n": 1, "chance": 0.6 }, { "item": "veneno", "n": 1, "chance": 0.5 }] },
     "veado": { "name": "Veado", "spot": "cervos", "count": 3, "hp": 34, "dmg": [1, 1], "def": 2, "speed": 5.6, "wanderSpeed": 0.8, "interval": 9, "reach": 0, "flee": 14, "stamina": 7, "tiredSpeed": 2.4, "rest": 0.5, "xp": 22, "respawn": 180, "leash": 30, "wanderRadius": 8,
       "drops": [{ "item": "carne_veado", "n": 2, "chance": 1 }, { "item": "couro_veado", "n": 1, "chance": 0.8 }] }
@@ -518,7 +519,7 @@
         "teste": "magias"
       },
       "atacar": {
-        "label": "Caçar os bichos dentro da área",
+        "label": "Caçar os animais mansos dentro da área",
         "cond": "mob_in_area",
         "act": "attack"
       },

@@ -8,8 +8,8 @@
   function acha(l, id) { return l.filter(function (x) { return x.id === id; })[0]; }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function num(v, d) { return v.toLocaleString('pt-BR', { maximumFractionDigits: d || 0 }); }
-  function custo(lv) { return Math.round(M.golpes * Math.pow(M.cresce, lv - 1)); }
-  function efeito(lv) { return lv * (lv + 1) / (M.niveis * (M.niveis + 1)); }
+  function custo(lv) { return Math.round(M.golpes * Math.pow(M.cresce, lv - 2)); } // para chegar a lv (o nível 1 é de graça)
+  function efeito(lv) { return lv * (lv - 1) / (M.niveis * (M.niveis - 1)); }
   function entre(v, e) { return v[0] + (v[1] - v[0]) * e; }
   function tempo(h) {
     if (!isFinite(h)) { return 'nunca'; }
@@ -31,11 +31,17 @@
     var crit = Math.min(1, D.crit[0] + arma.crit + (macro ? M.criticoMacro : M.critico) * e), mult = D.r[+$('rar').value].mult;
     var d = (arma.dmg[0] + arma.dmg[1]) / 2 * mult * D.postura * (1 + crit * (D.crit[1] + arma.critMult - 1)) * (1 - b.def / (b.def + D.armorK));
     if (c.acerto) { d *= entre(c.acerto.cheio, e) + entre(c.acerto.raspao, e) * c.fraco; }
-    var n = Math.max(1, b.hp / d), seg = n * entre(c.ritmo, e);
-    var bando = macro ? b.grupo : b.total, porHora = Math.min(3600 / (seg + D.desmontagem), bando * 3600 / (b.volta + seg));
+    var n = Math.max(1, Math.ceil(b.hp / d - 1e-9)), seg = n * entre(c.ritmo, e);
+    var bando = macro ? b.grupo : b.total, porHora = macro && b.bravo ? 0 : Math.min(3600 / (seg + D.desmontagem), bando * 3600 / (b.volta + seg)); // a macro não luta com bicho bravo
     return { n: n, seg: seg, porHora: porHora, ataques: porHora * n * (macro ? M.macro : 1), b: b };
   }
   function soma(pesos, i) { var t = 0, a = 0; pesos.forEach(function (p, k) { t += p; if (k >= i) { a += p; } }); return a / t; }
+  // chance de qualidade >= q e raridade >= r: da raridade D.dupla para cima, a qualidade é a melhor de duas
+  function chancePeca(dr, q, r) {
+    var pq = soma(dr.q || D.qp, q), rp = dr.r || D.rp, t = rp.reduce(function (a, b) { return a + b; }, 0), c = 0;
+    rp.forEach(function (p, i) { if (i >= r) { c += p / t * (i >= D.dupla ? 1 - (1 - pq) * (1 - pq) : pq); } });
+    return c;
+  }
   function itens() {
     var b = acha(D.bichos, $('bicho').value), antes = $('item').value, o = [];
     b.drops.forEach(function (d, i) { if (d.equip) { d.equip.forEach(function (q, k) { o.push([i + ':' + k, q[1]]); }); o.push([i + ':*', 'Qualquer peça de equipamento']); } else { o.push([i + ':-', d.nome]); } });
@@ -44,29 +50,30 @@
   }
   function pinta() {
     var arma = acha(D.armas, $('arma').value), lv = +$('lv').value, L = luta(arma, lv), macro = $('modo').value === 'macro';
-    $('luta').textContent = L.b.nome + ': cerca de ' + num(L.n, 1) + ' ataques, ' + num(L.seg) + ' segundos de luta, ' + num(L.porHora, 1) + ' por hora' + (L.porHora * (L.seg + D.desmontagem) < 3500 ? ' (o resto do tempo é esperar ela voltar)' : '') + '.';
+    if (!L.porHora) { $('luta').textContent = 'A macro não luta com bicho bravo (' + L.b.nome.toLowerCase() + '): ela foge. Escolha coelho ou veado, ou jogue em uso.'; }
+    else { $('luta').textContent = L.b.nome + ': cerca de ' + num(L.n) + ' ataques, ' + num(L.seg) + ' segundos de luta, ' + num(L.porHora, 1) + ' por hora' + (L.porHora * (L.seg + D.desmontagem) < 3500 ? ' (o resto do tempo é esperar ela voltar)' : '') + '.'; }
     // item
     var v = $('item').value.split(':'), dr = L.b.drops[+v[0]];
     if (dr) {
       $('peca').hidden = !dr.equip;
       var ch = dr.c;
-      if (dr.equip) { ch *= (v[1] === '*' ? 1 : 1 / dr.equip.length) * soma(dr.q || D.qp, +$('q').value) * soma(dr.r || D.rp, +$('r').value); }
+      if (dr.equip) { ch *= (v[1] === '*' ? 1 : 1 / dr.equip.length) * chancePeca(dr, +$('q').value, +$('r').value); }
       var h = 1 / ch / L.porHora, meta = Math.log(0.5) / Math.log(1 - Math.min(0.999999, ch)), nove = Math.log(0.1) / Math.log(1 - Math.min(0.999999, ch));
       saida('s1', h, [ch > 0.999 ? 'Toda criatura deixa.' : 'Em média, uma a cada ' + num(1 / ch, 1) + ' criaturas.', 'Metade dos jogadores consegue em ' + tempo(Math.max(1, meta) / L.porHora) + '; nove em cada dez, em ' + tempo(Math.max(1, nove) / L.porHora) + '.']);
     } else { $('peca').hidden = true; $('s1').innerHTML = '<p>Essa criatura não deixa nada.</p>'; }
     // maestria: nível por nível, porque o ritmo e a luta mudam. Outra classe: a primeira arma dela
     var alvo = +$('alvo').value, quais = $('cls').value === 'todas' ? Object.keys(D.classes) : [$('cls').value], total = 0, ataques = 0, partes = [];
     quais.forEach(function (k) {
-      var a = arma.cls === k ? arma : D.armas.filter(function (x) { return x.cls === k; })[0], de = arma.cls === k ? lv : 0, hk = 0;
+      var a = arma.cls === k ? arma : D.armas.filter(function (x) { return x.cls === k; })[0], de = arma.cls === k ? lv : 1, hk = 0;
       for (var n = de + 1; n <= alvo; n++) { hk += custo(n) / luta(a, n - 1).ataques; ataques += custo(n); }
       total += hk; partes.push(D.classes[k].nome + ': ' + tempo(hk) + (arma.cls === k ? '' : ' (do zero, com ' + a.nome.toLowerCase() + ')'));
     });
     if (total <= 0) { $('s2').innerHTML = '<p>Você já chegou lá.</p>'; }
     else { saida('s2', total, [num(ataques) + ' ataques' + (macro ? ' (na macro cada um vale metade)' : '') + '.'].concat(quais.length > 1 ? partes : partes[0].indexOf('(do zero') > 0 ? partes : [])); }
     // magia: só o que a mana ou a espera deixam, com alvo sempre à mão
-    var X = D.magias, ids = $('mag').value === 'todas' ? X.lista : [acha(X.lista, $('mag').value)], lim = $('lim').value, mt = 0, tent = 0, ml = +$('mlv').value, ma = +$('mal').value, txt = [];
+    var X = D.magias, ids = $('mag').value === 'todas' ? X.lista : [acha(X.lista, $('mag').value)], mt = 0, tent = 0, ml = +$('mlv').value, ma = +$('mal').value, txt = [];
     ids.forEach(function (m) {
-      var t = 0, seg = lim === 'mana' ? m.mana / X.mana.porSeg : lim === 'espera' ? m.espera : Math.max(m.espera, m.mana / X.mana.porSeg);
+      var t = 0, seg = m.espera;
       for (var n = ml + 1; n <= ma; n++) { t += custo(n); }
       tent += t; var hm = t * seg / 3600 / (macro ? M.macro : 1); mt += hm; txt.push(m.nome + ': ' + tempo(hm) + ', uma tentativa a cada ' + num(seg, 1) + ' s.');
     });
